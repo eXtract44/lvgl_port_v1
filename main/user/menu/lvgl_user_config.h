@@ -163,10 +163,6 @@
 #define POPUP_WINDOW_WIDTH 600
 #define POPUP_WINDOW_ALIGN LV_ALIGN_CENTER
 
-
-//#define BLOCK_BOT_MID_HEIGHT_WIFI_POPUP 400
-//#define BLOCK_BOT_MID_WIDTH_WIFI_POPUP 600
-//#define BLOCK_BOT_MID_ALIGN_WIFI_POPUP LV_ALIGN_CENTER
 /////////////////////////////////////////////////////////////////////////BLOCK_BOT_RIGHT
 ///WEATHER ANIMATIONS
 ////////////////////COORDINATES
