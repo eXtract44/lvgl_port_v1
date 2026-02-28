@@ -1,0 +1,88 @@
+[1/5] cmd.exe /C "cd /D C:\Espressif\Workspace\lvgl_port_v1\build\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.1/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/Espressif/Workspace/lvgl_port_v1/build/partition_table/partition-table.bin C:/Espressif/Workspace/lvgl_port_v1/build/lvgl_porting.bin"
+lvgl_porting.bin binary size 0x139e90 bytes. Smallest app partition is 0x177000 bytes. 0x3d170 bytes (16%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] cmd.exe /C "cd /D C:\Espressif\Workspace\lvgl_port_v1\build\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.1/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 C:/Espressif/Workspace/lvgl_port_v1/build/bootloader/bootloader.bin"
+Bootloader binary size 0x5810 bytes. 0x27f0 bytes (31%) free.
+[2/3] cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.3.1\components\esptool_py && C:\Espressif\tools\cmake\3.24.0\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.3.1 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.3_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.3.1/components/esptool_py/esptool/esptool.py;--chip;esp32s3 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/Espressif/Workspace/lvgl_port_v1/build -P C:/Espressif/frameworks/esp-idf-v5.3.1/components/esptoolesptool.py --chip esp32s3 -p COM8 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 bootloader/bootloader.bin 0x10000 lvgl_porting.bin 0x8000 partition_table/partition-table.bin
+esptool.py v4.8.1
+Serial port COM8
+Connecting....
+Chip is ESP32-S3 (QFN56) (revision v0.2)
+Features: WiFi, BLE, Embedded PSRAM 8MB (AP_3v3)
+Crystal is 40MHz
+MAC: 20:6e:f1:a6:f1:84
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00000000 to 0x00005fff...
+Flash will be erased from 0x00010000 to 0x00149fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+SHA digest in image updated
+Compressed 22544 bytes to 13928...
+Writing at 0x00000000... (100 %)
+Wrote 22544 bytes (13928 compressed) at 0x00000000 in 0.5 seconds (effective 369.3 kbit/s)...
+Hash of data verified.
+Compressed 1285776 bytes to 806539...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001d324... (4 %)
+Writing at 0x00028de9... (6 %)
+Writing at 0x0003495f... (8 %)
+Writing at 0x000462b5... (10 %)
+Writing at 0x0004f2d4... (12 %)
+Writing at 0x0005414f... (14 %)
+Writing at 0x00059321... (16 %)
+Writing at 0x0005fdf9... (18 %)
+Writing at 0x00064ae3... (20 %)
+Writing at 0x0006c396... (22 %)
+Writing at 0x000741b9... (24 %)
+Writing at 0x00079afe... (26 %)
+Writing at 0x0007f225... (28 %)
+Writing at 0x0008474c... (30 %)
+Writing at 0x00089800... (32 %)
+Writing at 0x0008ece5... (34 %)
+Writing at 0x00094863... (36 %)
+Writing at 0x0009a218... (38 %)
+Writing at 0x0009f72c... (40 %)
+Writing at 0x000a5469... (42 %)
+Writing at 0x000aaa2a... (44 %)
+Writing at 0x000afd92... (46 %)
+Writing at 0x000b5163... (48 %)
+Writing at 0x000ba4d1... (50 %)
+Writing at 0x000bf9d4... (52 %)
+Writing at 0x000c4aaa... (54 %)
+Writing at 0x000ca586... (56 %)
+Writing at 0x000cfba7... (58 %)
+Writing at 0x000d4fc4... (60 %)
+Writing at 0x000da102... (62 %)
+Writing at 0x000df106... (64 %)
+Writing at 0x000e427d... (66 %)
+Writing at 0x000e92e1... (68 %)
+Writing at 0x000ee562... (70 %)
+Writing at 0x000f39e3... (72 %)
+Writing at 0x000f95a2... (74 %)
+Writing at 0x000fe5b7... (76 %)
+Writing at 0x00103611... (78 %)
+Writing at 0x00108be2... (80 %)
+Writing at 0x0010e415... (82 %)
+Writing at 0x0011390e... (84 %)
+Writing at 0x001198a5... (86 %)
+Writing at 0x00125093... (88 %)
+Writing at 0x0012ab87... (90 %)
+Writing at 0x00132489... (92 %)
+Writing at 0x001378d2... (94 %)
+Writing at 0x0013d3eb... (96 %)
+Writing at 0x0014357a... (98 %)
+Writing at 0x00148501... (100 %)
+Wrote 1285776 bytes (806539 compressed) at 0x00010000 in 18.0 seconds (effective 570.3 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 105...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (105 compressed) at 0x00008000 in 0.0 seconds (effective 784.3 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+_py/run_serial_tool.cmake"
