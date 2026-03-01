@@ -607,6 +607,14 @@ static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
   }
 }
 
+static void btn_keyboard_open_event_handler(lv_event_t *e) {
+  lv_event_code_t code = lv_event_get_code(e);
+
+  if (code == LV_EVENT_CLICKED) {
+    set_flag(lv_object[KEYBOARD_WIFI], true);
+  }
+}
+
 static void btn_settings_open_popup_event_handler(lv_event_t *e) {
   lv_event_code_t code = lv_event_get_code(e);
 
@@ -624,12 +632,9 @@ static void create_window_popup(char *window_name, lv_obj_t *bg) {
   // lv_obj_add_style(lv_object[BACKGROUND_POPUP_WIFI], &style_bg_bot_right, 0);
   lv_obj_set_scrollbar_mode(bg, LV_SCROLLBAR_MODE_OFF);
 
-  lv_object[POPUP_WIFI_TITLE_TEXT] =
-      lv_label_create(bg);
+  lv_object[POPUP_WIFI_TITLE_TEXT] = lv_label_create(bg);
   lv_label_set_text(lv_object[POPUP_WIFI_TITLE_TEXT], "WIFI Settings");
   lv_obj_align(lv_object[POPUP_WIFI_RSSI], LV_ALIGN_TOP_LEFT, 10, 10);
-
-  
 }
 
 static void create_btn_close(lv_obj_t *btn, lv_obj_t *bg, lv_coord_t x_ofs,
@@ -642,11 +647,38 @@ static void create_btn_close(lv_obj_t *btn, lv_obj_t *bg, lv_coord_t x_ofs,
   lv_obj_add_event_cb(btn, event_cb, LV_EVENT_CLICKED, NULL);
 }
 
+static void create_btn_keyboard(lv_obj_t *btn, lv_obj_t *bg, lv_coord_t x_ofs,
+                                lv_coord_t y_ofs, lv_event_cb_t event_cb) {
+  btn = lv_btn_create(bg);
+  lv_obj_set_style_bg_img_src(btn, LV_SYMBOL_KEYBOARD, 0);
+  lv_obj_set_size(btn, 50, 50);
+  lv_obj_align(btn, LV_ALIGN_TOP_LEFT, x_ofs, y_ofs);
+
+  lv_obj_add_event_cb(btn, event_cb, LV_EVENT_CLICKED, NULL);
+}
+
+static void ta_event_cb(lv_event_t *e) {
+  lv_event_code_t code = lv_event_get_code(e);
+  lv_obj_t *ta = lv_event_get_target(e);
+  lv_obj_t *kb = lv_event_get_user_data(e);
+  if (code == LV_EVENT_FOCUSED) {
+    lv_keyboard_set_textarea(kb, ta);
+    lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+  }
+
+  if (code == LV_EVENT_DEFOCUSED) {
+    lv_keyboard_set_textarea(kb, NULL);
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
 static void create_wifi_popup() {
   create_window_popup("WIFI Settings", lv_object[BACKGROUND_POPUP_WIFI]);
-  create_btn_close(lv_object[BTN_CLOUSE_POPUP_WIFI],
-                   lv_object[BACKGROUND_POPUP_WIFI], 530, 30,
-                   btn_wifi_close_popup_event_handler);
+//  create_btn_close(lv_object[BTN_CLOUSE_POPUP_WIFI],
+//                   lv_object[BACKGROUND_POPUP_WIFI], 530, 30,
+//                   btn_wifi_close_popup_event_handler);
+//  create_btn_keyboard(lv_object[BTN_KEYBOARD], lv_object[BACKGROUND_POPUP_WIFI],
+//                      530, 80, btn_keyboard_open_event_handler);
 
   lv_object[POPUP_WIFI_SSID_TEXT] =
       lv_label_create(lv_object[BACKGROUND_POPUP_WIFI]);
@@ -668,8 +700,31 @@ static void create_wifi_popup() {
   lv_label_set_text(lv_object[POPUP_WIFI_RSSI], "WIFI_RSSI");
   lv_obj_align(lv_object[POPUP_WIFI_RSSI], LV_ALIGN_TOP_LEFT, 280, 80);
 
+  /*Create a keyboard to use it with an of the text areas*/
+  /*lv_object[KEYBOARD_WIFI] =
+      lv_keyboard_create(lv_object[BACKGROUND_POPUP_WIFI]);
+
+  lv_object[KEYBOARD_WIFI_TEXT] =
+      lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
+  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT], LV_ALIGN_TOP_LEFT, 10, 10);
+  lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT], ta_event_cb, LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
+  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT], "Hello");
+  lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT], 140, 80);
+  set_flag(lv_object[KEYBOARD_WIFI], false);
+
+  lv_keyboard_set_textarea(lv_object[KEYBOARD_WIFI], lv_object[KEYBOARD_WIFI_TEXT]);
+  
+    lv_object[KEYBOARD_WIFI_TEXT] = lv_textarea_create(lv_scr_act());
+    lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT], LV_ALIGN_TOP_RIGHT, -10, 10);
+    lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT], ta_event_cb, LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
+    lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT], 140, 80);
+*/
   set_flag(lv_object[BACKGROUND_POPUP_WIFI], false);
 }
+static void create_all_popups(){
+	create_wifi_popup();
+}
+
 
 static void create_block_bot_middle() {
   /*STYLES*/
@@ -813,7 +868,6 @@ static void create_block_bot_right() {
   /*BLOCK BOT RIGHT*/
 }
 
-static void create_all_popups() { create_wifi_popup(); }
 
 static void create_menu() {
   lv_object[SCREEN_MAIN_MENU] = lv_obj_create(NULL);
@@ -845,7 +899,7 @@ static void create_menu() {
 #if ACTIVATE_BLOCK_BOT_RIGHT
   create_block_bot_right();
 #endif
-  create_all_popups();
+ // create_all_popups();
 }
 
 void draw_menu_main() { lv_scr_load(lv_object[SCREEN_MAIN_MENU]); }
