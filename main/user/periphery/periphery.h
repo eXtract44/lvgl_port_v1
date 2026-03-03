@@ -80,6 +80,7 @@ typedef struct {
 
 uint8_t get_wifi_status();
 const char* get_wifi_ssid();
+const char* get_wifi_pass();
 int16_t get_wifi_rssi();
 
 uint8_t get_time_mday();

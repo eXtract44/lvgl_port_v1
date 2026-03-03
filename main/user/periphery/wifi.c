@@ -1,8 +1,11 @@
+#include "esp_log.h"
 #include "esp_wifi.h"
 #include "periphery.h"
- #include "esp_log.h"
 
-#define WIFI_SSID "WiFi"
+uint8_t wifi_ssid[32] = "WiFi"; /**< SSID of target AP. */
+uint8_t wifi_password[64] = "Lokomotive132";
+
+ #define WIFI_SSID "WiFi"
 #define WIFI_PASS "Lokomotive132"
 
 wifi_ap_record_t ap_info;
@@ -29,12 +32,11 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 }
 
 void wifi_print_info(void) {
-	
-	//if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK){
-	//	current_weather_data.wifi_connected = true;
-	//}else{current_weather_data.wifi_connected = false;}
+
+  // if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK){
+  //	current_weather_data.wifi_connected = true;
+  // }else{current_weather_data.wifi_connected = false;}
 #if DEBUG_INET
-  
 
   if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
     ESP_LOGI(TAG, "Connected to SSID: %s", ap_info.ssid);
@@ -44,7 +46,6 @@ void wifi_print_info(void) {
     ESP_LOGI(TAG, "Not connected to AP");
   }
 #endif
-
 }
 
 void wifi_init_sta(void) {
@@ -71,6 +72,9 @@ void wifi_init_sta(void) {
           },
 
   };
+  
+//  memcpy(wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_ssid));
+//memcpy(wifi_config.sta.password, wifi_password, sizeof(wifi_password));
 
   esp_wifi_set_mode(WIFI_MODE_STA);
   esp_wifi_set_config(WIFI_IF_STA, &wifi_config);

@@ -7,14 +7,16 @@
 
 #include "periphery.h"
 #include "driver/i2c.h"
-#include "waveshare_rgb_lcd_port.h"
-#include "user/menu/lvgl_user_config.h"
-#include <time.h>
 #include "esp_wifi.h"
+#include "user/menu/lvgl_user_config.h"
+#include "waveshare_rgb_lcd_port.h"
+#include <time.h>
 
 current_weather_t current_weather_data = {0};
 extern struct tm timeinfo;
 extern wifi_ap_record_t ap_info;
+extern uint8_t wifi_ssid[];
+extern uint8_t wifi_password[];
 
 #define SIMULATE_AHT10_VALUES 1
 #define SIMULATE_SGP30_VALUES 1
@@ -188,24 +190,37 @@ uint8_t get_wifi_status() {
   // }
   current_wifi_status = WIFI_CONNECTED;
 #else
-if(esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK){
-	current_wifi_status = WIFI_CONNECTED;
-}else{
-	current_wifi_status = WIFI_DISCONNECTED;
-}
+  if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+    current_wifi_status = WIFI_CONNECTED;
+  } else {
+    current_wifi_status = WIFI_DISCONNECTED;
+  }
 
 #endif
   return current_wifi_status;
 }
 
-const char* get_wifi_ssid(){
-	return (const char*)ap_info.ssid;
+const char *get_wifi_ssid() {
+  if (get_wifi_status() == WIFI_CONNECTED) {
+    return (const char *)ap_info.ssid;
+  }
+  return 0;
 }
 
-int16_t get_wifi_rssi(){
-	return ap_info.rssi;
+const char *get_wifi_pass() {
+  if (get_wifi_status() == WIFI_CONNECTED) {
+    return (const char *)wifi_password;
+  }
+  return 0;
 }
- 
+
+int16_t get_wifi_rssi() {
+  if (get_wifi_status() == WIFI_CONNECTED) {
+    return ap_info.rssi;
+  }
+  return 0;
+}
+
 uint8_t get_time_mday() {
   static uint8_t current_mday = 1;
 #if SIMULATE_INET_VALUES
@@ -214,7 +229,7 @@ uint8_t get_time_mday() {
     current_mday = 1;
   }
 #else
-current_mday = timeinfo.tm_mday;
+  current_mday = timeinfo.tm_mday;
 #endif
   return current_mday;
 }
@@ -227,7 +242,7 @@ uint8_t get_time_month() {
     current_monts = 1;
   }
 #else
- current_monts = timeinfo.tm_mon+1;
+  current_monts = timeinfo.tm_mon + 1;
 #endif
   return current_monts;
 }
@@ -240,7 +255,7 @@ uint8_t get_time_hour() {
     current_hour = 0;
   }
 #else
-current_hour = timeinfo.tm_hour;
+  current_hour = timeinfo.tm_hour;
 #endif
   return current_hour;
 }
@@ -253,7 +268,7 @@ uint8_t get_time_minute() {
     current_minute = 0;
   }
 #else
-current_minute =timeinfo.tm_min;
+  current_minute = timeinfo.tm_min;
 #endif
   return current_minute;
 }
@@ -266,7 +281,7 @@ uint8_t get_time_wday() {
     current_wday = 1;
   }
 #else
-current_wday = timeinfo.tm_wday;
+  current_wday = timeinfo.tm_wday;
 #endif
   return current_wday;
 }
@@ -279,7 +294,7 @@ float get_weather_temperature() {
     current_temperature_outside = -20.0;
   }
 #else
-current_temperature_outside = current_weather_data.temperature_2m;
+  current_temperature_outside = current_weather_data.temperature_2m;
 #endif
   return current_temperature_outside;
 }
@@ -292,7 +307,7 @@ uint8_t get_weather_humidity() {
     current_humidity_outside = 0;
   }
 #else
-current_humidity_outside = current_weather_data.relative_humidity_2m;
+  current_humidity_outside = current_weather_data.relative_humidity_2m;
 #endif
   return current_humidity_outside;
 }
@@ -305,7 +320,7 @@ uint8_t get_weather_wind() {
     current_wind_outside = 0;
   }
 #else
-current_wind_outside = current_weather_data.wind_speed_10m;
+  current_wind_outside = current_weather_data.wind_speed_10m;
 #endif
   return current_wind_outside;
 }
@@ -318,7 +333,7 @@ uint8_t get_weather_clouds() {
     current_clouds = 0;
   }
 #else
-current_clouds = current_weather_data.cloud_cover;
+  current_clouds = current_weather_data.cloud_cover;
 #endif
   return current_clouds;
 }
@@ -331,7 +346,7 @@ uint8_t get_weather_rain() {
     current_rain = 0;
   }
 #else
-current_rain = current_weather_data.rain;
+  current_rain = current_weather_data.rain;
 #endif
   return current_rain;
 }
@@ -344,7 +359,7 @@ uint8_t get_weather_snow() {
     current_snow = 0;
   }
 #else
-current_snow = current_weather_data.snow;
+  current_snow = current_weather_data.snow;
 #endif
   return current_snow;
 }
@@ -374,4 +389,3 @@ uint8_t get_volume() {
 #endif
   return current_volume;
 }
-

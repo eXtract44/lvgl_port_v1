@@ -11,8 +11,11 @@
 #include <math.h>
 #include <stdbool.h>
 
+#include "esp_wifi.h"
+
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
+extern wifi_ap_record_t ap_info;
 
 static lv_meter_indicator_t *indicator[LAST_ELEMENT_OF_INDICATOR];
 // static const lv_font_t *font[LAST_ELEMENT_OF_FONT];
@@ -20,6 +23,8 @@ static lv_style_t style[LAST_ELEMENT_OF_STYLE_TEXT];
 static lv_style_t style_bg_top_left;
 static lv_style_t style_bg_top_right;
 static lv_style_t style_bg_bot_left;
+static lv_style_t style_bg_bot_right;
+static lv_style_t style_chart_co2;
 
 static lv_obj_t *lv_object[LAST_ELEMENT_OF_OBJECTS];
 static lv_obj_t *rain_objs[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS];
@@ -722,121 +727,101 @@ static void create_block_bot_left() {
 }
 
 static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
-  lv_event_code_t code = lv_event_get_code(e);
+  if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WIFI])) {
+    set_visible(lv_object[BACKGROUND_POPUP_WIFI], true);
+  }
 
-  if (code == LV_EVENT_CLICKED) {
-	  if (lv_object[BACKGROUND_POPUP_WIFI] == NULL ||
-        !lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WIFI])) {
-      return;
-    }
-set_visible(lv_object[BACKGROUND_POPUP_WIFI], true);
-   
-     if (lv_object[POPUP_WIFI_SSID] == NULL ||
-        !lv_obj_is_valid(lv_object[POPUP_WIFI_SSID])) {
-      return;
-    }
-    lv_label_set_text(lv_object[POPUP_WIFI_SSID], get_wifi_ssid());
+  if (lv_obj_is_valid(lv_object[POPUP_WIFI_SSID])) {
+    lv_label_set_text(lv_object[POPUP_WIFI_SSID], (char*)ap_info.ssid/*get_wifi_ssid()*/);
+  }
 
-    if (lv_object[POPUP_WIFI_RSSI] == NULL ||
-        !lv_obj_is_valid(lv_object[POPUP_WIFI_RSSI])) {
-      return;
-    }
+  if (lv_obj_is_valid(lv_object[POPUP_WIFI_RSSI])) {
     lv_label_set_text_fmt(lv_object[POPUP_WIFI_RSSI], "%2d dBm",
-                          get_wifi_rssi());  
+                          ap_info.rssi  /*get_wifi_rssi()*/);
+  }
+   if (lv_obj_is_valid(lv_object[POPUP_WIFI_PASSWORD])) {
+    lv_label_set_text(lv_object[POPUP_WIFI_PASSWORD],(char*)ap_info.ssid  /*get_wifi_rssi()*/);
   }
 }
-
+    
 static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
-  lv_event_code_t code = lv_event_get_code(e);
-
-  if (code == LV_EVENT_CLICKED) {
-    if (lv_object[BACKGROUND_POPUP_WIFI] == NULL ||
-        !lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WIFI])) {
-      return;
-    }
-
+  if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WIFI])) {
     set_visible(lv_object[BACKGROUND_POPUP_WIFI], false);
   }
 }
 
 static void btn_keyboard_open_event_handler(lv_event_t *e) {
-  lv_event_code_t code = lv_event_get_code(e);
-
-  if (code == LV_EVENT_CLICKED) {
-    if (lv_object[KEYBOARD_WIFI] == NULL ||
-        !lv_obj_is_valid(lv_object[KEYBOARD_WIFI])) {
-      return;
-    }
+  if (lv_obj_is_valid(lv_object[KEYBOARD_WIFI])) {
     set_visible(lv_object[KEYBOARD_WIFI], true);
+  }
+  if (lv_obj_is_valid(lv_object[KEYBOARD_WIFI_TEXT_AREA])) {
+    set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA], true);
   }
 }
 
-//static void btn_settings_open_popup_event_handler(lv_event_t *e) {
-//  lv_event_code_t code = lv_event_get_code(e);
-//
-//  if (code == LV_EVENT_CLICKED) {
-//    //    lv_label_set_text(lv_object[POPUP_WIFI_SSID], get_wifi_ssid());
-//    //    lv_label_set_text_fmt(lv_object[POPUP_WIFI_RSSI], "%d dBm",
-//    //                          get_wifi_rssi());
-//    //    set_visible(lv_object[BACKGROUND_POPUP_WIFI], true);
-//  }
-//}
+static void btn_settings_open_popup_event_handler(lv_event_t *e) {}
 
 static void ta_event_cb(lv_event_t *e) {
   lv_event_code_t code = lv_event_get_code(e);
   lv_obj_t *ta = lv_event_get_target(e);
   lv_obj_t *kb = lv_event_get_user_data(e);
-  if (code == LV_EVENT_FOCUSED) {
-    lv_keyboard_set_textarea(kb, ta);
-    lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+  //  if (code == LV_EVENT_FOCUSED) {
+  //    lv_keyboard_set_textarea(kb, ta);
+  //    // lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+  //  }
+  //
+  //  if (code == LV_EVENT_DEFOCUSED) {
+  //    lv_keyboard_set_textarea(kb, NULL);
+  //    // lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+  //  }
+
+  if (code == LV_EVENT_READY) {
+    const char *txt = lv_textarea_get_text(ta);
+    // тут сохраняешь WiFi
   }
 
-  if (code == LV_EVENT_DEFOCUSED) {
-    lv_keyboard_set_textarea(kb, NULL);
-    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+  if (code == LV_EVENT_CANCEL) {
+    set_visible(kb, false);
+    set_visible(ta, false);
+    // закрыть клавиатуру
   }
 }
 
 static void create_block_bot_middle() {
-  /*STYLES*/
-  static lv_style_t style_chart_co2;
-  lv_style_init(&style_chart_co2);
-  lv_style_set_bg_opa(&style_chart_co2, LV_OPA_COVER);
-  lv_style_set_bg_color(&style_chart_co2, lv_palette_main(LV_PALETTE_RED));
-  lv_style_set_bg_grad_color(&style_chart_co2,
-                             lv_palette_lighten(LV_PALETTE_GREEN, 1));
-  lv_style_set_bg_grad_dir(&style_chart_co2, LV_GRAD_DIR_VER);
-  lv_style_set_bg_main_stop(&style_chart_co2, 128);
-  lv_style_set_bg_grad_stop(&style_chart_co2, 192);
+
   /*BLOCK BOT MID*/
 
   create_text("co2           24h", lv_object[SCREEN_MAIN_MENU],
               STYLE_TEXT_SMALL, BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
               BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART);
-
+  ///////////////////////////////////////////////////////////////
   lv_object[CHART_CO2_MAIN_MENU] = create_chart(
       lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_CO2_CHART,
       BLOCK_BOT_MID_HEIGHT_CO2_CHART, BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
       BLOCK_BOT_MID_Y_START_CO2_CHART);
   lv_obj_add_style(lv_object[CHART_CO2_MAIN_MENU], &style_chart_co2, 0);
-
-  lv_object[BTN_WIFI_SETTINGS] = create_button(
+  ///////////////////////////////////////////////////////////////
+  lv_obj_t *btn_cb = create_btn_cb(
       lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_SYMBOL,
       BLOCK_BOT_MID_HEIGHT_SYMBOL, BLOCK_BOT_MID_ALIGN_SYMBOL,
-      BLOCK_BOT_MID_X_START_SYMBOL_3, BLOCK_BOT_MID_Y_START_SYMBOLS);
-  lv_obj_add_event_cb(lv_object[BTN_WIFI_SETTINGS],
-                      btn_wifi_open_popup_event_handler, LV_EVENT_ALL, NULL);
+      BLOCK_BOT_MID_X_START_SYMBOL_3, BLOCK_BOT_MID_Y_START_SYMBOLS,
+      btn_wifi_open_popup_event_handler);
+  if (!btn_cb)
+    return;
+  lv_object[BTN_WIFI_SETTINGS] = btn_cb;
 
-  lv_object[BTN_UI_SETTINGS] = create_button(
+  ///////////////////////////////////////////////////////////////
+  btn_cb = create_btn_cb(
       lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_SYMBOL,
       BLOCK_BOT_MID_HEIGHT_SYMBOL, BLOCK_BOT_MID_ALIGN_SYMBOL,
-      BLOCK_BOT_MID_X_START_SYMBOL_4, BLOCK_BOT_MID_Y_START_SYMBOLS);
+      BLOCK_BOT_MID_X_START_SYMBOL_4, BLOCK_BOT_MID_Y_START_SYMBOLS,
+      btn_settings_open_popup_event_handler);
+  if (!btn_cb)
+    return;
+  lv_object[BTN_UI_SETTINGS] = btn_cb;
   lv_obj_set_style_bg_img_src(lv_object[BTN_UI_SETTINGS], LV_SYMBOL_SETTINGS,
                               0);
-//  lv_obj_add_event_cb(lv_object[BTN_UI_SETTINGS],
-//                      btn_settings_open_popup_event_handler, LV_EVENT_ALL,
-//                      NULL);
-
+  ///////////////////////////////////////////////////////////////
   lv_obj_t *bg =
       create_background(lv_object[SCREEN_MAIN_MENU], POPUP_WINDOW_WIDTH,
                         POPUP_WINDOW_HEIGHT, POPUP_WINDOW_ALIGN, 0, 0);
@@ -846,78 +831,84 @@ static void create_block_bot_middle() {
 
   lv_obj_set_scrollbar_mode(lv_object[BACKGROUND_POPUP_WIFI],
                             LV_SCROLLBAR_MODE_OFF);
-
+  ///////////////////////////////////////////////////////////////
   create_text("WIFI Settings", lv_object[BACKGROUND_POPUP_WIFI],
               STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 0);
-  create_text("WIFI SSID:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 30, 90);
-  create_text("WIFI RSSI:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 30, 150);
-
-  lv_obj_t *btn_cb =
+  create_text("SSID:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, 15, 90);
+  create_text("PASS:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, 15, 180);
+  create_text("RSSI:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, 15, 270);
+  ///////////////////////////////////////////////////////////////
+  btn_cb =
       create_btn_cb(lv_object[BACKGROUND_POPUP_WIFI], 50, 50, LV_ALIGN_TOP_LEFT,
-                    500, 20, btn_wifi_close_popup_event_handler);
+                    500, -10, btn_wifi_close_popup_event_handler);
   if (!btn_cb)
     return;
   lv_object[BTN_CLOUSE_POPUP_WIFI] = btn_cb;
   lv_obj_set_style_bg_img_src(lv_object[BTN_CLOUSE_POPUP_WIFI], LV_SYMBOL_HOME,
                               0);
-
+  /////////////////////////////////////////////////////////////////////////
   btn_cb =
       create_btn_cb(lv_object[BACKGROUND_POPUP_WIFI], 50, 50, LV_ALIGN_TOP_LEFT,
-                    400, 20, btn_keyboard_open_event_handler);
+                    420, -10, btn_keyboard_open_event_handler);
   if (!btn_cb)
     return;
   lv_object[BTN_KEYBOARD] = btn_cb;
-   lv_obj_set_style_bg_img_src(lv_object[BTN_KEYBOARD], LV_SYMBOL_KEYBOARD,
-                              0);
-  
-  
-    lv_obj_t *value = create_label(
-      lv_object[BACKGROUND_POPUP_WIFI], "WiFiName", LV_ALIGN_TOP_LEFT,
-      300, 90);
+  lv_obj_set_style_bg_img_src(lv_object[BTN_KEYBOARD], LV_SYMBOL_KEYBOARD, 0);
+  /////////////////////////////////////////////////////////////////////////
+  lv_obj_t *value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "WiFiName",
+                                 LV_ALIGN_TOP_LEFT, 220, 90);
   if (!value)
     return;
   lv_object[POPUP_WIFI_SSID] = value;
-  
-  
-   value = create_label(
-      lv_object[BACKGROUND_POPUP_WIFI], "WiFiRSSI", LV_ALIGN_TOP_LEFT,
-      300, 150);
+    /////////////////////////////////////////////////////////////////////////
+  value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "WiFiPASS",
+                       LV_ALIGN_TOP_LEFT, 220, 180);
   if (!value)
     return;
-  lv_object[POPUP_WIFI_SSID] = value;
-  
-  
+  lv_object[POPUP_WIFI_PASSWORD] = value;
+  /////////////////////////////////////////////////////////////////////////
+  value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "WiFiRSSI",
+                       LV_ALIGN_TOP_LEFT, 220, 270);
+  if (!value)
+    return;
+  lv_object[POPUP_WIFI_RSSI] = value;
+  //////////////////////////////////////////////////////////////////
+  lv_object[KEYBOARD_WIFI] =
+      lv_keyboard_create(lv_object[BACKGROUND_POPUP_WIFI]);
+  /////////////////////////////////////////////////////////////////////////
+  lv_object[KEYBOARD_WIFI_TEXT_AREA] =
+      lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
+  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA], LV_ALIGN_TOP_LEFT, 220, 35);
+  lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT_AREA], ta_event_cb,
+                      LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
+  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA],
+                                   "WiFi SSID");
+  lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA], 300, 60);
+  /////////////////////////////////////////////////////////////////////////
+  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA], false);
+  //  lv_keyboard_set_textarea(lv_object[KEYBOARD_WIFI],
+  //                           lv_object[KEYBOARD_WIFI_TEXT_AREA]);
+
+  //  lv_object[KEYBOARD_WIFI_TEXT_AREA] =
+  //      lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
+  //  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA], LV_ALIGN_TOP_LEFT, 220,
+  //  175); lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT_AREA], ta_event_cb,
+  //  LV_EVENT_ALL,
+  //                      lv_object[KEYBOARD_WIFI]);
+  //  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA], "WiFi
+  //  Pass"); lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA], 300, 60);
+  //
+  //  lv_keyboard_set_textarea(lv_object[KEYBOARD_WIFI],
+  //                           lv_object[KEYBOARD_WIFI_TEXT_AREA]);
+  //  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA], false);
+
+  set_visible(lv_object[KEYBOARD_WIFI], false);
+
   set_visible(lv_object[BACKGROUND_POPUP_WIFI], false);
-
-  
-    
-
-    lv_object[KEYBOARD_WIFI] =
-        lv_keyboard_create(lv_object[BACKGROUND_POPUP_WIFI]);
-
-    lv_object[KEYBOARD_WIFI_TEXT] =
-        lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
-    lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT], LV_ALIGN_TOP_LEFT, 10, 10);
-    lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT], ta_event_cb,
-    LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
-    lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT], "Hello");
-    lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT], 140, 80);
-    set_visible(lv_object[KEYBOARD_WIFI], false);
-
-    lv_keyboard_set_textarea(lv_object[KEYBOARD_WIFI],
-    lv_object[KEYBOARD_WIFI_TEXT]);
-
-      lv_object[KEYBOARD_WIFI_TEXT] = lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
-      lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT], LV_ALIGN_TOP_RIGHT, -10, 10);
-      lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT], ta_event_cb,
-    LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
-      lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT], 140, 80);
-
-    //set_visible(lv_object[BACKGROUND_POPUP_WIFI], false);
-     
-
+  /////////////////////////////////////////////////////////////////////////
   lv_object[BAR_STANDBY] = lv_bar_create(lv_object[SCREEN_MAIN_MENU]);
   lv_obj_align(lv_object[BAR_STANDBY], BLOCK_BOT_MID_ALIGN_STANDBY_BAR, 0,
                BLOCK_BOT_MID_Y_START_STANDBY_BAR);
@@ -926,14 +917,9 @@ static void create_block_bot_middle() {
   lv_bar_set_range(lv_object[BAR_STANDBY], 0, MAX_STANDBY_TIME);
   /*BLOCK BOT MID*/
 }
-
+ 
 static void create_block_bot_right() {
   /*BLOCK BOT RIGHT*/
-
-  /*STYLES*/
-  static lv_style_t style_bg_bot_right;
-  lv_style_init(&style_bg_bot_right);
-  lv_style_set_bg_color(&style_bg_bot_right, lv_color_black());
   lv_object[BACKGROUND_WEATHER] = create_background(
       lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_RIGHT_WIDTH,
       BLOCK_BOT_RIGHT_HEIGHT, BLOCK_BOT_RIGHT_ALIGN_BACKGROUND,
@@ -1349,6 +1335,18 @@ static void init_fonts() {
 }
 
 static void init_styles() {
+
+  lv_style_init(&style_chart_co2);
+  lv_style_set_bg_opa(&style_chart_co2, LV_OPA_COVER);
+  lv_style_set_bg_color(&style_chart_co2, lv_palette_main(LV_PALETTE_RED));
+  lv_style_set_bg_grad_color(&style_chart_co2,
+                             lv_palette_lighten(LV_PALETTE_GREEN, 1));
+  lv_style_set_bg_grad_dir(&style_chart_co2, LV_GRAD_DIR_VER);
+  lv_style_set_bg_main_stop(&style_chart_co2, 128);
+  lv_style_set_bg_grad_stop(&style_chart_co2, 192);
+
+  lv_style_init(&style_bg_bot_right);
+  lv_style_set_bg_color(&style_bg_bot_right, lv_color_black());
 
   lv_style_init(&style_bg_bot_left);
   lv_style_set_bg_color(&style_bg_bot_left,
