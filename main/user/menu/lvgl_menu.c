@@ -12,6 +12,7 @@
 #include <stdbool.h>
 
 #include "esp_wifi.h"
+#include "user/periphery/wifi.h"
 
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
@@ -732,16 +733,13 @@ static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
   }
 
   if (lv_obj_is_valid(lv_object[POPUP_WIFI_SSID])) {
-    lv_label_set_text(lv_object[POPUP_WIFI_SSID], (char*)ap_info.ssid/*get_wifi_ssid()*/);
-  }
-
-  if (lv_obj_is_valid(lv_object[POPUP_WIFI_RSSI])) {
-    lv_label_set_text_fmt(lv_object[POPUP_WIFI_RSSI], "%2d dBm",
-                          ap_info.rssi  /*get_wifi_rssi()*/);
-  }
-   if (lv_obj_is_valid(lv_object[POPUP_WIFI_PASSWORD])) {
-    lv_label_set_text(lv_object[POPUP_WIFI_PASSWORD],(char*)ap_info.ssid  /*get_wifi_rssi()*/);
-  }
+    lv_label_set_text(lv_object[POPUP_WIFI_SSID], (char*)ap_info.ssid);
+  }  
+  
+   if (lv_obj_is_valid(lv_object[POPUP_WIFI_RSSI])) {
+    lv_label_set_text_fmt(lv_object[POPUP_WIFI_RSSI],"%d dBm", ap_info.rssi);
+  } 
+   
 }
     
 static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
@@ -750,41 +748,52 @@ static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
   }
 }
 
-static void btn_keyboard_open_event_handler(lv_event_t *e) {
-  if (lv_obj_is_valid(lv_object[KEYBOARD_WIFI])) {
-    set_visible(lv_object[KEYBOARD_WIFI], true);
-  }
-  if (lv_obj_is_valid(lv_object[KEYBOARD_WIFI_TEXT_AREA])) {
-    set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA], true);
-  }
+static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
+	lv_obj_t * kb = lv_object[KEYBOARD_WIFI];
+    lv_obj_t * ta = lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID];
+
+    lv_keyboard_set_textarea(kb, ta);
+    set_visible(kb, true);
+    set_visible(ta, true);
+  
+}
+
+static void btn_keyboard_open_pass_event_handler(lv_event_t *e) {
+lv_obj_t * kb = lv_object[KEYBOARD_WIFI];
+    lv_obj_t * ta = lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS];
+
+    lv_keyboard_set_textarea(kb, ta);
+    set_visible(kb, true);
+    set_visible(ta, true);
 }
 
 static void btn_settings_open_popup_event_handler(lv_event_t *e) {}
 
 static void ta_event_cb(lv_event_t *e) {
   lv_event_code_t code = lv_event_get_code(e);
-  lv_obj_t *ta = lv_event_get_target(e);
-  lv_obj_t *kb = lv_event_get_user_data(e);
-  //  if (code == LV_EVENT_FOCUSED) {
-  //    lv_keyboard_set_textarea(kb, ta);
-  //    // lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
-  //  }
-  //
-  //  if (code == LV_EVENT_DEFOCUSED) {
-  //    lv_keyboard_set_textarea(kb, NULL);
-  //    // lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
-  //  }
+    lv_obj_t * kb = lv_event_get_target(e);
 
-  if (code == LV_EVENT_READY) {
-    const char *txt = lv_textarea_get_text(ta);
-    // тут сохраняешь WiFi
-  }
+    if(code == LV_EVENT_READY)
+    {
+        const char * ssid =
+            lv_textarea_get_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID]);
 
-  if (code == LV_EVENT_CANCEL) {
-    set_visible(kb, false);
-    set_visible(ta, false);
-    // закрыть клавиатуру
-  }
+        const char * pass =
+            lv_textarea_get_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS]);
+
+        // сохранить WiFi
+		wifi_connect(ssid, pass);
+        set_visible(kb, false);
+         set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], false);
+          set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], false);
+    }
+
+    if(code == LV_EVENT_CANCEL)
+    {
+        set_visible(kb, false);
+           set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], false);
+          set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], false);
+    }
 }
 
 static void create_block_bot_middle() {
@@ -852,11 +861,19 @@ static void create_block_bot_middle() {
   /////////////////////////////////////////////////////////////////////////
   btn_cb =
       create_btn_cb(lv_object[BACKGROUND_POPUP_WIFI], 50, 50, LV_ALIGN_TOP_LEFT,
-                    420, -10, btn_keyboard_open_event_handler);
+                    500, 90, btn_keyboard_open_ssid_event_handler);
   if (!btn_cb)
     return;
-  lv_object[BTN_KEYBOARD] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_KEYBOARD], LV_SYMBOL_KEYBOARD, 0);
+  lv_object[BTN_KEYBOARD_SSID] = btn_cb;
+  lv_obj_set_style_bg_img_src(lv_object[BTN_KEYBOARD_SSID], LV_SYMBOL_KEYBOARD, 0);
+  /////////////////////////////////////////////////////////////////////////
+    btn_cb =
+      create_btn_cb(lv_object[BACKGROUND_POPUP_WIFI], 50, 50, LV_ALIGN_TOP_LEFT,
+                    500, 180, btn_keyboard_open_pass_event_handler);
+  if (!btn_cb)
+    return;
+  lv_object[BTN_KEYBOARD_PASS] = btn_cb;
+  lv_obj_set_style_bg_img_src(lv_object[BTN_KEYBOARD_PASS], LV_SYMBOL_KEYBOARD, 0);
   /////////////////////////////////////////////////////////////////////////
   lv_obj_t *value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "WiFiName",
                                  LV_ALIGN_TOP_LEFT, 220, 90);
@@ -864,7 +881,7 @@ static void create_block_bot_middle() {
     return;
   lv_object[POPUP_WIFI_SSID] = value;
     /////////////////////////////////////////////////////////////////////////
-  value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "WiFiPASS",
+  value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "*********",
                        LV_ALIGN_TOP_LEFT, 220, 180);
   if (!value)
     return;
@@ -878,35 +895,30 @@ static void create_block_bot_middle() {
   //////////////////////////////////////////////////////////////////
   lv_object[KEYBOARD_WIFI] =
       lv_keyboard_create(lv_object[BACKGROUND_POPUP_WIFI]);
+        lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI], ta_event_cb,
+                     LV_EVENT_ALL, NULL);
   /////////////////////////////////////////////////////////////////////////
-  lv_object[KEYBOARD_WIFI_TEXT_AREA] =
+  lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID] =
       lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
-  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA], LV_ALIGN_TOP_LEFT, 220, 35);
-  lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT_AREA], ta_event_cb,
-                      LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
-  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA],
+  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], LV_ALIGN_TOP_MID, 0, 35);
+//  lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], ta_event_cb,
+//                      LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
+  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID],
                                    "WiFi SSID");
-  lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA], 300, 60);
+  lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], 600, 120);
   /////////////////////////////////////////////////////////////////////////
-  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA], false);
-  //  lv_keyboard_set_textarea(lv_object[KEYBOARD_WIFI],
-  //                           lv_object[KEYBOARD_WIFI_TEXT_AREA]);
-
-  //  lv_object[KEYBOARD_WIFI_TEXT_AREA] =
-  //      lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
-  //  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA], LV_ALIGN_TOP_LEFT, 220,
-  //  175); lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT_AREA], ta_event_cb,
-  //  LV_EVENT_ALL,
-  //                      lv_object[KEYBOARD_WIFI]);
-  //  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA], "WiFi
-  //  Pass"); lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA], 300, 60);
-  //
-  //  lv_keyboard_set_textarea(lv_object[KEYBOARD_WIFI],
-  //                           lv_object[KEYBOARD_WIFI_TEXT_AREA]);
-  //  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA], false);
-
+  lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS] =
+      lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
+  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], LV_ALIGN_TOP_MID, 0, 35);
+//  lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], ta_event_cb,
+//                      LV_EVENT_ALL, lv_object[KEYBOARD_WIFI]);
+  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS],
+                                   "WiFi SSID");
+  lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], 600, 120);
+  /////////////////////////////////////////////////////////////////////////
+  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], false);
+  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], false);
   set_visible(lv_object[KEYBOARD_WIFI], false);
-
   set_visible(lv_object[BACKGROUND_POPUP_WIFI], false);
   /////////////////////////////////////////////////////////////////////////
   lv_object[BAR_STANDBY] = lv_bar_create(lv_object[SCREEN_MAIN_MENU]);
@@ -917,7 +929,7 @@ static void create_block_bot_middle() {
   lv_bar_set_range(lv_object[BAR_STANDBY], 0, MAX_STANDBY_TIME);
   /*BLOCK BOT MID*/
 }
- 
+  
 static void create_block_bot_right() {
   /*BLOCK BOT RIGHT*/
   lv_object[BACKGROUND_WEATHER] = create_background(

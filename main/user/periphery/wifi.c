@@ -1,12 +1,14 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "periphery.h"
+#include <string.h>
+#include "wifi.h"
 
-uint8_t wifi_ssid[32] = "WiFi"; /**< SSID of target AP. */
-uint8_t wifi_password[64] = "Lokomotive132";
+//uint8_t wifi_ssid[32] = "WiFi"; /**< SSID of target AP. */
+//uint8_t wifi_password[64] = "Lokomotive132";
 
- #define WIFI_SSID "WiFi"
-#define WIFI_PASS "Lokomotive132"
+// #define WIFI_SSID "WiFi"
+//#define WIFI_PASS "Lokomotive132"
 
 wifi_ap_record_t ap_info;
 static const char *TAG = "WIFI";
@@ -64,23 +66,39 @@ void wifi_init_sta(void) {
   esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                       &wifi_event_handler, NULL, NULL);
 
-  wifi_config_t wifi_config = {
-      .sta =
-          {
-              .ssid = WIFI_SSID,
-              .password = WIFI_PASS,
-          },
-
-  };
+//  wifi_config_t wifi_config = {
+//      .sta =
+//          {
+//              .ssid = WIFI_SSID,
+//              .password = WIFI_PASS,
+//          },
+//
+//  };
   
-//  memcpy(wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_ssid));
-//memcpy(wifi_config.sta.password, wifi_password, sizeof(wifi_password));
+
 
   esp_wifi_set_mode(WIFI_MODE_STA);
-  esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+ // esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
   esp_wifi_start();
 
   // Ждём подключения
   xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE,
-                      portMAX_DELAY);
+                      5000);
+}
+
+void wifi_connect(const char* ssid, const char* pass)
+{
+    wifi_config_t wifi_config = {0};
+
+    strncpy((char*)wifi_config.sta.ssid,
+            ssid,
+            sizeof(wifi_config.sta.ssid) - 1);
+
+    strncpy((char*)wifi_config.sta.password,
+            pass,
+            sizeof(wifi_config.sta.password) - 1);
+
+    esp_wifi_disconnect();  // если уже был коннект
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    esp_wifi_connect();
 }
