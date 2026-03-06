@@ -62,4 +62,5 @@ void fetch_weather(void);
 void build_weather_url(int city_index);
 
 
+
 #endif /* MAIN_USER_PERIPHERY_OPEN_METEO_H_ */

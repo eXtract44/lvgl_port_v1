@@ -117,17 +117,19 @@ void build_weather_url(int city_index)
         "timeformat=unixtime&timezone=auto",
         cities_de[city_index].lat,
         cities_de[city_index].lon);
+        //fetch_weather();
 }
 
 void fetch_weather(void) {
 	build_weather_url(CITY_DORTMUND);
-//  static const char *WEATHER_URL_CURRENT =
+	//ESP_LOGI(TAG, "build_weather_url: %s",url);
+//   static const char *WEATHER_URL_CURRENT =
 //      "https://api.open-meteo.com/v1/forecast?"
 //      "latitude=51.5136&longitude=7.4653&"
 //      "current=temperature_2m,relative_humidity_2m,"
 //      "cloud_cover,wind_speed_10m,rain,snowfall&"
 //      "timeformat=unixtime&timezone=auto";
-
+//ESP_LOGI(TAG, "WEATHER_URL_CURRENT : %s",WEATHER_URL_CURRENT );
   http_response_t response = {0};
 
   esp_http_client_config_t config = {
