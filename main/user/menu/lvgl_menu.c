@@ -15,64 +15,77 @@
 #include "user/periphery/open_meteo.h"
 #include "user/periphery/wifi.h"
 
-typedef struct
-{
-    lv_obj_t *btn_open;
+typedef struct {
+  lv_obj_t *popup;
+  lv_obj_t *btn_open;
+  lv_obj_t *btn_close;
 
-    lv_obj_t *popup;
-    lv_obj_t *btn_close;
-
-    lv_obj_t *city_label;
-    lv_obj_t *btn_open_city_list;
+  lv_obj_t *city_label;
+  lv_obj_t *citys_list;
+  lv_obj_t *btn_open_city_list;
+  const city_t *cities_de;
+  uint16_t city_count;
+  uint16_t selected_city;
 
 } ui_weather_t;
 
-typedef struct
-{
-    lv_obj_t *btn_open;
+typedef struct {
+  lv_obj_t *btn_open;
 
-    lv_obj_t *popup;
-    lv_obj_t *btn_close;
+  lv_obj_t *popup;
+  lv_obj_t *btn_close;
 
-    lv_obj_t *ssid_label;
-    lv_obj_t *pass_label;
-    lv_obj_t *rssi_label;
+  lv_obj_t *ssid_label;
+  lv_obj_t *pass_label;
+  lv_obj_t *rssi_label;
 
-    lv_obj_t *btn_keyboard_ssid;
-    lv_obj_t *btn_keyboard_pass;
+  lv_obj_t *btn_keyboard_ssid;
+  lv_obj_t *btn_keyboard_pass;
 
-    lv_obj_t *keyboard;
-    lv_obj_t *ta_ssid;
-    lv_obj_t *ta_pass;
+  lv_obj_t *keyboard;
+  lv_obj_t *ta_ssid;
+  lv_obj_t *ta_pass;
 
 } ui_wifi_t;
 
-typedef struct
-{
-    lv_obj_t *chart;
-    lv_obj_t *title;
+typedef struct {
+  lv_obj_t *btn_open;
+
+  lv_obj_t *popup;
+  lv_obj_t *btn_close;
+
+  lv_obj_t *standby_flag;
+  lv_obj_t *standby_time;
+  lv_obj_t *standby_day_night;
+
+} ui_settings_t;
+
+typedef struct {
+  lv_obj_t *chart;
+  lv_obj_t *title;
 
 } ui_co2_t;
 
-typedef struct
-{
-    lv_obj_t *bar;
+typedef struct {
+  lv_obj_t *bar;
 
 } ui_standby_t;
 
-typedef struct
-{
-    lv_obj_t *screen;
+typedef struct {
+  lv_obj_t *screen;
 
-    ui_co2_t co2;
-    ui_weather_t weather;
-    ui_wifi_t wifi;
-    ui_standby_t standby;
+  ui_co2_t co2;
+  ui_weather_t weather;
+  ui_wifi_t wifi;
+  ui_standby_t standby;
+  ui_settings_t settings;
 
 } ui_main_menu_t;
 
-static ui_main_menu_t ui;
+extern const city_t cities_de[];
 
+static ui_main_menu_t ui = {
+    .weather = {.cities_de = cities_de, .city_count = CITY_COUNT}};
 
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
@@ -90,8 +103,6 @@ static lv_style_t style_chart_co2;
 static lv_obj_t *lv_object[LAST_ELEMENT_OF_OBJECTS];
 static lv_obj_t *rain_objs[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS];
 static lv_obj_t *snow_objs[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS];
-
-extern const city_t cities_de[];
 
 static char string_buffer[STRING_MAX_LENGHT];
 
@@ -338,13 +349,14 @@ static lv_obj_t *create_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 
 static lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                lv_align_t align, lv_coord_t x_ofs,
-                               lv_coord_t y_ofs, lv_event_cb_t event_cb) {
+                               lv_coord_t y_ofs, lv_event_cb_t event_cb,
+                               void *user_data) {
   if (parent == NULL || !lv_obj_is_valid(parent))
     return NULL;
   lv_obj_t *cont = lv_btn_create(parent);
   lv_obj_set_size(cont, w, h);
   lv_obj_align(cont, align, x_ofs, y_ofs);
-  lv_obj_add_event_cb(cont, event_cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(cont, event_cb, LV_EVENT_CLICKED, user_data);
   return cont;
 }
 
@@ -445,7 +457,8 @@ lv_obj_t *create_cloud_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
 
 static void wind_anim_cb(void *var, int32_t v) {
   wind_anim_t *w = var;
-  if(w->container_w<1)w->container_w=1;
+  if (w->container_w < 1)
+    w->container_w = 1;
   lv_coord_t x = v - w->img_w;
   lv_coord_t y =
       w->base_y + (lv_trigo_sin((v * 360) / w->container_w) * w->turbulence) /
@@ -503,7 +516,8 @@ static void rain_snow_anim_cb(void *var, int32_t v) {
   lv_coord_t range_x = r->container_w + r->img_w;
   lv_coord_t range_y = r->container_h + r->img_h;
 
-if(range_x == 0 || range_y == 0) return;
+  if (range_x == 0 || range_y == 0)
+    return;
   lv_coord_t x = (value % range_x) - r->img_w;
   lv_coord_t y = ((value * r->slope) % range_y) - r->img_h;
 
@@ -792,28 +806,32 @@ static void create_block_bot_left() {
 }
 
 static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
-  if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WIFI])) {
-    set_visible(lv_object[BACKGROUND_POPUP_WIFI], true);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if (lv_obj_is_valid(ui->wifi.popup)) {
+    set_visible(ui->wifi.popup, true);
   }
 
-  if (lv_obj_is_valid(lv_object[POPUP_WIFI_SSID])) {
-    lv_label_set_text(lv_object[POPUP_WIFI_SSID], (char *)ap_info.ssid);
+  if (lv_obj_is_valid(ui->wifi.ssid_label)) {
+    lv_label_set_text(ui->wifi.ssid_label, (char *)ap_info.ssid);
   }
 
-  if (lv_obj_is_valid(lv_object[POPUP_WIFI_RSSI])) {
-    lv_label_set_text_fmt(lv_object[POPUP_WIFI_RSSI], "%d dBm", ap_info.rssi);
+  if (lv_obj_is_valid(ui->wifi.rssi_label)) {
+    lv_label_set_text_fmt(ui->wifi.rssi_label, "%d dBm", ap_info.rssi);
   }
 }
 
 static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
-  if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WIFI])) {
-    set_visible(lv_object[BACKGROUND_POPUP_WIFI], false);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (lv_obj_is_valid(ui->wifi.popup)) {
+    set_visible(ui->wifi.popup, false);
   }
 }
 
 static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
-  lv_obj_t *kb = lv_object[KEYBOARD_WIFI];
-  lv_obj_t *ta = lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID];
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  lv_obj_t *kb = ui->wifi.keyboard;
+  lv_obj_t *ta = ui->wifi.ta_ssid;
 
   lv_keyboard_set_textarea(kb, ta);
   set_visible(kb, true);
@@ -821,8 +839,10 @@ static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
 }
 
 static void btn_keyboard_open_pass_event_handler(lv_event_t *e) {
-  lv_obj_t *kb = lv_object[KEYBOARD_WIFI];
-  lv_obj_t *ta = lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS];
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  lv_obj_t *kb = ui->wifi.keyboard;
+  lv_obj_t *ta = ui->wifi.ta_pass;
 
   lv_keyboard_set_textarea(kb, ta);
   set_visible(kb, true);
@@ -830,365 +850,241 @@ static void btn_keyboard_open_pass_event_handler(lv_event_t *e) {
 }
 
 static void btn_settings_open_popup_event_handler(lv_event_t *e) {
-  if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_SETTINGS])) {
-    set_visible(lv_object[BACKGROUND_POPUP_SETTINGS], true);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if (lv_obj_is_valid(ui->settings.popup)) {
+    set_visible(ui->settings.popup, true);
   }
 }
 
 static void btn_weather_open_popup_event_handler(lv_event_t *e) {
-  if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WEATHER])) {
-    set_visible(lv_object[BACKGROUND_POPUP_WEATHER], true);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if (lv_obj_is_valid(ui->weather.popup)) {
+    set_visible(ui->weather.popup, true);
   }
 }
 
 static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
-  if (lv_obj_is_valid(lv_object[LIST_CITYS_WEATHER])) {
-    set_visible(lv_object[LIST_CITYS_WEATHER], true);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if (lv_obj_is_valid(ui->weather.citys_list)) {
+    set_visible(ui->weather.citys_list, true);
   }
 }
 
 static void btn_weather_close_popup_event_handler(lv_event_t *e) {
-  if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WEATHER])) {
-    set_visible(lv_object[BACKGROUND_POPUP_WEATHER], false);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if(lv_obj_is_valid(ui->weather.popup)) {
+    set_visible(ui->weather.popup, false);
   }
 }
 
 static void set_current_city_weather_event_handler(lv_event_t *e) {
   lv_event_code_t code = lv_event_get_code(e);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  uint16_t city = ui->weather.selected_city;
+  const city_t *cities = ui->weather.cities_de;
 
   if (code == LV_EVENT_CLICKED) {
 
-    city_id_t city = (city_id_t)(uintptr_t)lv_event_get_user_data(e);
-    
-if (lv_obj_is_valid(lv_object[LIST_CITYS_WEATHER])) {
-    set_visible(lv_object[LIST_CITYS_WEATHER], false);
-  }  
+    if (lv_obj_is_valid(ui->weather.citys_list)) {
+      set_visible(ui->weather.citys_list, false);
+    }
     // LV_LOG_USER("City: %s", cities_de[city].name);
- if (lv_obj_is_valid(lv_object[POPUP_WEATHER_CITY])) {
-    lv_label_set_text(lv_object[POPUP_WEATHER_CITY],
-                      (char *)cities_de[city].name);
-  }
-    build_weather_url(city); // твоя функция запроса погоды
+    if (lv_obj_is_valid(ui->weather.city_label)) {
+      lv_label_set_text(ui->weather.city_label, cities[city].name);
+    }
+    build_weather_url(city);
   }
 }
 
-void create_city_list(void) {
-  lv_object[LIST_CITYS_WEATHER] =
-      lv_list_create(lv_object[BACKGROUND_POPUP_WEATHER]);
-  lv_obj_set_size(lv_object[LIST_CITYS_WEATHER], 350, 250);
-  lv_obj_center(lv_object[LIST_CITYS_WEATHER]);
-
-  for (int i = 0; i < CITY_COUNT; i++) {
-
-    lv_obj_t *btn =
-        lv_list_add_btn(lv_object[LIST_CITYS_WEATHER], NULL, cities_de[i].name);
-
-    lv_obj_add_event_cb(btn, set_current_city_weather_event_handler,
-                        LV_EVENT_CLICKED, (void *)(uintptr_t)i);
-  }
-  set_visible(lv_object[LIST_CITYS_WEATHER], false);
-}
 static void ta_event_cb(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   lv_event_code_t code = lv_event_get_code(e);
   lv_obj_t *kb = lv_event_get_target(e);
 
   if (code == LV_EVENT_READY) {
-    const char *ssid =
-        lv_textarea_get_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID]);
+    const char *ssid = lv_textarea_get_text(ui->wifi.ta_ssid);
 
-    const char *pass =
-        lv_textarea_get_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS]);
+    const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
 
     // сохранить WiFi
     wifi_connect(ssid, pass);
     set_visible(kb, false);
-    set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], false);
-    set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], false);
+    set_visible(ui->wifi.ta_ssid, false);
+    set_visible(ui->wifi.ta_pass, false);
   }
 
   if (code == LV_EVENT_CANCEL) {
     set_visible(kb, false);
-    set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], false);
-    set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], false);
+    set_visible(ui->wifi.ta_ssid, false);
+    set_visible(ui->wifi.ta_pass, false);
   }
 }
 
-
-static void ui_create_co2(ui_main_menu_t *ui)
-{
-    ui->co2.title =
-        create_text("co2 24h",
-                    ui->screen,
-                    STYLE_TEXT_SMALL,
-                    BLOCK_BOT_MID_ALIGN_CO2_CHART,
-                    0,
-                    BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART);
-
-    ui->co2.chart =
-        create_chart(ui->screen,
-                     BLOCK_BOT_MID_WIDTH_CO2_CHART,
-                     BLOCK_BOT_MID_HEIGHT_CO2_CHART,
-                     BLOCK_BOT_MID_ALIGN_CO2_CHART,
-                     0,
-                     BLOCK_BOT_MID_Y_START_CO2_CHART);
-
-    lv_obj_add_style(ui->co2.chart, &style_chart_co2, 0);
-}
-static void ui_create_weather(ui_main_menu_t *ui)
-{
-    ui->weather.btn_open =
-        create_btn_cb(ui->screen,
-                      BLOCK_BOT_MID_WIDTH_SYMBOL,
-                      BLOCK_BOT_MID_HEIGHT_SYMBOL,
-                      BLOCK_BOT_MID_ALIGN_SYMBOL,
-                      BLOCK_BOT_MID_X_START_SYMBOL_1,
-                      BLOCK_BOT_MID_Y_START_SYMBOLS,
-                      btn_weather_open_popup_event_handler);
-
-    lv_obj_set_style_bg_img_src(ui->weather.btn_open,
-                                MY_CLOUD_SYMBOL,
-                                0);
-
-    ui->weather.popup =
-        create_background(ui->screen,
-                          POPUP_WINDOW_WIDTH,
-                          POPUP_WINDOW_HEIGHT,
-                          POPUP_WINDOW_ALIGN,
-                          0,
-                          0);
-
-    ui->weather.city_label =
-        create_label(ui->weather.popup,
-                     "CityName",
-                     LV_ALIGN_TOP_LEFT,
-                     220,
-                     90);
-
-    set_visible(ui->weather.popup, false);
-}
-
-
-static void create_block_bot_middle() {
-
-	ui_create_co2(&ui);
-	  ui_create_weather(&ui);
-	 //TODO ui_create_wifi(&ui);
-	 //TODO ui_create_standby(&ui);
-	
-	
-	
-	
-  /*BLOCK BOT MID*/
-  // temp obj
-  lv_obj_t *btn_cb;
-  lv_obj_t *bg;
-  lv_obj_t *value;
-
-  ///////////////////////////////////////////////////////////////////////////////////////CO2
-  /// STUFF
-  create_text("co2           24h", lv_object[SCREEN_MAIN_MENU],
-              STYLE_TEXT_SMALL, BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
+static void ui_create_co2(ui_main_menu_t *ui) {
+  create_text("co2 24h", ui->screen, STYLE_TEXT_SMALL,
+              BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
               BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART);
-  ///////////////////////////////////////////////////////////////
-  lv_object[CHART_CO2_MAIN_MENU] = create_chart(
-      lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_CO2_CHART,
-      BLOCK_BOT_MID_HEIGHT_CO2_CHART, BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
-      BLOCK_BOT_MID_Y_START_CO2_CHART);
-  lv_obj_add_style(lv_object[CHART_CO2_MAIN_MENU], &style_chart_co2, 0);
-  ///////////////////////////////////////////////////////////////////////////////////////CO2
 
-  ///////////////////////////////////////////////////////////////////////////////////////WEATHER
-  ///////////////////////////////////////////////////////////////////////////////////////
-  btn_cb = create_btn_cb(
-      lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_SYMBOL,
-      BLOCK_BOT_MID_HEIGHT_SYMBOL, BLOCK_BOT_MID_ALIGN_SYMBOL,
-      BLOCK_BOT_MID_X_START_SYMBOL_1, BLOCK_BOT_MID_Y_START_SYMBOLS,
-      btn_weather_open_popup_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_WEATHER_SETTINGS] = btn_cb;
+  ui->co2.chart = create_chart(
+      ui->screen, BLOCK_BOT_MID_WIDTH_CO2_CHART, BLOCK_BOT_MID_HEIGHT_CO2_CHART,
+      BLOCK_BOT_MID_ALIGN_CO2_CHART, 0, BLOCK_BOT_MID_Y_START_CO2_CHART);
 
-  lv_obj_set_style_text_font(lv_object[BTN_WEATHER_SETTINGS], &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(lv_object[BTN_WEATHER_SETTINGS], MY_CLOUD_SYMBOL,
-                              0);
-  ///////////////////////////////////////////////////////////////
-  bg = create_background(lv_object[SCREEN_MAIN_MENU], POPUP_WINDOW_WIDTH,
-                         POPUP_WINDOW_HEIGHT, POPUP_WINDOW_ALIGN, 0, 0);
-  if (!bg)
-    return;
-  lv_object[BACKGROUND_POPUP_WEATHER] = bg;
-  lv_obj_set_scrollbar_mode(lv_object[BACKGROUND_POPUP_WEATHER],
-                            LV_SCROLLBAR_MODE_OFF);
-  ///////////////////////////////////////////////////////////////
-  create_text("Weather Settings", lv_object[BACKGROUND_POPUP_WEATHER],
-              STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 0);
-  create_text("CITY:", lv_object[BACKGROUND_POPUP_WEATHER], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 90);
-  create_text("OPTION:", lv_object[BACKGROUND_POPUP_WEATHER], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 180);
-  create_text("OPTION:", lv_object[BACKGROUND_POPUP_WEATHER], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 270);
-  ///////////////////////////////////////////////////////////////
-  value = create_label(lv_object[BACKGROUND_POPUP_WEATHER], "CityName",
-                       LV_ALIGN_TOP_LEFT, 220, 90);
-  if (!value)
-    return;
-  lv_object[POPUP_WEATHER_CITY] = value;
-  ///////////////////////////////////////////////////////////////
+  lv_obj_add_style(ui->co2.chart, &style_chart_co2, 0);
+}
 
-  create_city_list();
-  ///////////////////////////////////////////////////////////////
-  btn_cb = create_btn_cb(lv_object[BACKGROUND_POPUP_WEATHER], 50, 50,
-                         LV_ALIGN_TOP_LEFT, 500, -10,
-                         btn_weather_close_popup_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_CLOUSE_POPUP_WEATHER] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_CLOUSE_POPUP_WEATHER],
-                              LV_SYMBOL_HOME, 0);
-  ///////////////////////////////////////////////////////////////
-  btn_cb = create_btn_cb(lv_object[BACKGROUND_POPUP_WEATHER], 50, 50,
-                         LV_ALIGN_TOP_LEFT, 500, 90,
-                         btn_weather_open_list_city_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_OPEN_LIST_CITY_POPUP_WEATHER] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_OPEN_LIST_CITY_POPUP_WEATHER],
-                              LV_SYMBOL_GPS, 0);
-  ///////////////////////////////////////////////////////////////
-  set_visible(lv_object[BACKGROUND_POPUP_WEATHER], false);
-  ///////////////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////////////WEATHER
+static void ui_create_city_list_weather(ui_main_menu_t *ui) {
 
-  ///////////////////////////////////////////////////////////////////////////////////////WIFI
-  ///////////////////////////////////////////////////////////////////////////////////////
+  ui->weather.citys_list = lv_list_create(ui->screen);
+  lv_obj_set_size(ui->weather.citys_list, 350, 250);
+  lv_obj_center(ui->weather.citys_list);
 
-  bg = create_background(lv_object[SCREEN_MAIN_MENU], POPUP_WINDOW_WIDTH,
-                         POPUP_WINDOW_HEIGHT, POPUP_WINDOW_ALIGN, 0, 0);
-  if (!bg)
-    return;
-  lv_object[BACKGROUND_POPUP_WIFI] = bg;
-  lv_obj_set_scrollbar_mode(lv_object[BACKGROUND_POPUP_WIFI],
-                            LV_SCROLLBAR_MODE_OFF);
+  for (int i = 0; i < CITY_COUNT; i++) {
+
+    lv_obj_t *btn =
+        lv_list_add_btn(ui->weather.citys_list, NULL, cities_de[i].name);
+
+    lv_obj_add_event_cb(btn, set_current_city_weather_event_handler,
+                        LV_EVENT_CLICKED, (void *)(uintptr_t)i);
+  }
+  set_visible(ui->weather.citys_list, false);
+}
+
+static void ui_create_weather(ui_main_menu_t *ui) {
+  ui->weather.popup =
+      create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
+                        POPUP_WINDOW_ALIGN, 0, 0);
+  ui->weather.btn_open = create_btn_cb(
+      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_1,
+      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_weather_open_popup_event_handler, ui);
+  lv_obj_set_style_text_font(ui->weather.btn_open, &my_symbols, 0);
+  lv_obj_set_style_bg_img_src(ui->weather.btn_open, MY_CLOUD_SYMBOL, 0);
+  ui->weather.btn_close =
+      create_btn_cb(ui->weather.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
+                    btn_weather_close_popup_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->weather.btn_close, LV_SYMBOL_HOME, 0);
+
+  ui->weather.btn_open_city_list =
+      create_btn_cb(ui->weather.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, 90,
+                    btn_weather_open_list_city_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->weather.btn_open_city_list, LV_SYMBOL_GPS, 0);
+
+  ui->weather.city_label =
+      create_label(ui->weather.popup, "CityName", LV_ALIGN_TOP_LEFT, 220, 90);
+
+  create_text("Weather Settings", ui->weather.popup, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_MID, 0, 0);
+  create_text("CITY:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+              15, 90);
+  create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+              15, 180);
+  create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+              15, 270);
+  ui_create_city_list_weather(ui);
+  set_visible(ui->weather.popup, false);
+}
+
+static void ui_create_wifi(ui_main_menu_t *ui) {
+
+  ui->wifi.popup =
+      create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
+                        POPUP_WINDOW_ALIGN, 0, 0);
+  lv_obj_set_scrollbar_mode(ui->wifi.popup, LV_SCROLLBAR_MODE_OFF);
   ///////////////////////////////////////////////////////////////
-  create_text("WIFI Settings", lv_object[BACKGROUND_POPUP_WIFI],
-              STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 0);
-  create_text("SSID:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 90);
-  create_text("PASS:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 180);
-  create_text("RSSI:", lv_object[BACKGROUND_POPUP_WIFI], STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 270);
+  create_text("WIFI Settings", ui->wifi.popup, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_MID, 0, 0);
+  create_text("SSID:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+              90);
+  create_text("PASS:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+              180);
+  create_text("RSSI:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+              270);
   ///////////////////////////////////////////////////////////////
-  btn_cb = create_btn_cb(
-      lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_SYMBOL,
-      BLOCK_BOT_MID_HEIGHT_SYMBOL, BLOCK_BOT_MID_ALIGN_SYMBOL,
-      BLOCK_BOT_MID_X_START_SYMBOL_3, BLOCK_BOT_MID_Y_START_SYMBOLS,
-      btn_wifi_open_popup_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_WIFI_SETTINGS] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_WIFI_SETTINGS], LV_SYMBOL_SETTINGS,
+  ui->wifi.btn_open = create_btn_cb(
+      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_3,
+      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_wifi_open_popup_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_SETTINGS, 0);
+  /////////////////////////////////////////////////////////////////////////
+  ui->wifi.btn_close =
+      create_btn_cb(ui->wifi.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
+                    btn_wifi_close_popup_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->wifi.btn_close, LV_SYMBOL_HOME, 0);
+  /////////////////////////////////////////////////////////////////////////
+  ui->wifi.btn_keyboard_ssid =
+      create_btn_cb(ui->wifi.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, 90,
+                    btn_keyboard_open_ssid_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_ssid, LV_SYMBOL_KEYBOARD,
                               0);
   /////////////////////////////////////////////////////////////////////////
-  btn_cb =
-      create_btn_cb(lv_object[BACKGROUND_POPUP_WIFI], 50, 50, LV_ALIGN_TOP_LEFT,
-                    500, -10, btn_wifi_close_popup_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_CLOUSE_POPUP_WIFI] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_CLOUSE_POPUP_WIFI], LV_SYMBOL_HOME,
+  ui->wifi.btn_keyboard_pass =
+      create_btn_cb(ui->wifi.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, 180,
+                    btn_keyboard_open_pass_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_pass, LV_SYMBOL_KEYBOARD,
                               0);
   /////////////////////////////////////////////////////////////////////////
-  btn_cb =
-      create_btn_cb(lv_object[BACKGROUND_POPUP_WIFI], 50, 50, LV_ALIGN_TOP_LEFT,
-                    500, 90, btn_keyboard_open_ssid_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_KEYBOARD_SSID] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_KEYBOARD_SSID], LV_SYMBOL_KEYBOARD,
-                              0);
+
+  ui->wifi.ssid_label =
+      create_label(ui->wifi.popup, "WiFiName", LV_ALIGN_TOP_LEFT, 220, 90);
   /////////////////////////////////////////////////////////////////////////
-  btn_cb =
-      create_btn_cb(lv_object[BACKGROUND_POPUP_WIFI], 50, 50, LV_ALIGN_TOP_LEFT,
-                    500, 180, btn_keyboard_open_pass_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_KEYBOARD_PASS] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_KEYBOARD_PASS], LV_SYMBOL_KEYBOARD,
-                              0);
+  ui->wifi.pass_label =
+      create_label(ui->wifi.popup, "*********", LV_ALIGN_TOP_LEFT, 220, 180);
+
   /////////////////////////////////////////////////////////////////////////
-  value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "WiFiName",
-                       LV_ALIGN_TOP_LEFT, 220, 90);
-  if (!value)
-    return;
-  lv_object[POPUP_WIFI_SSID] = value;
-  /////////////////////////////////////////////////////////////////////////
-  value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "*********",
-                       LV_ALIGN_TOP_LEFT, 220, 180);
-  if (!value)
-    return;
-  lv_object[POPUP_WIFI_PASSWORD] = value;
-  /////////////////////////////////////////////////////////////////////////
-  value = create_label(lv_object[BACKGROUND_POPUP_WIFI], "WiFiRSSI",
-                       LV_ALIGN_TOP_LEFT, 220, 270);
-  if (!value)
-    return;
-  lv_object[POPUP_WIFI_RSSI] = value;
+  ui->wifi.rssi_label =
+      create_label(ui->wifi.popup, "WiFiRSSI", LV_ALIGN_TOP_LEFT, 220, 270);
   //////////////////////////////////////////////////////////////////
-  lv_object[KEYBOARD_WIFI] =
-      lv_keyboard_create(lv_object[BACKGROUND_POPUP_WIFI]);
-  lv_obj_add_event_cb(lv_object[KEYBOARD_WIFI], ta_event_cb, LV_EVENT_ALL,
-                      NULL);
-  /////////////////////////////////////////////////////////////////////////
-  lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID] =
-      lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
-  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], LV_ALIGN_TOP_MID, 0,
-               35);
-  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID],
-                                   "WiFi SSID");
-  lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], 600, 120);
-  /////////////////////////////////////////////////////////////////////////
-  lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS] =
-      lv_textarea_create(lv_object[BACKGROUND_POPUP_WIFI]);
-  lv_obj_align(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], LV_ALIGN_TOP_MID, 0,
-               35);
-  lv_textarea_set_placeholder_text(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS],
-                                   "WiFi SSID");
-  lv_obj_set_size(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], 600, 120);
-  /////////////////////////////////////////////////////////////////////////
-  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_SSID], false);
-  set_visible(lv_object[KEYBOARD_WIFI_TEXT_AREA_PASS], false);
-  set_visible(lv_object[KEYBOARD_WIFI], false);
-  set_visible(lv_object[BACKGROUND_POPUP_WIFI], false);
-  ///////////////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////////////WIFI
 
-  ///////////////////////////////////////////////////////////////////////////////////////SETTINGS
-  ///////////////////////////////////////////////////////////////////////////////////////
-  btn_cb = create_btn_cb(
+  ui->wifi.keyboard = lv_keyboard_create(ui->wifi.popup);
+  lv_obj_add_event_cb(ui->wifi.keyboard, ta_event_cb, LV_EVENT_ALL, &ui);
+  /////////////////////////////////////////////////////////////////////////
+
+  ui->wifi.ta_ssid = lv_textarea_create(ui->wifi.popup);
+  lv_obj_align(ui->wifi.ta_ssid, LV_ALIGN_TOP_MID, 0, 35);
+  lv_textarea_set_placeholder_text(ui->wifi.ta_ssid, "WiFi SSID");
+  lv_obj_set_size(ui->wifi.ta_ssid, 600, 120);
+  /////////////////////////////////////////////////////////////////////////
+  ui->wifi.ta_pass = lv_textarea_create(ui->wifi.popup);
+  lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 35);
+  lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "WiFi SSID");
+  lv_obj_set_size(ui->wifi.ta_pass, 600, 120);
+  /////////////////////////////////////////////////////////////////////////
+  set_visible(ui->wifi.ta_ssid, false);
+  set_visible(ui->wifi.ta_pass, false);
+  set_visible(ui->wifi.keyboard, false);
+  set_visible(ui->wifi.popup, false);
+}
+
+static void ui_create_standby(ui_main_menu_t *ui) {
+
+  ui->standby.bar = lv_bar_create(ui->screen);
+  lv_obj_align(ui->standby.bar, BLOCK_BOT_MID_ALIGN_STANDBY_BAR, 0,
+               BLOCK_BOT_MID_Y_START_STANDBY_BAR);
+  lv_obj_set_size(ui->standby.bar, BLOCK_BOT_MID_WIDTH_STANDBY_BAR,
+                  BLOCK_BOT_MID_HEIGHT_STANDBY_BAR);
+  lv_bar_set_range(ui->standby.bar, 0, MAX_STANDBY_TIME);
+}
+
+static void ui_create_settings(ui_main_menu_t *ui) {
+
+  ui->settings.btn_open = create_btn_cb(
       lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_SYMBOL,
       BLOCK_BOT_MID_HEIGHT_SYMBOL, BLOCK_BOT_MID_ALIGN_SYMBOL,
       BLOCK_BOT_MID_X_START_SYMBOL_4, BLOCK_BOT_MID_Y_START_SYMBOLS,
-      btn_settings_open_popup_event_handler);
-  if (!btn_cb)
-    return;
-  lv_object[BTN_UI_SETTINGS] = btn_cb;
-  lv_obj_set_style_bg_img_src(lv_object[BTN_UI_SETTINGS], LV_SYMBOL_SETTINGS,
-                              0);
+      btn_settings_open_popup_event_handler, &ui);
 
-  ///////////////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////////////SETTING
-
-  ///////////////////////////////////////////////////////////////////////////////////////STANDBY
-  ///////////////////////////////////////////////////////////////////////////////////////
-  lv_object[BAR_STANDBY] = lv_bar_create(lv_object[SCREEN_MAIN_MENU]);
-  lv_obj_align(lv_object[BAR_STANDBY], BLOCK_BOT_MID_ALIGN_STANDBY_BAR, 0,
-               BLOCK_BOT_MID_Y_START_STANDBY_BAR);
-  lv_obj_set_size(lv_object[BAR_STANDBY], BLOCK_BOT_MID_WIDTH_STANDBY_BAR,
-                  BLOCK_BOT_MID_HEIGHT_STANDBY_BAR);
-  lv_bar_set_range(lv_object[BAR_STANDBY], 0, MAX_STANDBY_TIME);
-  /*BLOCK BOT MID*/
+  lv_obj_set_style_bg_img_src(ui->settings.btn_open, LV_SYMBOL_SETTINGS, 0);
+}
+static void create_block_bot_middle() {
+  ui_create_co2(&ui);
+  ui_create_weather(&ui);
+  ui_create_wifi(&ui);
+  ui_create_settings(&ui);
+  ui_create_standby(&ui);
 }
 
 static void create_block_bot_right() {
@@ -1290,6 +1186,7 @@ static void create_menu() {
   lv_obj_set_style_bg_color(lv_object[BACKGROUND_MAIN_MENU], lv_color_black(),
                             0);
   lv_obj_set_style_bg_opa(lv_object[BACKGROUND_MAIN_MENU], LV_OPA_COVER, 0);
+  ui.screen = lv_object[SCREEN_MAIN_MENU];
 
 /*STYLES*/
 #if ACTIVATE_BLOCK_TOP_LEFT
@@ -1463,26 +1360,23 @@ void draw_weather() {
 #endif
 }
 
-void draw_symbol_wifi() {
+void draw_symbol_wifi(ui_main_menu_t *ui) {
   static uint8_t status_wifi_old = 254;
   uint8_t curent_status = get_wifi_status();
   if (curent_status != status_wifi_old) {
     switch (curent_status) {
     case WIFI_RECONNECT:
-      lv_obj_set_style_bg_img_src(lv_object[BTN_WIFI_SETTINGS],
-                                  LV_SYMBOL_REFRESH, 0);
+
+      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_REFRESH, 0);
       break;
     case WIFI_CONNECTED:
-      lv_obj_set_style_bg_img_src(lv_object[BTN_WIFI_SETTINGS], LV_SYMBOL_WIFI,
-                                  0);
+      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_WIFI, 0);
       break;
     case WIFI_DISCONNECTED:
-      lv_obj_set_style_bg_img_src(lv_object[BTN_WIFI_SETTINGS],
-                                  LV_SYMBOL_WARNING, 0);
+      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_WARNING, 0);
       break;
     default:
-      lv_obj_set_style_bg_img_src(lv_object[BTN_WIFI_SETTINGS],
-                                  LV_SYMBOL_WARNING, 0);
+      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_WARNING, 0);
 
       break;
     }
@@ -1519,19 +1413,20 @@ void update_block_bot_left() {
   print_value("%.1f m/s", get_weather_wind(), lv_object[VALUE_WIND_OUTSIDE]);
 }
 
-void update_block_bot_middle() {
+void update_block_bot_middle(ui_main_menu_t *ui) {
   static uint16_t cnt_chart_co2 = 0;
   cnt_chart_co2++;            // 1 tick == 1 sec
   if (cnt_chart_co2 > 3600) { // equal 1 hour
     uint16_t temp_co2_chart = get_co2_sgp30();
     if (temp_co2_chart > MAX_VALUE_CO2)
       temp_co2_chart = MAX_VALUE_CO2;
-    lv_chart_set_next_value(lv_object[CHART_CO2_MAIN_MENU], ser_co2,
-                            temp_co2_chart);
+
+    lv_chart_set_next_value(ui->co2.chart, ser_co2, temp_co2_chart);
     cnt_chart_co2 = 0;
   }
-  draw_symbol_wifi();
-  lv_bar_set_value(lv_object[BAR_STANDBY], timer_standby_sec, LV_ANIM_OFF);
+  draw_symbol_wifi(ui);
+
+  lv_bar_set_value(ui->standby.bar, timer_standby_sec, LV_ANIM_OFF);
 }
 
 void update_block_bot_right() {
@@ -1555,15 +1450,15 @@ static void standby_handle() {
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
     wavesahre_rgb_lcd_bl_on();
-  } else{//!get_day_activated_now()
-    timer_standby_sec++;  
-	if (timer_standby_sec > MAX_STANDBY_TIME*5) {
+  } else { //! get_day_activated_now()
+    timer_standby_sec++;
+    if (timer_standby_sec > MAX_STANDBY_TIME * 5) {
       wavesahre_rgb_lcd_bl_off();
-      timer_standby_sec = MAX_STANDBY_TIME*5;
-    }	
+      timer_standby_sec = MAX_STANDBY_TIME * 5;
+    }
   }
-  if(get_day_activated_now()){
-	timer_standby_sec = 0;
+  if (get_day_activated_now()) {
+    timer_standby_sec = 0;
   }
 }
 
@@ -1586,7 +1481,7 @@ static void timer_1000(lv_timer_t *timer) {
   update_block_top_middle();
 #endif
 #if ACTIVATE_BLOCK_BOT_MID
-  update_block_bot_middle();
+  update_block_bot_middle(&ui);
 #endif
 #if ACTIVATE_BLOCK_BOT_RIGHT
   update_block_bot_right();
