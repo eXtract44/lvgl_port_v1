@@ -3,6 +3,13 @@
  *
  *  Created on: 10.02.2026
  *      Author: toose
+ Главная ошибка сборки (из-за неё нет build.ninja)
+ The "path" field in idf_component.yml does not point to a directory
+ Решение (правильное)
+ Открой:
+ C:\Espressif\Workspace\lvgl_port_v1\components\espressif__esp_lcd_touch\idf_component.yml
+ И удали строку
+ path: ...
  */
 
 #ifndef MAIN_LVGL_USER_CONFIG_H_
@@ -38,7 +45,7 @@
 #define DAY_START_HOUR 7
 #define DAY_END_HOUR 20
 
-#define MAX_STANDBY_TIME 3600 * 5 // tick 200mS
+#define MAX_STANDBY_TIME 3600 // sec
 /////////////////////////////////////////////////////////////////////////BLOCK_TOP_LEFT
 #define BLOCK_TOP_LEFT_WIDTH 250
 #define BLOCK_TOP_LEFT_HEIGHT 225

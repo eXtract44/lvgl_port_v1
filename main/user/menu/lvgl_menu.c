@@ -15,6 +15,65 @@
 #include "user/periphery/open_meteo.h"
 #include "user/periphery/wifi.h"
 
+typedef struct
+{
+    lv_obj_t *btn_open;
+
+    lv_obj_t *popup;
+    lv_obj_t *btn_close;
+
+    lv_obj_t *city_label;
+    lv_obj_t *btn_open_city_list;
+
+} ui_weather_t;
+
+typedef struct
+{
+    lv_obj_t *btn_open;
+
+    lv_obj_t *popup;
+    lv_obj_t *btn_close;
+
+    lv_obj_t *ssid_label;
+    lv_obj_t *pass_label;
+    lv_obj_t *rssi_label;
+
+    lv_obj_t *btn_keyboard_ssid;
+    lv_obj_t *btn_keyboard_pass;
+
+    lv_obj_t *keyboard;
+    lv_obj_t *ta_ssid;
+    lv_obj_t *ta_pass;
+
+} ui_wifi_t;
+
+typedef struct
+{
+    lv_obj_t *chart;
+    lv_obj_t *title;
+
+} ui_co2_t;
+
+typedef struct
+{
+    lv_obj_t *bar;
+
+} ui_standby_t;
+
+typedef struct
+{
+    lv_obj_t *screen;
+
+    ui_co2_t co2;
+    ui_weather_t weather;
+    ui_wifi_t wifi;
+    ui_standby_t standby;
+
+} ui_main_menu_t;
+
+static ui_main_menu_t ui;
+
+
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
 extern wifi_ap_record_t ap_info;
@@ -775,6 +834,7 @@ static void btn_settings_open_popup_event_handler(lv_event_t *e) {
     set_visible(lv_object[BACKGROUND_POPUP_SETTINGS], true);
   }
 }
+
 static void btn_weather_open_popup_event_handler(lv_event_t *e) {
   if (lv_obj_is_valid(lv_object[BACKGROUND_POPUP_WEATHER])) {
     set_visible(lv_object[BACKGROUND_POPUP_WEATHER], true);
@@ -853,8 +913,71 @@ static void ta_event_cb(lv_event_t *e) {
   }
 }
 
+
+static void ui_create_co2(ui_main_menu_t *ui)
+{
+    ui->co2.title =
+        create_text("co2 24h",
+                    ui->screen,
+                    STYLE_TEXT_SMALL,
+                    BLOCK_BOT_MID_ALIGN_CO2_CHART,
+                    0,
+                    BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART);
+
+    ui->co2.chart =
+        create_chart(ui->screen,
+                     BLOCK_BOT_MID_WIDTH_CO2_CHART,
+                     BLOCK_BOT_MID_HEIGHT_CO2_CHART,
+                     BLOCK_BOT_MID_ALIGN_CO2_CHART,
+                     0,
+                     BLOCK_BOT_MID_Y_START_CO2_CHART);
+
+    lv_obj_add_style(ui->co2.chart, &style_chart_co2, 0);
+}
+static void ui_create_weather(ui_main_menu_t *ui)
+{
+    ui->weather.btn_open =
+        create_btn_cb(ui->screen,
+                      BLOCK_BOT_MID_WIDTH_SYMBOL,
+                      BLOCK_BOT_MID_HEIGHT_SYMBOL,
+                      BLOCK_BOT_MID_ALIGN_SYMBOL,
+                      BLOCK_BOT_MID_X_START_SYMBOL_1,
+                      BLOCK_BOT_MID_Y_START_SYMBOLS,
+                      btn_weather_open_popup_event_handler);
+
+    lv_obj_set_style_bg_img_src(ui->weather.btn_open,
+                                MY_CLOUD_SYMBOL,
+                                0);
+
+    ui->weather.popup =
+        create_background(ui->screen,
+                          POPUP_WINDOW_WIDTH,
+                          POPUP_WINDOW_HEIGHT,
+                          POPUP_WINDOW_ALIGN,
+                          0,
+                          0);
+
+    ui->weather.city_label =
+        create_label(ui->weather.popup,
+                     "CityName",
+                     LV_ALIGN_TOP_LEFT,
+                     220,
+                     90);
+
+    set_visible(ui->weather.popup, false);
+}
+
+
 static void create_block_bot_middle() {
 
+	ui_create_co2(&ui);
+	  ui_create_weather(&ui);
+	 //TODO ui_create_wifi(&ui);
+	 //TODO ui_create_standby(&ui);
+	
+	
+	
+	
   /*BLOCK BOT MID*/
   // temp obj
   lv_obj_t *btn_cb;
@@ -1432,12 +1555,15 @@ static void standby_handle() {
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
     wavesahre_rgb_lcd_bl_on();
-  } else if (!get_day_activated_now()) {
-    timer_standby_sec++;
-    if (timer_standby_sec > MAX_STANDBY_TIME) {
+  } else{//!get_day_activated_now()
+    timer_standby_sec++;  
+	if (timer_standby_sec > MAX_STANDBY_TIME*5) {
       wavesahre_rgb_lcd_bl_off();
-      timer_standby_sec = MAX_STANDBY_TIME;
-    }
+      timer_standby_sec = MAX_STANDBY_TIME*5;
+    }	
+  }
+  if(get_day_activated_now()){
+	timer_standby_sec = 0;
   }
 }
 
