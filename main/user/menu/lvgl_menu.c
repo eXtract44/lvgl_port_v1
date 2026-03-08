@@ -16,6 +16,17 @@
 #include "user/periphery/wifi.h"
 
 typedef struct {
+	lv_obj_t *screen;
+lv_obj_t *btn_temperature;
+lv_obj_t *btn_humidity;
+lv_obj_t *btn_wind;
+lv_obj_t *temperature_label;
+lv_obj_t *humidity_label;
+lv_obj_t *wind_label;
+	}ui_weather_value_t;
+
+
+typedef struct {
   lv_obj_t *popup;
   lv_obj_t *btn_open;
   lv_obj_t *btn_close;
@@ -61,6 +72,9 @@ typedef struct {
 } ui_settings_t;
 
 typedef struct {
+	lv_obj_t *meter;
+	lv_obj_t *co2_label;
+	lv_meter_indicator_t *indicator;
   lv_obj_t *chart;
   lv_obj_t *title;
 
@@ -68,7 +82,6 @@ typedef struct {
 
 typedef struct {
   lv_obj_t *bar;
-
 } ui_standby_t;
 
 typedef struct{
@@ -102,17 +115,52 @@ typedef struct {
   
 } ui_weather_anim_t;
 
+typedef struct{
+lv_obj_t *screen;
+lv_obj_t *btn_temperature;
+lv_obj_t *btn_humidity;
+lv_obj_t *btn_tvoc;
+lv_obj_t *temperature_label;
+lv_obj_t *humidity_label;
+lv_obj_t *tvoc_label;
+}ui_sensor_t;
+
+typedef struct{
+lv_obj_t *screen;
+lv_obj_t *hour_minute_label;
+lv_obj_t *mday_month_label;
+lv_obj_t *wday_label;	
+}ui_time_t;
+
+typedef struct{
+lv_style_t  small;
+lv_style_t very_large;
+
+}font_style_t;
+
+typedef struct{
+lv_style_t  top_left;
+lv_style_t top_right;
+lv_style_t  bot_left;
+lv_style_t bot_right;
+lv_style_t chart_co2;
+
+}screen_style_t;
+
 typedef struct {
   lv_obj_t *screen;
 
-  ui_weather_anim_t animation;
-  
+  ui_weather_anim_t animation; 
   ui_co2_t co2;
   ui_weather_t weather;
   ui_wifi_t wifi;
   ui_standby_t standby;
   ui_settings_t settings;
-
+  ui_sensor_t sensor;
+  ui_time_t time;
+  ui_weather_value_t meteo;
+  font_style_t font;
+  screen_style_t style;
 } ui_main_menu_t;
 
 extern const city_t cities_de[];
@@ -123,18 +171,6 @@ static ui_main_menu_t ui = {
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
 extern wifi_ap_record_t ap_info;
-
-static lv_meter_indicator_t *indicator[LAST_ELEMENT_OF_INDICATOR];
-// static const lv_font_t *font[LAST_ELEMENT_OF_FONT];
-static lv_style_t style[LAST_ELEMENT_OF_STYLE_TEXT];
-static lv_style_t style_bg_top_left;
-static lv_style_t style_bg_top_right;
-static lv_style_t style_bg_bot_left;
-static lv_style_t style_bg_bot_right;
-static lv_style_t style_chart_co2;
-
-static lv_obj_t *lv_object[LAST_ELEMENT_OF_OBJECTS];
-
 
 
 static char string_buffer[STRING_MAX_LENGHT];
@@ -172,7 +208,7 @@ void print_value(const char *flags, float value, lv_obj_t *parent) {
 }
 
 static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
-                        lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs) {
+                        lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,ui_main_menu_t *ui) {
   if (parent == NULL || !lv_obj_is_valid(parent)) {
     ESP_LOGE(TAG, "ERROR create_text");
     return;
@@ -181,7 +217,8 @@ static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
   lv_obj_remove_style_all(cont);
   switch (theme) {
   case STYLE_TEXT_SMALL:
-    lv_obj_add_style(cont, &style[STYLE_TEXT_SMALL], 0);
+ 
+    lv_obj_add_style(cont, & ui->font.small, 0);
     break;
     //  case STYLE_TEXT_MEDIUM:
     //    lv_obj_add_style(cont, &style[STYLE_TEXT_MEDIUM], 0);
@@ -210,7 +247,7 @@ static lv_obj_t *create_label(lv_obj_t *parent, const char *text,
 
 static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                               lv_align_t align, lv_coord_t x_ofs,
-                              lv_coord_t y_ofs) {
+                              lv_coord_t y_ofs,ui_main_menu_t *ui) {
   const int16_t start_value = BLOCK_TOP_MID_START_CO2_LEFT_PART;
   const int16_t start_value_1 = BLOCK_TOP_MID_END_CO2_LEFT_PART;
   const int16_t end_value = BLOCK_TOP_MID_START_CO2_RIGHT_PART;
@@ -233,41 +270,41 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                            145);
 
   /*Add a blue arc to the start*/
-  indicator[INDICATOR_CO2] =
+  ui->co2.indicator =
       lv_meter_add_arc(meter, scale, 3, lv_palette_main(LV_PALETTE_GREEN), 0);
-  lv_meter_set_indicator_start_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_start_value(meter, ui->co2.indicator,
                                      start_value);
-  lv_meter_set_indicator_end_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_end_value(meter, ui->co2.indicator,
                                    start_value_1);
 
   /*Make the tick lines blue at the start of the scale*/
-  indicator[INDICATOR_CO2] =
+  ui->co2.indicator =
       lv_meter_add_scale_lines(meter, scale, lv_palette_main(LV_PALETTE_GREEN),
                                lv_palette_main(LV_PALETTE_GREEN), false, 0);
-  lv_meter_set_indicator_start_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_start_value(meter, ui->co2.indicator,
                                      start_value);
-  lv_meter_set_indicator_end_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_end_value(meter, ui->co2.indicator,
                                    start_value_1);
 
   /*Add a red arc to the end*/
-  indicator[INDICATOR_CO2] =
+  ui->co2.indicator =
       lv_meter_add_arc(meter, scale, 3, lv_palette_main(LV_PALETTE_RED), 0);
-  lv_meter_set_indicator_start_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_start_value(meter, ui->co2.indicator,
                                      end_value);
-  lv_meter_set_indicator_end_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_end_value(meter, ui->co2.indicator,
                                    end_value_1);
 
   /*Make the tick lines red at the end of the scale*/
-  indicator[INDICATOR_CO2] =
+  ui->co2.indicator =
       lv_meter_add_scale_lines(meter, scale, lv_palette_main(LV_PALETTE_RED),
                                lv_palette_main(LV_PALETTE_RED), false, 0);
-  lv_meter_set_indicator_start_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_start_value(meter, ui->co2.indicator,
                                      end_value);
-  lv_meter_set_indicator_end_value(meter, indicator[INDICATOR_CO2],
+  lv_meter_set_indicator_end_value(meter, ui->co2.indicator,
                                    end_value_1);
 
   /*Add a needle line indicator*/
-  indicator[INDICATOR_CO2] = lv_meter_add_needle_line(
+  ui->co2.indicator = lv_meter_add_needle_line(
       meter, scale, 4, lv_palette_main(LV_PALETTE_GREY), -10);
 
   return meter;
@@ -296,8 +333,8 @@ static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   return chart;
 }
 
-void print_wday(uint8_t wday) {
-  lv_obj_t *parent = lv_object[TIME_WDAY];
+void print_wday(uint8_t wday,ui_main_menu_t *ui) {
+  lv_obj_t *parent = ui->time.wday_label;
   if (parent == NULL || !lv_obj_is_valid(parent))
     return;
   switch (wday) {
@@ -328,8 +365,8 @@ void print_wday(uint8_t wday) {
   }
 }
 
-void print_time(uint8_t time_hour, uint8_t time_minute) {
-  lv_obj_t *parent = lv_object[TIME_HOUR_MINUTE];
+void print_time(uint8_t time_hour, uint8_t time_minute,ui_main_menu_t *ui) {
+  lv_obj_t *parent = ui->time.hour_minute_label;
   if (parent == NULL || !lv_obj_is_valid(parent))
     return;
   if (get_wifi_status() == WIFI_CONNECTED) {
@@ -349,8 +386,8 @@ void print_time(uint8_t time_hour, uint8_t time_minute) {
   lv_label_set_text(parent, string_buffer);
 }
 
-void print_mday(uint8_t date_day, uint8_t date_month) {
-  lv_obj_t *parent = lv_object[TIME_MDAY_MONTH];
+void print_mday(uint8_t date_day, uint8_t date_month,ui_main_menu_t *ui) {
+  lv_obj_t *parent = ui->time.mday_month_label;
   if (parent == NULL || !lv_obj_is_valid(parent))
     return;
   if (get_wifi_status() == WIFI_CONNECTED) {
@@ -606,235 +643,243 @@ lv_obj_t *create_rain_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void create_block_top_left() {
+static void create_block_top_left(ui_main_menu_t *ui) {
   /*STYLES*/
 
   /*BLOCK TOP LEFT*/
-
   lv_obj_t *bg =
-      create_background(lv_object[SCREEN_MAIN_MENU], BLOCK_TOP_LEFT_WIDTH,
+      create_background(ui->screen, BLOCK_TOP_LEFT_WIDTH,
                         BLOCK_TOP_LEFT_HEIGHT, BLOCK_TOP_LEFT_ALIGN_BACKGROUND,
                         BLOCK_TOP_LEFT_X_START, BLOCK_TOP_LEFT_Y_START);
   if (!bg)
     return;
-  lv_object[BACKGROUND_BLOCK_TOP_LEFT] = bg;
+  ui->sensor.screen = bg;
 
-  lv_obj_add_style(lv_object[BACKGROUND_BLOCK_TOP_LEFT], &style_bg_top_left, 0);
+  lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
 
-  create_text("inside", lv_object[BACKGROUND_BLOCK_TOP_LEFT], STYLE_TEXT_SMALL,
-              BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE);
+  create_text("inside", ui->sensor.screen, STYLE_TEXT_SMALL,
+              BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE,ui);
 
   lv_obj_t *btn_symbol = create_button(
-      lv_object[BACKGROUND_BLOCK_TOP_LEFT], BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
+      ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
       BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
       BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_1);
   if (!btn_symbol)
     return;
-  lv_object[SYMBOL_TEMPERATURE_INSIDE] = btn_symbol;
+  ui->sensor.btn_temperature = btn_symbol;
 
-  lv_obj_set_style_text_font(lv_object[SYMBOL_TEMPERATURE_INSIDE], &my_symbols,
+  lv_obj_set_style_text_font(ui->sensor.btn_temperature, &my_symbols,
                              0);
-  lv_obj_set_style_bg_img_src(lv_object[SYMBOL_TEMPERATURE_INSIDE],
+  lv_obj_set_style_bg_img_src(ui->sensor.btn_temperature,
                               MY_TEMPERATURE_SYMBOL, 0);
 
   btn_symbol = create_button(
-      lv_object[BACKGROUND_BLOCK_TOP_LEFT], BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
+      ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
       BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
       BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_2);
   if (!btn_symbol)
     return;
 
-  lv_object[SYMBOL_HUMIDITY_INSIDE] = btn_symbol;
-  lv_obj_set_style_text_font(lv_object[SYMBOL_HUMIDITY_INSIDE], &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(lv_object[SYMBOL_HUMIDITY_INSIDE],
+  ui->sensor.btn_humidity = btn_symbol;
+  lv_obj_set_style_text_font(ui->sensor.btn_humidity, &my_symbols, 0);
+  lv_obj_set_style_bg_img_src(ui->sensor.btn_humidity,
                               MY_HUMIDITY_SYMBOL, 0);
 
   btn_symbol = create_button(
-      lv_object[BACKGROUND_BLOCK_TOP_LEFT], BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
+      ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
       BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
       BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_3);
   if (!btn_symbol)
     return;
 
-  lv_object[SYMBOL_TVOC] = btn_symbol;
-  lv_obj_set_style_text_font(lv_object[SYMBOL_TVOC], &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(lv_object[SYMBOL_TVOC], MY_TVOC_SYMBOL, 0);
+  ui->sensor.btn_tvoc = btn_symbol;
+  lv_obj_set_style_text_font(ui->sensor.btn_tvoc, &my_symbols, 0);
+  lv_obj_set_style_bg_img_src(ui->sensor.btn_tvoc, MY_TVOC_SYMBOL, 0);
 
   lv_obj_t *value = create_label(
-      lv_object[BACKGROUND_BLOCK_TOP_LEFT], "0 c*", BLOCK_TOP_LEFT_ALIGN_VALUES,
+      ui->sensor.screen, "0 c*", BLOCK_TOP_LEFT_ALIGN_VALUES,
       BLOCK_TOP_LEFT_X_START_VALUES, BLOCK_TOP_LEFT_Y_START_VALUE_1);
   if (!value)
     return;
 
-  lv_object[VALUE_TEMPERATURE_INSIDE] = value;
+  ui->sensor.temperature_label = value;
 
   value = create_label(
-      lv_object[BACKGROUND_BLOCK_TOP_LEFT], "0 %*", BLOCK_TOP_LEFT_ALIGN_VALUES,
+      ui->sensor.screen, "0 %*", BLOCK_TOP_LEFT_ALIGN_VALUES,
       BLOCK_TOP_LEFT_X_START_VALUES, BLOCK_TOP_LEFT_Y_START_VALUE_2);
   if (!value)
     return;
 
-  lv_object[VALUE_HUMIDITY_INSIDE] = value;
+  ui->sensor.humidity_label = value;
 
   value =
-      create_label(lv_object[BACKGROUND_BLOCK_TOP_LEFT], "0 ppm",
+      create_label(ui->sensor.screen, "0 ppm",
                    BLOCK_TOP_LEFT_ALIGN_VALUES, BLOCK_TOP_LEFT_X_START_VALUES,
                    BLOCK_TOP_LEFT_Y_START_VALUE_3);
   if (!value)
     return;
-  lv_object[VALUE_TVOC_INSIDE] = value;
+   ui->sensor.tvoc_label = value;
 
   /*BLOCK TOP LEFT*/
 }
 
-static void create_block_top_middle() {
+static void create_block_top_middle(ui_main_menu_t *ui) {
   /*BLOCK TOP MID*/
-  lv_obj_t *meter = create_meter(
-      lv_object[SCREEN_MAIN_MENU], BLOCK_TOP_MID_WIDTH_CO2_METER,
+
+  ui->co2.meter = create_meter(
+      ui->screen, BLOCK_TOP_MID_WIDTH_CO2_METER,
       BLOCK_TOP_MID_HEIGHT_CO2_METER, BLOCK_TOP_MID_ALIGN_CO2_CHART,
-      BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START);
-  if (!meter)
+      BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START,ui);
+  if (!ui->co2.meter)
     return;
-  lv_object[METER_CO2_MAIN_MENU] = meter;
 
-  lv_meter_set_indicator_value(lv_object[METER_CO2_MAIN_MENU],
-                               indicator[INDICATOR_CO2], 0);
+  lv_meter_set_indicator_value( ui->co2.meter,
+                               ui->co2.indicator, 0);
 
-  //	create_text("ppm", lv_object[SCREEN_MAIN_MENU], STYLE_TEXT_SMALL,
+  //	create_text("ppm", ui->screen, STYLE_TEXT_SMALL,
   //			BLOCK_TOP_MID_ALIGN_CO2_CHART, BLOCK_TOP_MID_X_START,
-  // meter_co2.y_ofs + 45);
+  // meter_co2.y_ofs + 45,ui);
 
   lv_obj_t *value = create_label(
-      lv_object[SCREEN_MAIN_MENU], "0", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      ui->screen, "0", BLOCK_TOP_MID_ALIGN_CO2_CHART,
       BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE);
   if (!value)
     return;
-  lv_object[VALUE_CO2_INSIDE] = value;
-  lv_obj_add_style(lv_object[VALUE_CO2_INSIDE], &style[STYLE_TEXT_VERY_LARGE],
+  ui->co2.co2_label = value;
+  lv_obj_add_style(ui->co2.co2_label, &ui->font.very_large,
                    0);
   /*BLOCK TOP MID*/
 }
 
-static void create_block_top_right() {
+static void create_block_top_right(ui_main_menu_t *ui) {
   /*STYLES*/
 
   /*BLOCK TOP RIGHT*/
 
   lv_obj_t *bg = create_background(
-      lv_object[SCREEN_MAIN_MENU], BLOCK_TOP_RIGHT_WIDTH,
+      ui->screen, BLOCK_TOP_RIGHT_WIDTH,
       BLOCK_TOP_RIGHT_HEIGHT, BLOCK_TOP_RIGHT_ALIGN_BACKGROUND,
       BLOCK_TOP_RIGHT_X_START, BLOCK_TOP_RIGHT_Y_START);
   if (!bg)
     return;
-  lv_object[BACKGROUND_CLOCK_VALUES] = bg;
-  lv_obj_add_style(lv_object[BACKGROUND_CLOCK_VALUES], &style_bg_top_right, 0);
-  lv_obj_set_scrollbar_mode(lv_object[BACKGROUND_CLOCK_VALUES],
+   
+    
+  ui->time.screen = bg;
+  lv_obj_add_style(ui->time.screen, &ui->style.top_right, 0);
+  lv_obj_set_scrollbar_mode(ui->time.screen,
                             LV_SCROLLBAR_MODE_OFF);
 
-  create_text("time", lv_object[BACKGROUND_CLOCK_VALUES], STYLE_TEXT_SMALL,
-              BLOCK_TOP_RIGHT_ALIGN_TITLE, 0, BLOCK_TOP_RIGHT_Y_START_TITLE);
+  create_text("time", ui->time.screen, STYLE_TEXT_SMALL,
+              BLOCK_TOP_RIGHT_ALIGN_TITLE, 0, BLOCK_TOP_RIGHT_Y_START_TITLE,ui);
 
   lv_obj_t *time = create_label(
-      lv_object[BACKGROUND_CLOCK_VALUES], "00:00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
+      ui->time.screen, "00:00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
       BLOCK_TOP_RIGHT_X_START_VALUES, BLOCK_TOP_RIGHT_Y_START_VALUE_1);
   if (!time)
     return;
-  lv_object[TIME_HOUR_MINUTE] = time;
-  lv_obj_set_style_text_font(lv_object[TIME_HOUR_MINUTE], &my_time_font, 0);
+    
+  ui->time.hour_minute_label = time;
+  lv_obj_set_style_text_font(ui->time.hour_minute_label, &my_time_font, 0);
 
   time = create_label(
-      lv_object[BACKGROUND_CLOCK_VALUES], "00.00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
+      ui->time.screen, "00.00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
       BLOCK_TOP_RIGHT_X_START_VALUES, BLOCK_TOP_RIGHT_Y_START_VALUE_2);
   if (!time)
     return;
-  lv_object[TIME_MDAY_MONTH] = time;
-  lv_obj_set_style_text_font(lv_object[TIME_MDAY_MONTH], &my_time_font, 0);
+   
+  ui->time.mday_month_label = time;
+  lv_obj_set_style_text_font(ui->time.mday_month_label, &my_time_font, 0);
 
-  time = create_label(lv_object[BACKGROUND_CLOCK_VALUES], "load...",
+  time = create_label(ui->time.screen, "load...",
                       BLOCK_TOP_RIGHT_ALIGN_VALUES,
                       BLOCK_TOP_RIGHT_X_START_VALUE_3,
                       BLOCK_TOP_RIGHT_Y_START_VALUE_3);
   if (!time)
     return;
-  lv_object[TIME_WDAY] = time;
+  ui->time.wday_label = time;
 
-  lv_obj_set_style_text_font(lv_object[TIME_WDAY], &lv_font_montserrat_32, 0);
+  lv_obj_set_style_text_font(ui->time.wday_label, &lv_font_montserrat_32, 0);
   /*BLOCK TOP RIGHT*/
 }
 
-static void create_block_bot_left() {
+static void create_block_bot_left(ui_main_menu_t *ui) {
   /*STYLES*/
 
   /*BLOCK BOT LEFT*/
 
   lv_obj_t *bg =
-      create_background(lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_LEFT_WIDTH,
+      create_background(ui->screen, BLOCK_BOT_LEFT_WIDTH,
                         BLOCK_BOT_LEFT_HEIGHT, BLOCK_BOT_LEFT_ALIGN_BACKGROUND,
                         BLOCK_BOT_LEFT_X_START, BLOCK_BOT_LEFT_Y_START);
   if (!bg)
     return;
-  lv_object[BACKGROUND_BLOCK_BOT_LEFT] = bg;
-  lv_obj_add_style(lv_object[BACKGROUND_BLOCK_BOT_LEFT], &style_bg_bot_left, 0);
-  create_text("outside", lv_object[BACKGROUND_BLOCK_BOT_LEFT], STYLE_TEXT_SMALL,
-              BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE);
+    
+  ui->meteo.screen = bg;
+  lv_obj_add_style(ui->meteo.screen, &ui->style.bot_left, 0);
+  create_text("outside", ui->meteo.screen, STYLE_TEXT_SMALL,
+              BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE,ui);
 
   lv_obj_t *btn_symbol = create_button(
-      lv_object[BACKGROUND_BLOCK_BOT_LEFT], BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
+      ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
       BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
       BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_1);
   if (!btn_symbol)
     return;
-  lv_object[SYMBOL_TEMPERATURE_OUTSIDE] = btn_symbol;
-  lv_obj_set_style_text_font(lv_object[SYMBOL_TEMPERATURE_OUTSIDE], &my_symbols,
+   
+   ui->meteo.btn_temperature = btn_symbol;
+  lv_obj_set_style_text_font( ui->meteo.btn_temperature, &my_symbols,
                              0);
-  lv_obj_set_style_bg_img_src(lv_object[SYMBOL_TEMPERATURE_OUTSIDE],
+  lv_obj_set_style_bg_img_src( ui->meteo.btn_temperature,
                               MY_TEMPERATURE_SYMBOL, 0);
 
   btn_symbol = create_button(
-      lv_object[BACKGROUND_BLOCK_BOT_LEFT], BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
+      ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
       BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
       BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_2);
   if (!btn_symbol)
     return;
-  lv_object[SYMBOL_HUMIDITY_OUTSIDE] = btn_symbol;
-  lv_obj_set_style_text_font(lv_object[SYMBOL_HUMIDITY_OUTSIDE], &my_symbols,
+   ui->meteo.btn_humidity = btn_symbol;
+  lv_obj_set_style_text_font( ui->meteo.btn_humidity, &my_symbols,
                              0);
-  lv_obj_set_style_bg_img_src(lv_object[SYMBOL_HUMIDITY_OUTSIDE],
+  lv_obj_set_style_bg_img_src( ui->meteo.btn_humidity,
                               MY_HUMIDITY_SYMBOL, 0);
 
   btn_symbol = create_button(
-      lv_object[BACKGROUND_BLOCK_BOT_LEFT], BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
+      ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
       BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
       BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_3);
   if (!btn_symbol)
     return;
-  lv_object[SYMBOL_WIND] = btn_symbol;
-  lv_obj_set_style_text_font(lv_object[SYMBOL_WIND], &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(lv_object[SYMBOL_WIND], MY_WIND_SYMBOL, 0);
+    
+  ui->meteo.btn_wind = btn_symbol;
+  lv_obj_set_style_text_font(ui->meteo.btn_wind, &my_symbols, 0);
+  lv_obj_set_style_bg_img_src(ui->meteo.btn_wind, MY_WIND_SYMBOL, 0);
 
   lv_obj_t *value = create_label(
-      lv_object[BACKGROUND_BLOCK_BOT_LEFT], "0 c*", BLOCK_BOT_LEFT_ALIGN_VALUES,
+      ui->meteo.screen, "0 c*", BLOCK_BOT_LEFT_ALIGN_VALUES,
       BLOCK_BOT_LEFT_X_START_VALUES, BLOCK_BOT_LEFT_Y_START_VALUE_1);
 
   if (!value)
     return;
-  lv_object[VALUE_TEMPERATURE_OUTSIDE] = value;
+    
+  ui->meteo.temperature_label = value;
 
   value = create_label(
-      lv_object[BACKGROUND_BLOCK_BOT_LEFT], "0 %", BLOCK_BOT_LEFT_ALIGN_VALUES,
+      ui->meteo.screen, "0 %", BLOCK_BOT_LEFT_ALIGN_VALUES,
       BLOCK_BOT_LEFT_X_START_VALUES, BLOCK_BOT_LEFT_Y_START_VALUE_2);
 
   if (!value)
     return;
-  lv_object[VALUE_HUMIDITY_OUTSIDE] = value;
+    
+  ui->meteo.humidity_label = value;
 
   value =
-      create_label(lv_object[BACKGROUND_BLOCK_BOT_LEFT], "0 m/s",
+      create_label(ui->meteo.screen, "0 m/s",
                    BLOCK_BOT_LEFT_ALIGN_VALUES, BLOCK_BOT_LEFT_X_START_VALUES,
                    BLOCK_BOT_LEFT_Y_START_VALUE_3);
   if (!value)
     return;
-  lv_object[VALUE_WIND_OUTSIDE] = value;
+   ui->meteo.wind_label = value;
   /*BLOCK BOT LEFT*/
 }
 
@@ -960,13 +1005,13 @@ static void ta_event_cb(lv_event_t *e) {
 static void ui_create_co2(ui_main_menu_t *ui) {
   create_text("co2 24h", ui->screen, STYLE_TEXT_SMALL,
               BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
-              BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART);
+              BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART,ui);
 
   ui->co2.chart = create_chart(
       ui->screen, BLOCK_BOT_MID_WIDTH_CO2_CHART, BLOCK_BOT_MID_HEIGHT_CO2_CHART,
       BLOCK_BOT_MID_ALIGN_CO2_CHART, 0, BLOCK_BOT_MID_Y_START_CO2_CHART);
 
-  lv_obj_add_style(ui->co2.chart, &style_chart_co2, 0);
+  lv_obj_add_style(ui->co2.chart, &ui->style.chart_co2, 0);
 }
 
 static void ui_create_city_list_weather(ui_main_menu_t *ui) {
@@ -1010,13 +1055,13 @@ static void ui_create_weather(ui_main_menu_t *ui) {
       create_label(ui->weather.popup, "CityName", LV_ALIGN_TOP_LEFT, 220, 90);
 
   create_text("Weather Settings", ui->weather.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_MID, 0, 0);
+              LV_ALIGN_TOP_MID, 0, 0,ui);
   create_text("CITY:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
-              15, 90);
+              15, 90,ui);
   create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
-              15, 180);
+              15, 180,ui);
   create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
-              15, 270);
+              15, 270,ui);
   ui_create_city_list_weather(ui);
   set_visible(ui->weather.popup, false);
 }
@@ -1029,13 +1074,13 @@ static void ui_create_wifi(ui_main_menu_t *ui) {
   lv_obj_set_scrollbar_mode(ui->wifi.popup, LV_SCROLLBAR_MODE_OFF);
   ///////////////////////////////////////////////////////////////
   create_text("WIFI Settings", ui->wifi.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_MID, 0, 0);
+              LV_ALIGN_TOP_MID, 0, 0,ui);
   create_text("SSID:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
-              90);
+              90,ui);
   create_text("PASS:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
-              180);
+              180,ui);
   create_text("RSSI:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
-              270);
+              270,ui);
   ///////////////////////////////////////////////////////////////
   ui->wifi.btn_open = create_btn_cb(
       ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
@@ -1105,7 +1150,7 @@ static void ui_create_standby(ui_main_menu_t *ui) {
 static void ui_create_settings(ui_main_menu_t *ui) {
 
   ui->settings.btn_open = create_btn_cb(
-      lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_MID_WIDTH_SYMBOL,
+      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL,
       BLOCK_BOT_MID_HEIGHT_SYMBOL, BLOCK_BOT_MID_ALIGN_SYMBOL,
       BLOCK_BOT_MID_X_START_SYMBOL_4, BLOCK_BOT_MID_Y_START_SYMBOLS,
       btn_settings_open_popup_event_handler, &ui);
@@ -1113,12 +1158,12 @@ static void ui_create_settings(ui_main_menu_t *ui) {
   lv_obj_set_style_bg_img_src(ui->settings.btn_open, LV_SYMBOL_SETTINGS, 0);
 }
 
-static void create_block_bot_middle() {
-  ui_create_co2(&ui);
-  ui_create_weather(&ui);
-  ui_create_wifi(&ui);
-  ui_create_settings(&ui);
-  ui_create_standby(&ui);
+static void create_block_bot_middle(ui_main_menu_t *ui) {
+  ui_create_co2(ui);
+  ui_create_weather(ui);
+  ui_create_wifi(ui);
+  ui_create_settings(ui);
+  ui_create_standby(ui);
 }
 
 static void create_block_bot_right(ui_main_menu_t *ui) {
@@ -1128,7 +1173,7 @@ static void create_block_bot_right(ui_main_menu_t *ui) {
       ui->screen, BLOCK_BOT_RIGHT_WIDTH,
       BLOCK_BOT_RIGHT_HEIGHT, BLOCK_BOT_RIGHT_ALIGN_BACKGROUND,
       BLOCK_BOT_RIGHT_X_START, BLOCK_BOT_RIGHT_Y_START);
-  lv_obj_add_style(ui->animation.screen, &style_bg_bot_right, 0);
+  lv_obj_add_style(ui->animation.screen, &ui->style.bot_right, 0);
   lv_obj_set_scrollbar_mode(ui->animation.screen,
                             LV_SCROLLBAR_MODE_OFF);
 #if ACTIVATE_ANIM_SUN_MOON
@@ -1215,39 +1260,38 @@ static void create_block_bot_right(ui_main_menu_t *ui) {
 
 static void create_menu(ui_main_menu_t *ui) {
 
-  lv_object[SCREEN_MAIN_MENU] = lv_obj_create(NULL);
-  lv_obj_set_style_bg_color(lv_object[SCREEN_MAIN_MENU], lv_color_black(), 0);
-  lv_obj_set_style_bg_opa(lv_object[SCREEN_MAIN_MENU], LV_OPA_COVER, 0);
-  lv_object[BACKGROUND_MAIN_MENU] = lv_obj_create(lv_object[SCREEN_MAIN_MENU]);
-  lv_obj_set_size(lv_object[BACKGROUND_MAIN_MENU], LVGL_PORT_H_RES,
+  ui->screen = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(ui->screen, lv_color_black(), 0);
+  lv_obj_set_style_bg_opa(ui->screen, LV_OPA_COVER, 0);
+  //lv_object[BACKGROUND_MAIN_MENU] = lv_obj_create(ui->screen);
+  lv_obj_set_size(ui->screen, LVGL_PORT_H_RES,
                   LVGL_PORT_V_RES);
-  lv_obj_set_style_bg_color(lv_object[BACKGROUND_MAIN_MENU], lv_color_black(),
-                            0);
-  lv_obj_set_style_bg_opa(lv_object[BACKGROUND_MAIN_MENU], LV_OPA_COVER, 0);
-  ui->screen = lv_object[SCREEN_MAIN_MENU];
+//  lv_obj_set_style_bg_color(lv_object[BACKGROUND_MAIN_MENU], lv_color_black(),
+//                            0);
+//  lv_obj_set_style_bg_opa(lv_object[BACKGROUND_MAIN_MENU], LV_OPA_COVER, 0);
 
 /*STYLES*/
 #if ACTIVATE_BLOCK_TOP_LEFT
-  create_block_top_left();
+  create_block_top_left(ui);
 #endif
 #if ACTIVATE_BLOCK_BOT_LEFT
-  create_block_bot_left();
+  create_block_bot_left(ui);
 #endif
 #if ACTIVATE_BLOCK_TOP_MID
-  create_block_top_middle();
+  create_block_top_middle(ui);
 #endif
 #if ACTIVATE_BLOCK_TOP_RIGHT
-  create_block_top_right();
+  create_block_top_right(ui);
 #endif
 #if ACTIVATE_BLOCK_BOT_MID
-  create_block_bot_middle();
+  create_block_bot_middle(ui);
 #endif
 #if ACTIVATE_BLOCK_BOT_RIGHT
   create_block_bot_right(ui);
 #endif
 }
 
-void draw_menu_main() { lv_scr_load(lv_object[SCREEN_MAIN_MENU]); }
+void draw_menu_main(ui_main_menu_t *ui) { lv_scr_load(ui->screen); }
 
 void rain_set_intensity(uint8_t visible_count,ui_main_menu_t *ui) {
   for (uint8_t i = 0; i < BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS; i++) {
@@ -1422,33 +1466,35 @@ void draw_symbol_wifi(ui_main_menu_t *ui) {
   }
 }
 
-void update_block_top_left() {
+void update_block_top_left(ui_main_menu_t *ui) {
   read_sensors();
   print_value("%.1f c*", get_temperature_aht10(),
-              lv_object[VALUE_TEMPERATURE_INSIDE]);
-  print_value("%.f %%", get_humidity_aht10(), lv_object[VALUE_HUMIDITY_INSIDE]);
-  print_value("%.f ppm", get_tvoc_sgp30(), lv_object[VALUE_TVOC_INSIDE]);
+              ui->sensor.temperature_label);
+  print_value("%.f %%", get_humidity_aht10(), ui->sensor.humidity_label);
+  print_value("%.f ppm", get_tvoc_sgp30(),  ui->sensor.tvoc_label);
 }
 
-void update_block_top_middle() {
+void update_block_top_middle(ui_main_menu_t *ui) {
   uint16_t current_co2_value = get_co2_sgp30();
-  print_value("%.f", current_co2_value, lv_object[VALUE_CO2_INSIDE]);
-  lv_meter_set_indicator_value(lv_object[METER_CO2_MAIN_MENU],
-                               indicator[INDICATOR_CO2], current_co2_value);
+
+  print_value("%.f", current_co2_value, ui->co2.co2_label);
+  lv_meter_set_indicator_value(  ui->co2.meter,
+                               ui->co2.indicator, current_co2_value);
 }
 
-void update_block_top_right() {
-  print_mday(get_time_mday(), get_time_month());
-  print_wday(get_time_wday());
-  print_time(get_time_hour(), get_time_minute());
+void update_block_top_right(ui_main_menu_t *ui) {
+  print_mday(get_time_mday(), get_time_month(),ui);
+  print_wday(get_time_wday(),ui);
+  print_time(get_time_hour(), get_time_minute(),ui);
 }
 
-void update_block_bot_left() {
+void update_block_bot_left(ui_main_menu_t *ui) {
   print_value("%.1f c*", get_weather_temperature(),
-              lv_object[VALUE_TEMPERATURE_OUTSIDE]);
+              ui->meteo.temperature_label);
   print_value("%.f %%", get_weather_humidity(),
-              lv_object[VALUE_HUMIDITY_OUTSIDE]);
-  print_value("%.1f m/s", get_weather_wind(), lv_object[VALUE_WIND_OUTSIDE]);
+              ui->meteo.humidity_label);
+             
+  print_value("%.1f m/s", get_weather_wind(),  ui->meteo.wind_label);
 }
 
 void update_block_bot_middle(ui_main_menu_t *ui) {
@@ -1503,20 +1549,20 @@ static void standby_handle() {
 static void timer_10000(lv_timer_t *timer) {
   LV_UNUSED(timer);
 #if ACTIVATE_BLOCK_TOP_RIGHT
-  update_block_top_right();
+  update_block_top_right(&ui);
 #endif
 }
 
 static void timer_1000(lv_timer_t *timer) {
   LV_UNUSED(timer);
 #if ACTIVATE_BLOCK_TOP_LEFT
-  update_block_top_left();
+  update_block_top_left(&ui);
 #endif
 #if ACTIVATE_BLOCK_BOT_LEFT
-  update_block_bot_left();
+  update_block_bot_left(&ui);
 #endif
 #if ACTIVATE_BLOCK_TOP_MID
-  update_block_top_middle();
+  update_block_top_middle(&ui);
 #endif
 #if ACTIVATE_BLOCK_BOT_MID
   update_block_bot_middle(&ui);
@@ -1531,50 +1577,51 @@ static void timer_200(lv_timer_t *timer) {
   standby_handle();
 }
 
-static void init_fonts() {
-  lv_style_init(&style[STYLE_TEXT_SMALL]);
-  lv_style_set_text_font(&style[STYLE_TEXT_SMALL], &lv_font_montserrat_32);
+static void init_fonts(ui_main_menu_t *ui) {
+  lv_style_init(&ui->font.small);
+  lv_style_set_text_font(&ui->font.small, &lv_font_montserrat_32);
   //  lv_style_init(&style[STYLE_TEXT_MEDIUM]);
   //  lv_style_set_text_font(&style[STYLE_TEXT_MEDIUM],
   //  &lv_font_montserrat_40); lv_style_init(&style[STYLE_TEXT_LARGE]);
   //  lv_style_set_text_font(&style[STYLE_TEXT_LARGE],
   //  &lv_font_montserrat_48);
-  lv_style_init(&style[STYLE_TEXT_VERY_LARGE]);
-  lv_style_set_text_font(&style[STYLE_TEXT_VERY_LARGE], &lv_font_montserrat_48);
+
+  lv_style_init(&ui->font.very_large);
+  lv_style_set_text_font(&ui->font.very_large, &lv_font_montserrat_48);
 }
 
-static void init_styles() {
+static void init_styles(ui_main_menu_t *ui) {
 
-  lv_style_init(&style_chart_co2);
-  lv_style_set_bg_opa(&style_chart_co2, LV_OPA_COVER);
-  lv_style_set_bg_color(&style_chart_co2, lv_palette_main(LV_PALETTE_RED));
-  lv_style_set_bg_grad_color(&style_chart_co2,
+  lv_style_init(&ui->style.chart_co2);
+  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+  lv_style_set_bg_color(&ui->style.chart_co2, lv_palette_main(LV_PALETTE_RED));
+  lv_style_set_bg_grad_color(&ui->style.chart_co2,
                              lv_palette_lighten(LV_PALETTE_GREEN, 1));
-  lv_style_set_bg_grad_dir(&style_chart_co2, LV_GRAD_DIR_VER);
-  lv_style_set_bg_main_stop(&style_chart_co2, 128);
-  lv_style_set_bg_grad_stop(&style_chart_co2, 192);
+  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
+  lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
+  lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
 
-  lv_style_init(&style_bg_bot_right);
-  lv_style_set_bg_color(&style_bg_bot_right, lv_color_black());
+  lv_style_init(&ui->style.bot_right);
+  lv_style_set_bg_color(&ui->style.bot_right, lv_color_black());
 
-  lv_style_init(&style_bg_bot_left);
-  lv_style_set_bg_color(&style_bg_bot_left,
+  lv_style_init(&ui->style.bot_left);
+  lv_style_set_bg_color(&ui->style.bot_left,
                         lv_palette_lighten(LV_PALETTE_ORANGE, 1));
 
-  lv_style_init(&style_bg_top_left);
-  lv_style_set_bg_color(&style_bg_top_left,
+  lv_style_init(&ui->style.top_left);
+  lv_style_set_bg_color(&ui->style.top_left,
                         lv_palette_lighten(LV_PALETTE_GREEN, 1));
 
-  lv_style_init(&style_bg_top_right);
-  lv_style_set_bg_color(&style_bg_top_right,
+  lv_style_init(&ui->style.top_right);
+  lv_style_set_bg_color(&ui->style.top_right,
                         lv_palette_lighten(LV_PALETTE_GREEN, 1));
 }
 
 void init_lv_objects() {
-  init_fonts();
-  init_styles();
+  init_fonts(&ui);
+  init_styles(&ui);
   create_menu(&ui);
-  draw_menu_main();
+  draw_menu_main(&ui);
   lv_timer_create(timer_10000, 10000, NULL);
   lv_timer_create(timer_1000, 1000, NULL);
   lv_timer_create(timer_200, 200, NULL);
