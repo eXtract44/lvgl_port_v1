@@ -71,9 +71,42 @@ typedef struct {
 
 } ui_standby_t;
 
+typedef struct{
+	lv_obj_t *big_110_50;
+	 lv_obj_t *mid_90_45;
+	 lv_obj_t *small_70_35;
+	 lv_obj_t *thin_80_30;
+}ui_cloud_t;
+
+typedef struct{
+	lv_obj_t *sun_48_48;
+	lv_obj_t *moon_42_42;
+	ui_cloud_t cloud;
+	lv_obj_t *wind_60_50;
+	lv_obj_t *rain_9_22;
+	lv_obj_t *snow_15_15;
+}ui_images_t;
+
+typedef struct{
+	lv_obj_t *slow;
+	lv_obj_t *med;
+	lv_obj_t *fast;
+}ui_wind_t;
+
+typedef struct {
+  lv_obj_t *screen;
+  ui_images_t image;
+  ui_wind_t wind;
+  lv_obj_t *rain[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS];
+  lv_obj_t *snow[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS];
+  
+} ui_weather_anim_t;
+
 typedef struct {
   lv_obj_t *screen;
 
+  ui_weather_anim_t animation;
+  
   ui_co2_t co2;
   ui_weather_t weather;
   ui_wifi_t wifi;
@@ -101,8 +134,8 @@ static lv_style_t style_bg_bot_right;
 static lv_style_t style_chart_co2;
 
 static lv_obj_t *lv_object[LAST_ELEMENT_OF_OBJECTS];
-static lv_obj_t *rain_objs[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS];
-static lv_obj_t *snow_objs[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS];
+
+
 
 static char string_buffer[STRING_MAX_LENGHT];
 
@@ -1079,6 +1112,7 @@ static void ui_create_settings(ui_main_menu_t *ui) {
 
   lv_obj_set_style_bg_img_src(ui->settings.btn_open, LV_SYMBOL_SETTINGS, 0);
 }
+
 static void create_block_bot_middle() {
   ui_create_co2(&ui);
   ui_create_weather(&ui);
@@ -1087,51 +1121,53 @@ static void create_block_bot_middle() {
   ui_create_standby(&ui);
 }
 
-static void create_block_bot_right() {
+static void create_block_bot_right(ui_main_menu_t *ui) {
   /*BLOCK BOT RIGHT*/
-  lv_object[BACKGROUND_WEATHER] = create_background(
-      lv_object[SCREEN_MAIN_MENU], BLOCK_BOT_RIGHT_WIDTH,
+  
+  ui->animation.screen = create_background(
+      ui->screen, BLOCK_BOT_RIGHT_WIDTH,
       BLOCK_BOT_RIGHT_HEIGHT, BLOCK_BOT_RIGHT_ALIGN_BACKGROUND,
       BLOCK_BOT_RIGHT_X_START, BLOCK_BOT_RIGHT_Y_START);
-  lv_obj_add_style(lv_object[BACKGROUND_WEATHER], &style_bg_bot_right, 0);
-  lv_obj_set_scrollbar_mode(lv_object[BACKGROUND_WEATHER],
+  lv_obj_add_style(ui->animation.screen, &style_bg_bot_right, 0);
+  lv_obj_set_scrollbar_mode(ui->animation.screen,
                             LV_SCROLLBAR_MODE_OFF);
 #if ACTIVATE_ANIM_SUN_MOON
-  lv_object[IMAGE_SUN_48_48] =
-      create_anim_image_orbit(&sun_48_48, lv_object[BACKGROUND_WEATHER],
+  ui->animation.image.sun_48_48 = 
+      create_anim_image_orbit(&sun_48_48, ui->animation.screen,
                               BLOCK_BOT_RIGHT_ALIGN_WEATHER_ANIM,
                               BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_SUN_MOON,
                               BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_SUN_MOON);
 
-  lv_object[IMAGE_MOON_42_42] =
-      create_anim_image_orbit(&moon_42_42, lv_object[BACKGROUND_WEATHER],
+  ui->animation.image.moon_42_42 = 
+      create_anim_image_orbit(&moon_42_42, ui->animation.screen,
                               BLOCK_BOT_RIGHT_ALIGN_WEATHER_ANIM,
                               BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_SUN_MOON,
                               BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_SUN_MOON);
 #endif
 #if ACTIVATE_ANIM_CLOUD
-  lv_object[IMAGE_CLOUD_BIG_110_50] = create_cloud_anim(
-      &cloud_big_110_50, lv_object[BACKGROUND_WEATHER],
+  ui->animation.image.cloud.big_110_50 = create_cloud_anim(
+      &cloud_big_110_50, ui->animation.screen,
       BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_CLOUDS_BIG_110_50,
       BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_CLOUDS_BIG_110_50,
       BLOCK_BOT_RIGHT_AMPLITUDE_WEATHER_ANIM_CLOUDS_BIG_110_50,
       BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_CLOUDS_BIG_110_50);
-
-  lv_object[IMAGE_CLOUD_MID_90_45] =
-      create_cloud_anim(&cloud_mid_90_45, lv_object[BACKGROUND_WEATHER],
+	  
+  ui->animation.image.cloud.mid_90_45 =
+      create_cloud_anim(&cloud_mid_90_45, ui->animation.screen,
                         BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_CLOUDS_MID_90_45,
                         BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_CLOUDS_MID_90_45,
                         BLOCK_BOT_RIGHT_AMPLITUDE_WEATHER_ANIM_CLOUDS_MID_90_45,
                         BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_CLOUDS_MID_90_45);
-  lv_object[IMAGE_CLOUD_SMALL_70_35] = create_cloud_anim(
-      &cloud_small_70_35, lv_object[BACKGROUND_WEATHER],
+						
+						ui->animation.image.cloud.small_70_35 = create_cloud_anim(
+      &cloud_small_70_35, ui->animation.screen,
       BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_CLOUDS_SMALL_70_35,
       BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_CLOUDS_SMALL_70_35,
       BLOCK_BOT_RIGHT_AMPLITUDE_WEATHER_ANIM_CLOUDS_SMALL_70_35,
       BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_CLOUDS_SMALL_70_35);
-
-  lv_object[IMAGE_CLOUD_THIN_80_30] = create_cloud_anim(
-      &cloud_thin_80_30, lv_object[BACKGROUND_WEATHER],
+	  
+  ui->animation.image.cloud.thin_80_30 = create_cloud_anim(
+      &cloud_thin_80_30, ui->animation.screen,
       BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_CLOUDS_THIN_80_30,
       BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_CLOUDS_THIN_80_30,
       BLOCK_BOT_RIGHT_AMPLITUDE_WEATHER_ANIM_CLOUDS_THIN_80_30,
@@ -1139,43 +1175,45 @@ static void create_block_bot_right() {
 #endif
 
 #if ACTIVATE_ANIM_WIND
-  lv_object[IMAGE_WIND_SLOW] =
-      create_wind_anim(&wind_60_50, lv_object[BACKGROUND_WEATHER],
+ 
+
+  ui->animation.wind.slow =
+      create_wind_anim(&wind_60_50, ui->animation.screen,
                        BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_WIND_SLOW,
                        BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_WIND_SLOW,
                        BLOCK_BOT_RIGHT_TURBULENCE_WEATHER_ANIM_WIND_SLOW,
                        BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_WIND_SLOW);
-
-  lv_object[IMAGE_WIND_MED] =
-      create_wind_anim(&wind_60_50, lv_object[BACKGROUND_WEATHER],
+  ui->animation.wind.med =
+      create_wind_anim(&wind_60_50, ui->animation.screen,
                        BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_WIND_MED,
                        BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_WIND_MED,
                        BLOCK_BOT_RIGHT_TURBULENCE_WEATHER_ANIM_WIND_MED,
                        BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_WIND_MED);
 
-  lv_object[IMAGE_WIND_FAST] =
-      create_wind_anim(&wind_60_50, lv_object[BACKGROUND_WEATHER],
+  ui->animation.wind.fast =
+      create_wind_anim(&wind_60_50, ui->animation.screen,
                        BLOCK_BOT_RIGHT_X_START_WEATHER_ANIM_WIND_FAST,
                        BLOCK_BOT_RIGHT_Y_START_WEATHER_ANIM_WIND_FAST,
                        BLOCK_BOT_RIGHT_TURBULENCE_WEATHER_ANIM_WIND_FAST,
                        BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_WIND_FAST);
 #endif
   for (uint8_t i = 0; i < BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS; i++) {
-    rain_objs[i] = create_rain_snow_anim(
-        &rain_drop_heavy_9_22, lv_object[BACKGROUND_WEATHER], 2,
+	
+    ui->animation.rain[i] = create_rain_snow_anim(
+        &rain_drop_heavy_9_22, ui->animation.screen, 2,
         BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_RAIN_SNOW);
   }
 
   for (uint8_t i = 0; i < BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS; i++) {
-    snow_objs[i] = create_rain_snow_anim(
-        &snow_flake_2_15_15, lv_object[BACKGROUND_WEATHER], 2,
+    ui->animation.snow[i] = create_rain_snow_anim(
+        &snow_flake_2_15_15, ui->animation.screen, 2,
         BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_RAIN_SNOW);
   }
 
   /*BLOCK BOT RIGHT*/
 }
 
-static void create_menu() {
+static void create_menu(ui_main_menu_t *ui) {
 
   lv_object[SCREEN_MAIN_MENU] = lv_obj_create(NULL);
   lv_obj_set_style_bg_color(lv_object[SCREEN_MAIN_MENU], lv_color_black(), 0);
@@ -1186,7 +1224,7 @@ static void create_menu() {
   lv_obj_set_style_bg_color(lv_object[BACKGROUND_MAIN_MENU], lv_color_black(),
                             0);
   lv_obj_set_style_bg_opa(lv_object[BACKGROUND_MAIN_MENU], LV_OPA_COVER, 0);
-  ui.screen = lv_object[SCREEN_MAIN_MENU];
+  ui->screen = lv_object[SCREEN_MAIN_MENU];
 
 /*STYLES*/
 #if ACTIVATE_BLOCK_TOP_LEFT
@@ -1205,27 +1243,27 @@ static void create_menu() {
   create_block_bot_middle();
 #endif
 #if ACTIVATE_BLOCK_BOT_RIGHT
-  create_block_bot_right();
+  create_block_bot_right(ui);
 #endif
 }
 
 void draw_menu_main() { lv_scr_load(lv_object[SCREEN_MAIN_MENU]); }
 
-void rain_set_intensity(uint8_t visible_count) {
+void rain_set_intensity(uint8_t visible_count,ui_main_menu_t *ui) {
   for (uint8_t i = 0; i < BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS; i++) {
     if (i < visible_count)
-      lv_obj_clear_flag(rain_objs[i], LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(ui->animation.rain[i], LV_OBJ_FLAG_HIDDEN);
     else
-      lv_obj_add_flag(rain_objs[i], LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(ui->animation.rain[i], LV_OBJ_FLAG_HIDDEN);
   }
 }
 
-void snow_set_intensity(uint8_t visible_count) {
+void snow_set_intensity(uint8_t visible_count,ui_main_menu_t *ui) {
   for (uint8_t i = 0; i < BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS; i++) {
     if (i < visible_count)
-      lv_obj_clear_flag(snow_objs[i], LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(ui->animation.snow[i], LV_OBJ_FLAG_HIDDEN);
     else
-      lv_obj_add_flag(snow_objs[i], LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(ui->animation.snow[i], LV_OBJ_FLAG_HIDDEN);
   }
 }
 
@@ -1236,88 +1274,88 @@ bool get_day_activated_now() {
     return false;
 }
 
-void draw_weather_sun_moon() {
+void draw_weather_sun_moon(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_SUN
-  set_visible(lv_object[IMAGE_SUN_48_48], true);
-  set_visible(lv_object[IMAGE_MOON_42_42], false);
+  set_visible(ui->animation.image.sun_48_48, true);
+  set_visible(ui->animation.image.moon_42_42, false);
 #else
   if (get_day_activated_now()) {
-    set_visible(lv_object[IMAGE_SUN_48_48], true);
-    set_visible(lv_object[IMAGE_MOON_42_42], false);
+    set_visible(ui->animation.image.sun_48_48, true);
+    set_visible(ui->animation.image.moon_42_42, false);
   } else {
-    set_visible(lv_object[IMAGE_SUN_48_48], false);
-    set_visible(lv_object[IMAGE_MOON_42_42], true);
+    set_visible(ui->animation.image.sun_48_48, false);
+    set_visible(ui->animation.image.moon_42_42, true);
   }
 
 #endif
 }
 
-void draw_weather_clouds() {
+void draw_weather_clouds(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_CLOUD
-  set_visible(lv_object[IMAGE_CLOUD_BIG_110_50], true);
-  set_visible(lv_object[IMAGE_CLOUD_MID_90_45], true);
-  set_visible(lv_object[IMAGE_CLOUD_SMALL_70_35], true);
-  set_visible(lv_object[IMAGE_CLOUD_THIN_80_30], true);
+  set_visible(ui->animation.image.cloud.big_110_50, true);
+  set_visible(ui->animation.image.cloud.mid_90_45, true);
+  set_visible(ui->animation.image.cloud.small_70_35, true);
+  set_visible(ui->animation.image.cloud.thin_80_30, true);
 #else
   uint8_t current_clouds = get_weather_clouds();
   if (current_clouds < 15) {
-    set_visible(lv_object[IMAGE_CLOUD_THIN_80_30], false);
-    set_visible(lv_object[IMAGE_CLOUD_SMALL_70_35], false);
-    set_visible(lv_object[IMAGE_CLOUD_MID_90_45], false);
-    set_visible(lv_object[IMAGE_CLOUD_BIG_110_50], false);
+    set_visible(ui->animation.image.cloud.thin_80_30, false);
+    set_visible(ui->animation.image.cloud.small_70_35, false);
+    set_visible(ui->animation.image.cloud.mid_90_45, false);
+    set_visible(ui->animation.image.cloud.big_110_50, false);
   } else if (current_clouds > 15 && current_clouds < 25) {
-    set_visible(lv_object[IMAGE_CLOUD_THIN_80_30], true);
-    set_visible(lv_object[IMAGE_CLOUD_SMALL_70_35], false);
-    set_visible(lv_object[IMAGE_CLOUD_MID_90_45], false);
-    set_visible(lv_object[IMAGE_CLOUD_BIG_110_50], false);
+    set_visible(ui->animation.image.cloud.thin_80_30, true);
+    set_visible(ui->animation.image.cloud.small_70_35, false);
+    set_visible(ui->animation.image.cloud.mid_90_45, false);
+    set_visible(ui->animation.image.cloud.big_110_50, false);
   } else if (current_clouds > 25 && current_clouds < 50) {
-    set_visible(lv_object[IMAGE_CLOUD_THIN_80_30], true);
-    set_visible(lv_object[IMAGE_CLOUD_SMALL_70_35], true);
-    set_visible(lv_object[IMAGE_CLOUD_MID_90_45], false);
-    set_visible(lv_object[IMAGE_CLOUD_BIG_110_50], false);
+    set_visible(ui->animation.image.cloud.thin_80_30, true);
+    set_visible(ui->animation.image.cloud.small_70_35, true);
+    set_visible(ui->animation.image.cloud.mid_90_45, false);
+    set_visible(ui->animation.image.cloud.big_110_50, false);
   } else if (current_clouds > 50 && current_clouds < 75) {
-    set_visible(lv_object[IMAGE_CLOUD_THIN_80_30], true);
-    set_visible(lv_object[IMAGE_CLOUD_SMALL_70_35], true);
-    set_visible(lv_object[IMAGE_CLOUD_MID_90_45], true);
-    set_visible(lv_object[IMAGE_CLOUD_BIG_110_50], false);
+    set_visible(ui->animation.image.cloud.thin_80_30, true);
+    set_visible(ui->animation.image.cloud.small_70_35, true);
+    set_visible(ui->animation.image.cloud.mid_90_45, true);
+    set_visible(ui->animation.image.cloud.big_110_50, false);
   } else if (current_clouds > 75) {
-    set_visible(lv_object[IMAGE_CLOUD_THIN_80_30], true);
-    set_visible(lv_object[IMAGE_CLOUD_SMALL_70_35], true);
-    set_visible(lv_object[IMAGE_CLOUD_MID_90_45], true);
-    set_visible(lv_object[IMAGE_CLOUD_BIG_110_50], true);
+    set_visible(ui->animation.image.cloud.thin_80_30, true);
+    set_visible(ui->animation.image.cloud.small_70_35, true);
+    set_visible(ui->animation.image.cloud.mid_90_45, true);
+    set_visible(ui->animation.image.cloud.big_110_50, true);
   }
 
 #endif
 }
 
-void draw_weather_wind() {
+void draw_weather_wind(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_WIND
-  set_visible(lv_object[IMAGE_WIND_SLOW], true);
-  set_visible(lv_object[IMAGE_WIND_MED], true);
-  set_visible(lv_object[IMAGE_WIND_FAST], true);
+  set_visible(ui->animation.wind.slow, true);
+  set_visible(ui->animation.wind.med, true);
+  set_visible(ui->animation.wind.fast, true);
 #else
   uint8_t current_wind = get_weather_wind();
   if (current_wind < 2) {
-    set_visible(lv_object[IMAGE_WIND_SLOW], false);
-    set_visible(lv_object[IMAGE_WIND_MED], false);
-    set_visible(lv_object[IMAGE_WIND_FAST], false);
+    set_visible(ui->animation.wind.slow, false);
+    set_visible(ui->animation.wind.med, false);
+    set_visible(ui->animation.wind.fast, false);
   } else if (current_wind > 2 && current_wind < 10) {
-    set_visible(lv_object[IMAGE_WIND_SLOW], true);
-    set_visible(lv_object[IMAGE_WIND_MED], false);
-    set_visible(lv_object[IMAGE_WIND_FAST], false);
+    set_visible(ui->animation.wind.slow, true);
+    set_visible(ui->animation.wind.med, false);
+    set_visible(ui->animation.wind.fast, false);
   } else if (current_wind > 10 && current_wind < 20) {
-    set_visible(lv_object[IMAGE_WIND_SLOW], true);
-    set_visible(lv_object[IMAGE_WIND_MED], true);
-    set_visible(lv_object[IMAGE_WIND_FAST], false);
+    set_visible(ui->animation.wind.slow, true);
+    set_visible(ui->animation.wind.med, true);
+    set_visible(ui->animation.wind.fast, false);
   } else if (current_wind > 30) {
-    set_visible(lv_object[IMAGE_WIND_SLOW], true);
-    set_visible(lv_object[IMAGE_WIND_MED], true);
-    set_visible(lv_object[IMAGE_WIND_FAST], true);
+    set_visible(ui->animation.wind.slow, true);
+    set_visible(ui->animation.wind.med, true);
+    set_visible(ui->animation.wind.fast, true);
   }
 #endif
 }
 
-void draw_weather_rain() {
+void draw_weather_rain(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_RAIN
   rain_set_intensity(10);
 #else
@@ -1325,11 +1363,11 @@ void draw_weather_rain() {
   if (current_rain > BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS) {
     current_rain = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS;
   }
-  rain_set_intensity(current_rain);
+  rain_set_intensity(current_rain,ui);
 #endif
 }
 
-void draw_weather_snow() {
+void draw_weather_snow(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_SNOW
   snow_set_intensity(10);
 #else
@@ -1338,25 +1376,25 @@ void draw_weather_snow() {
   if (current_snow > BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS) {
     current_snow = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS;
   }
-  snow_set_intensity(current_snow);
+  snow_set_intensity(current_snow,ui);
 #endif
 }
 
-void draw_weather() {
+void draw_weather(ui_main_menu_t *ui) {
 #if ACTIVATE_ANIM_SUN_MOON
-  draw_weather_sun_moon();
+  draw_weather_sun_moon(ui);
 #endif
 #if ACTIVATE_ANIM_CLOUD
-  draw_weather_clouds();
+  draw_weather_clouds(ui);
 #endif
 #if ACTIVATE_ANIM_WIND
-  draw_weather_wind();
+  draw_weather_wind(ui);
 #endif
 #if ACTIVATE_ANIM_RAIN
-  draw_weather_rain();
+  draw_weather_rain(ui);
 #endif
 #if ACTIVATE_ANIM_SNOW
-  draw_weather_snow();
+  draw_weather_snow(ui);
 #endif
 }
 
@@ -1429,16 +1467,16 @@ void update_block_bot_middle(ui_main_menu_t *ui) {
   lv_bar_set_value(ui->standby.bar, timer_standby_sec, LV_ANIM_OFF);
 }
 
-void update_block_bot_right() {
+void update_block_bot_right(ui_main_menu_t *ui) {
   static uint16_t cnt_weather = 0;
   cnt_weather++;
   if (cnt_weather < 2) {
-    draw_weather();
+    draw_weather(ui);
   }
   if (cnt_weather > UPDATE_WEATHER_ANIM_TICKS) {
     ///////////////////////////////////////////////////////////////////////
     // equal 4 min
-    draw_weather();
+    draw_weather(ui);
     cnt_weather = 2;
   }
 }
@@ -1484,7 +1522,7 @@ static void timer_1000(lv_timer_t *timer) {
   update_block_bot_middle(&ui);
 #endif
 #if ACTIVATE_BLOCK_BOT_RIGHT
-  update_block_bot_right();
+  update_block_bot_right(&ui);
 #endif
 }
 
@@ -1535,7 +1573,7 @@ static void init_styles() {
 void init_lv_objects() {
   init_fonts();
   init_styles();
-  create_menu();
+  create_menu(&ui);
   draw_menu_main();
   lv_timer_create(timer_10000, 10000, NULL);
   lv_timer_create(timer_1000, 1000, NULL);

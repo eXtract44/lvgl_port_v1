@@ -5,7 +5,7 @@
  *      Author: Alex
  */
 
-#ifndef INC_LVGL_MENU_H_
+#ifndef INC_LVGL_MENU_H_012,3
 #define INC_LVGL_MENU_H_
 
 #include "../components/lvgl__lvgl/lvgl.h"
