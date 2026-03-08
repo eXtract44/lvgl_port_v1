@@ -1,1 +1,5 @@
 /build
+.clangd
+components/espressif__esp_lcd_touch_gt911/idf_component.yml
+dependencies.lock
+sdkconfig
