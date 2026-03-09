@@ -882,7 +882,7 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
    ui->meteo.wind_label = value;
   /*BLOCK BOT LEFT*/
 }
-
+/////////////////////////////////////////////////wifi events
 static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
 
@@ -898,14 +898,12 @@ static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
     lv_label_set_text_fmt(ui->wifi.rssi_label, "%d dBm", ap_info.rssi);
   }
 }
-
 static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (lv_obj_is_valid(ui->wifi.popup)) {
     set_visible(ui->wifi.popup, false);
   }
 }
-
 static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   lv_obj_t *kb = ui->wifi.keyboard;
@@ -915,7 +913,6 @@ static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
   set_visible(kb, true);
   set_visible(ta, true);
 }
-
 static void btn_keyboard_open_pass_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
 
@@ -926,59 +923,7 @@ static void btn_keyboard_open_pass_event_handler(lv_event_t *e) {
   set_visible(kb, true);
   set_visible(ta, true);
 }
-
-static void btn_settings_open_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-
-  if (lv_obj_is_valid(ui->settings.popup)) {
-    set_visible(ui->settings.popup, true);
-  }
-}
-
-static void btn_weather_open_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-
-  if (lv_obj_is_valid(ui->weather.popup)) {
-    set_visible(ui->weather.popup, true);
-  }
-}
-
-static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-
-  if (lv_obj_is_valid(ui->weather.citys_list)) {
-    set_visible(ui->weather.citys_list, true);
-  }
-}
-
-static void btn_weather_close_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-
-  if(lv_obj_is_valid(ui->weather.popup)) {
-    set_visible(ui->weather.popup, false);
-  }
-}
-
-static void set_current_city_weather_event_handler(lv_event_t *e) {
-  lv_event_code_t code = lv_event_get_code(e);
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  uint16_t city = ui->weather.selected_city;
-  const city_t *cities = ui->weather.cities_de;
-
-  if (code == LV_EVENT_CLICKED) {
-
-    if (lv_obj_is_valid(ui->weather.citys_list)) {
-      set_visible(ui->weather.citys_list, false);
-    }
-    // LV_LOG_USER("City: %s", cities_de[city].name);
-    if (lv_obj_is_valid(ui->weather.city_label)) {
-      lv_label_set_text(ui->weather.city_label, cities[city].name);
-    }
-    build_weather_url(city);
-  }
-}
-
-static void ta_event_cb(lv_event_t *e) {
+static void ta_wifi_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   lv_event_code_t code = lv_event_get_code(e);
   lv_obj_t *kb = lv_event_get_target(e);
@@ -1001,6 +946,66 @@ static void ta_event_cb(lv_event_t *e) {
     set_visible(ui->wifi.ta_pass, false);
   }
 }
+/////////////////////////////////////////////////wifi events
+
+/////////////////////////////////////////////////settings events
+static void btn_settings_open_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if (lv_obj_is_valid(ui->settings.popup)) {
+    set_visible(ui->settings.popup, true);
+  }
+}
+static void btn_settings_close_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (lv_obj_is_valid(ui->settings.popup)) {
+    set_visible(ui->settings.popup, false);
+  }
+}
+/////////////////////////////////////////////////settings events
+
+/////////////////////////////////////////////////weather settings events
+static void btn_weather_open_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if (lv_obj_is_valid(ui->weather.popup)) {
+    set_visible(ui->weather.popup, true);
+  }
+}
+static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if (lv_obj_is_valid(ui->weather.citys_list)) {
+    set_visible(ui->weather.citys_list, true);
+  }
+}
+static void btn_weather_close_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+  if(lv_obj_is_valid(ui->weather.popup)) {
+    set_visible(ui->weather.popup, false);
+  }
+}
+static void set_current_city_weather_event_handler(lv_event_t *e) {
+  lv_event_code_t code = lv_event_get_code(e);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  uint16_t city = ui->weather.selected_city;
+  const city_t *cities = ui->weather.cities_de;
+
+  if (code == LV_EVENT_CLICKED) {
+
+    if (lv_obj_is_valid(ui->weather.citys_list)) {
+      set_visible(ui->weather.citys_list, false);
+    }
+    // LV_LOG_USER("City: %s", cities_de[city].name);
+    if (lv_obj_is_valid(ui->weather.city_label)) {
+      lv_label_set_text(ui->weather.city_label, cities[city].name);
+    }
+    build_weather_url(city);
+  }
+}
+/////////////////////////////////////////////////weather settings events
+
 
 static void ui_create_co2(ui_main_menu_t *ui) {
   create_text("co2 24h", ui->screen, STYLE_TEXT_SMALL,
@@ -1118,7 +1123,7 @@ static void ui_create_wifi(ui_main_menu_t *ui) {
   //////////////////////////////////////////////////////////////////
 
   ui->wifi.keyboard = lv_keyboard_create(ui->wifi.popup);
-  lv_obj_add_event_cb(ui->wifi.keyboard, ta_event_cb, LV_EVENT_ALL, &ui);
+  lv_obj_add_event_cb(ui->wifi.keyboard, ta_wifi_event_cb, LV_EVENT_ALL, &ui);
   /////////////////////////////////////////////////////////////////////////
 
   ui->wifi.ta_ssid = lv_textarea_create(ui->wifi.popup);
@@ -1148,6 +1153,26 @@ static void ui_create_standby(ui_main_menu_t *ui) {
 }
 
 static void ui_create_settings(ui_main_menu_t *ui) {
+ ui->settings.popup =
+      create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
+                        POPUP_WINDOW_ALIGN, 0, 0);
+  lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
+  ///////////////////////////////////////////////////////////////
+  create_text("Settings", ui->settings.popup, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_MID, 0, 0,ui);
+  create_text("Standby:", ui->settings.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+              90,ui);
+  create_text("Standby time:", ui->settings.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+              180,ui);
+  create_text("option 3:", ui->settings.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+              270,ui);
+  /////////////////////////////////////////////////////////////////////////
+  ui->settings.btn_close =
+      create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
+                    btn_settings_close_popup_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->settings.btn_close, LV_SYMBOL_HOME, 0);
+  /////////////////////////////////////////////////////////////////////////
+
 
   ui->settings.btn_open = create_btn_cb(
       ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL,
@@ -1157,7 +1182,7 @@ static void ui_create_settings(ui_main_menu_t *ui) {
 
   lv_obj_set_style_bg_img_src(ui->settings.btn_open, LV_SYMBOL_SETTINGS, 0);
 }
-
+  
 static void create_block_bot_middle(ui_main_menu_t *ui) {
   ui_create_co2(ui);
   ui_create_weather(ui);
@@ -1311,19 +1336,12 @@ void snow_set_intensity(uint8_t visible_count,ui_main_menu_t *ui) {
   }
 }
 
-bool get_day_activated_now() {
-  if (get_time_hour() > DAY_START_HOUR && get_time_hour() < DAY_END_HOUR)
-    return true;
-  else
-    return false;
-}
-
 void draw_weather_sun_moon(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_SUN
   set_visible(ui->animation.image.sun_48_48, true);
   set_visible(ui->animation.image.moon_42_42, false);
 #else
-  if (get_day_activated_now()) {
+  if (get_is_day()) {
     set_visible(ui->animation.image.sun_48_48, true);
     set_visible(ui->animation.image.moon_42_42, false);
   } else {
@@ -1519,9 +1537,7 @@ void update_block_bot_right(ui_main_menu_t *ui) {
   if (cnt_weather < 2) {
     draw_weather(ui);
   }
-  if (cnt_weather > UPDATE_WEATHER_ANIM_TICKS) {
-    ///////////////////////////////////////////////////////////////////////
-    // equal 4 min
+  if (cnt_weather > UPDATE_WEATHER_SEC + 2){
     draw_weather(ui);
     cnt_weather = 2;
   }
@@ -1534,14 +1550,14 @@ static void standby_handle() {
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
     wavesahre_rgb_lcd_bl_on();
-  } else { //! get_day_activated_now()
+  } else { 
     timer_standby_sec++;
     if (timer_standby_sec > MAX_STANDBY_TIME * 5) {
       wavesahre_rgb_lcd_bl_off();
       timer_standby_sec = MAX_STANDBY_TIME * 5;
     }
   }
-  if (get_day_activated_now()) {
+  if (get_is_day()) {
     timer_standby_sec = 0;
   }
 }

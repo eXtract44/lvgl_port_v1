@@ -89,18 +89,18 @@ void build_weather_url(int city_index) {
   }
 
   snprintf(url, sizeof(url),
-  
-          "https://api.open-meteo.com/v1/forecast?"
+
+           "https://api.open-meteo.com/v1/forecast?"
            "latitude=%.4f&longitude=%.4f&"
            "current=temperature_2m_min,relative_humidity_2m,"
-           "cloud_cover,wind_speed_10m,rain,snowfall&"
+           "cloud_cover,wind_speed_10m,rain,snowfall,is_day&&"
            //"current_weather=true&"
            "timeformat=unixtime&timezone=auto",
            cities_de[city_index].lat, cities_de[city_index].lon);
-           
-//ESP_LOGI("WEATHER","lat=%f lon=%f", 
-//cities_de[city_index].lat,
-//cities_de[city_index].lon);
+
+  // ESP_LOGI("WEATHER","lat=%f lon=%f",
+  // cities_de[city_index].lat,
+  // cities_de[city_index].lon);
 
   // fetch_weather();
 }
@@ -170,6 +170,9 @@ void fetch_weather(void) {
           item = cJSON_GetObjectItem(current, "snowfall");
           current_weather_data.snow =
               (cJSON_IsNumber(item)) ? item->valuedouble : 0.0;
+          item = cJSON_GetObjectItem(current, "is_day");
+          if (cJSON_IsNumber(item))
+            current_weather_data.is_day = item->valueint;
 #if DEBUG_INET
           ESP_LOGI(TAG,
                    "Weather updated: Temp=%.1f C Humidity=%d%% Clouds=%d%% "

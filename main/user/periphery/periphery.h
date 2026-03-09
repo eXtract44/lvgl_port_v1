@@ -75,6 +75,7 @@ typedef struct {
   int cloud_cover;
   double wind_speed_10m;
   int wifi_connected;
+  int is_day;
 
 } current_weather_t;
 
@@ -95,6 +96,7 @@ uint8_t get_weather_wind();
 uint8_t get_weather_clouds();
 uint8_t get_weather_rain();
 uint8_t get_weather_snow();
+uint8_t get_is_day();
 
 uint8_t get_battery_status();
 uint8_t get_volume();

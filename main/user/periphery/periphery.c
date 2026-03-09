@@ -364,6 +364,19 @@ uint8_t get_weather_snow() {
   return current_snow;
 }
 
+uint8_t get_is_day() {
+  uint8_t current = 0;
+#if SIMULATE_INET_VALUES
+  current_snow += 1;
+  if (current_snow > 5) {
+    current_snow = 0;
+  }
+#else
+  current= current_weather_data.is_day;
+#endif
+  return current;
+}
+
 uint8_t get_battery_status() {
   static uint8_t current_battery_status = BATTERY_EMPTY;
 #if SIMULATE_BATTERY
