@@ -60,14 +60,23 @@ typedef struct {
 } ui_wifi_t;
 
 typedef struct {
+	lv_obj_t *standby;
+	lv_obj_t *theme;
+	lv_obj_t* option3;
+	
+	} ui_settings_switches_t;
+
+typedef struct {
   lv_obj_t *btn_open;
 
   lv_obj_t *popup;
   lv_obj_t *btn_close;
+  lv_obj_t* btn_save;
 
   lv_obj_t *standby_flag;
   lv_obj_t *standby_time;
   lv_obj_t *standby_day_night;
+  ui_settings_switches_t switch_;
 
 } ui_settings_t;
 
@@ -189,9 +198,9 @@ LV_IMG_DECLARE(rain_drop_heavy_9_22);
 LV_IMG_DECLARE(snow_flake_2_15_15);
 
 void set_visible(lv_obj_t *parent, bool visible) {
-  if (parent == NULL || !lv_obj_is_valid(parent)) {
-    ESP_LOGE(TAG, "ERROR set_visible");
-    return;
+  if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR set_visible");
+	  return;
   }
   if (visible)
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_HIDDEN); // on
@@ -200,7 +209,7 @@ void set_visible(lv_obj_t *parent, bool visible) {
 }
 
 void print_value(const char *flags, float value, lv_obj_t *parent) {
-  if (parent == NULL || !lv_obj_is_valid(parent)) {
+  if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR print_value");
     return;
   }
@@ -209,7 +218,7 @@ void print_value(const char *flags, float value, lv_obj_t *parent) {
 
 static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
                         lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,ui_main_menu_t *ui) {
-  if (parent == NULL || !lv_obj_is_valid(parent)) {
+  if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_text");
     return;
   }
@@ -234,7 +243,7 @@ static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
 static lv_obj_t *create_label(lv_obj_t *parent, const char *text,
                               lv_align_t align, lv_coord_t x_ofs,
                               lv_coord_t y_ofs) {
-  if (parent == NULL || !lv_obj_is_valid(parent)) {
+  if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_label");
     return NULL;
   }
@@ -253,7 +262,7 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   const int16_t end_value = BLOCK_TOP_MID_START_CO2_RIGHT_PART;
   const int16_t end_value_1 = BLOCK_TOP_MID_END_CO2_RIGHT_PART;
 
-  if (parent == NULL || !lv_obj_is_valid(parent)) {
+  if (parent == NULL  ) {
     ESP_LOGE(TAG, "ERROR create_meter");
     return NULL;
   }
@@ -314,7 +323,7 @@ static lv_chart_series_t *ser_co2;
 static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                               lv_align_t align, lv_coord_t x_ofs,
                               lv_coord_t y_ofs) {
-  if (parent == NULL || !lv_obj_is_valid(parent)) {
+  if (parent == NULL  ) {
     ESP_LOGE(TAG, "ERROR create_meter");
     return NULL;
   }
@@ -335,8 +344,12 @@ static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 
 void print_wday(uint8_t wday,ui_main_menu_t *ui) {
   lv_obj_t *parent = ui->time.wday_label;
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return;
+  if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR print_wday");
+	  return;
+  }
+  
+    
   switch (wday) {
   case 1:
     lv_label_set_text(parent, "mo");
@@ -367,8 +380,10 @@ void print_wday(uint8_t wday,ui_main_menu_t *ui) {
 
 void print_time(uint8_t time_hour, uint8_t time_minute,ui_main_menu_t *ui) {
   lv_obj_t *parent = ui->time.hour_minute_label;
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return;
+   if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR print_time");
+	  return;
+  }
   if (get_wifi_status() == WIFI_CONNECTED) {
     if (time_hour < 10 && time_minute < 10) {
       sprintf(string_buffer, "0%d:0%d", (int)time_hour, (int)time_minute);
@@ -385,11 +400,13 @@ void print_time(uint8_t time_hour, uint8_t time_minute,ui_main_menu_t *ui) {
 
   lv_label_set_text(parent, string_buffer);
 }
-
+ 
 void print_mday(uint8_t date_day, uint8_t date_month,ui_main_menu_t *ui) {
   lv_obj_t *parent = ui->time.mday_month_label;
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return;
+  if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR print_mday");
+	  return;
+  }
   if (get_wifi_status() == WIFI_CONNECTED) {
     if (date_day < 10 && date_month < 10) {
       sprintf(string_buffer, "0%d.0%d", (int)date_day, (int)date_month);
@@ -407,10 +424,13 @@ void print_mday(uint8_t date_day, uint8_t date_month,ui_main_menu_t *ui) {
 }
 
 static lv_obj_t *create_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                               lv_align_t align, lv_coord_t x_ofs,
-                               lv_coord_t y_ofs) {
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return NULL;
+      
+                               lv_align_t align, lv_coord_t x_ofs,lv_coord_t y_ofs){
+    if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR create_button");
+	  //return;
+  }
+  
   lv_obj_t *cont = lv_btn_create(parent);
   lv_obj_set_size(cont, w, h);
   lv_obj_align(cont, align, x_ofs, y_ofs);
@@ -421,8 +441,10 @@ static lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                lv_align_t align, lv_coord_t x_ofs,
                                lv_coord_t y_ofs, lv_event_cb_t event_cb,
                                void *user_data) {
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return NULL;
+   if (parent == NULL ){
+	  ESP_LOGE(TAG, "ERROR create_btn_cb");
+	  //return;
+  }
   lv_obj_t *cont = lv_btn_create(parent);
   lv_obj_set_size(cont, w, h);
   lv_obj_align(cont, align, x_ofs, y_ofs);
@@ -433,8 +455,10 @@ static lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 static lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                    lv_align_t align, lv_coord_t x_ofs,
                                    lv_coord_t y_ofs) {
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return NULL;
+   if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR create_button");
+	  //return;
+  }
   lv_obj_t *cont = lv_obj_create(parent);
   if (cont == NULL)
     return NULL;
@@ -442,7 +466,7 @@ static lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_obj_align(cont, align, x_ofs, y_ofs);
   return cont;
 }
-
+  
 static void anim_sun_moon_orbit(void *var, int32_t angle) {
   lv_obj_t *obj = var;
 
@@ -463,8 +487,10 @@ static void anim_sun_moon_orbit(void *var, int32_t angle) {
 static lv_obj_t *create_anim_image_orbit(const lv_img_dsc_t *img_src,
                                          lv_obj_t *parent, lv_align_t align,
                                          lv_coord_t x_ofs, lv_coord_t y_ofs) {
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return NULL;
+  if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR create_anim_image_orbit");
+	  //return;
+  }
 
   lv_obj_t *img = lv_img_create(parent);
   if (img == NULL)
@@ -492,8 +518,10 @@ static void cloud_anim_cb(void *var, int32_t v) {
 lv_obj_t *create_cloud_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
                             lv_coord_t x_ofs, lv_coord_t y_ofs,
                             int16_t amplitude, uint32_t speed) {
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return NULL;
+  if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR create_cloud_anim");
+	  //return;
+  }
 
   lv_obj_t *img = lv_img_create(parent);
   if (img == NULL)
@@ -539,8 +567,10 @@ static void wind_anim_cb(void *var, int32_t v) {
 lv_obj_t *create_wind_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
                            lv_coord_t x_ofs, lv_coord_t y_ofs,
                            int16_t turbulence, uint32_t speed) {
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return NULL;
+  if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR create_wind_anim");
+	  //return;
+  }
 
   lv_obj_t *img = lv_img_create(parent);
   if (img == NULL)
@@ -596,8 +626,10 @@ static void rain_snow_anim_cb(void *var, int32_t v) {
 
 lv_obj_t *create_rain_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
                                 int16_t slope, uint32_t speed) {
-  if (parent == NULL || !lv_obj_is_valid(parent))
-    return NULL;
+ if (parent == NULL  ){
+	  ESP_LOGE(TAG, "ERROR create_rain_snow_anim");
+	  //return;
+  }
 
   lv_obj_t *img = lv_img_create(parent);
   if (img == NULL)
@@ -642,6 +674,20 @@ lv_obj_t *create_rain_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void hide_all_blocks(ui_main_menu_t *ui){
+	set_visible(ui->animation.screen, false);  
+	set_visible(ui->meteo.screen, false);
+	set_visible(ui->sensor.screen, false);
+	set_visible(ui->time.screen, false);
+}
+
+static void show_all_blocks(ui_main_menu_t *ui){
+	set_visible(ui->animation.screen, true);  
+	set_visible(ui->meteo.screen, true);
+	set_visible(ui->sensor.screen, true);
+	set_visible(ui->time.screen, true);
+}
 
 static void create_block_top_left(ui_main_menu_t *ui) {
   /*STYLES*/
@@ -752,8 +798,6 @@ static void create_block_top_middle(ui_main_menu_t *ui) {
 }
 
 static void create_block_top_right(ui_main_menu_t *ui) {
-  /*STYLES*/
-
   /*BLOCK TOP RIGHT*/
 
   lv_obj_t *bg = create_background(
@@ -762,8 +806,6 @@ static void create_block_top_right(ui_main_menu_t *ui) {
       BLOCK_TOP_RIGHT_X_START, BLOCK_TOP_RIGHT_Y_START);
   if (!bg)
     return;
-   
-    
   ui->time.screen = bg;
   lv_obj_add_style(ui->time.screen, &ui->style.top_right, 0);
   lv_obj_set_scrollbar_mode(ui->time.screen,
@@ -803,10 +845,7 @@ static void create_block_top_right(ui_main_menu_t *ui) {
 }
 
 static void create_block_bot_left(ui_main_menu_t *ui) {
-  /*STYLES*/
-
   /*BLOCK BOT LEFT*/
-
   lv_obj_t *bg =
       create_background(ui->screen, BLOCK_BOT_LEFT_WIDTH,
                         BLOCK_BOT_LEFT_HEIGHT, BLOCK_BOT_LEFT_ALIGN_BACKGROUND,
@@ -884,8 +923,9 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
 }
 /////////////////////////////////////////////////wifi events
 static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
 
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+//hide_all_blocks(ui);
   if (lv_obj_is_valid(ui->wifi.popup)) {
     set_visible(ui->wifi.popup, true);
   }
@@ -900,9 +940,10 @@ static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
 }
 static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (lv_obj_is_valid(ui->wifi.popup)) {
+  if (ui->wifi.popup != NULL) {
     set_visible(ui->wifi.popup, false);
   }
+  //show_all_blocks(ui);
 }
 static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -962,6 +1003,17 @@ static void btn_settings_close_popup_event_handler(lv_event_t *e) {
     set_visible(ui->settings.popup, false);
   }
 }
+static void btn_settings_save_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+}
+static void settings_switch_popup_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * obj = lv_event_get_target(e);
+    if(code == LV_EVENT_VALUE_CHANGED) {
+        LV_LOG_USER("State: %s\n", lv_obj_has_state(obj, LV_STATE_CHECKED) ? "On" : "Off");
+    }
+}
 /////////////////////////////////////////////////settings events
 
 /////////////////////////////////////////////////weather settings events
@@ -1005,6 +1057,7 @@ static void set_current_city_weather_event_handler(lv_event_t *e) {
   }
 }
 /////////////////////////////////////////////////weather settings events
+
 
 
 static void ui_create_co2(ui_main_menu_t *ui) {
@@ -1152,11 +1205,29 @@ static void ui_create_standby(ui_main_menu_t *ui) {
   lv_bar_set_range(ui->standby.bar, 0, MAX_STANDBY_TIME);
 }
 
+static void ui_create_settigs_switches(ui_main_menu_t *ui){  
+    ui->settings.switch_.standby = lv_switch_create(ui->settings.popup);
+    lv_obj_align(ui->settings.switch_.standby, LV_ALIGN_TOP_LEFT, 250, 90);
+   //  lv_obj_add_event_cb(ui->settings.switch_.standby, settings_switch_popup_event_handler, LV_EVENT_ALL, NULL);
+
+
+//    ui->settings.switch_.theme = lv_switch_create(ui->settings.popup);
+//    lv_obj_align(ui->settings.switch_.theme, LV_ALIGN_TOP_LEFT, 250, 180);
+//   // lv_obj_add_state(sw, LV_STATE_CHECKED);
+//    lv_obj_add_event_cb(ui->settings.switch_.theme, settings_switch_popup_event_handler, LV_EVENT_ALL, NULL);
+//
+//    ui->settings.switch_.option3 = lv_switch_create(ui->settings.popup);
+//    //lv_obj_add_state(sw, LV_STATE_DISABLED);
+//     lv_obj_align(ui->settings.switch_.option3, LV_ALIGN_TOP_LEFT, 250, 270);
+//    lv_obj_add_event_cb(ui->settings.switch_.option3, settings_switch_popup_event_handler, LV_EVENT_ALL, NULL);
+
+}
+
 static void ui_create_settings(ui_main_menu_t *ui) {
  ui->settings.popup =
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
+  //lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
   ///////////////////////////////////////////////////////////////
   create_text("Settings", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0,ui);
@@ -1171,6 +1242,11 @@ static void ui_create_settings(ui_main_menu_t *ui) {
       create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
                     btn_settings_close_popup_event_handler, ui);
   lv_obj_set_style_bg_img_src(ui->settings.btn_close, LV_SYMBOL_HOME, 0);
+    /////////////////////////////////////////////////////////////////////////
+  ui->settings.btn_save =
+      create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 300, 250,
+                    btn_settings_save_popup_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->settings.btn_save, LV_SYMBOL_HOME, 0);
   /////////////////////////////////////////////////////////////////////////
 
 
@@ -1181,8 +1257,13 @@ static void ui_create_settings(ui_main_menu_t *ui) {
       btn_settings_open_popup_event_handler, &ui);
 
   lv_obj_set_style_bg_img_src(ui->settings.btn_open, LV_SYMBOL_SETTINGS, 0);
-}
   
+    
+ 
+  ui_create_settigs_switches(ui);
+  set_visible(ui->settings.popup, false);
+}
+   
 static void create_block_bot_middle(ui_main_menu_t *ui) {
   ui_create_co2(ui);
   ui_create_weather(ui);
@@ -1284,18 +1365,11 @@ static void create_block_bot_right(ui_main_menu_t *ui) {
 }
 
 static void create_menu(ui_main_menu_t *ui) {
-
   ui->screen = lv_obj_create(NULL);
   lv_obj_set_style_bg_color(ui->screen, lv_color_black(), 0);
   lv_obj_set_style_bg_opa(ui->screen, LV_OPA_COVER, 0);
-  //lv_object[BACKGROUND_MAIN_MENU] = lv_obj_create(ui->screen);
   lv_obj_set_size(ui->screen, LVGL_PORT_H_RES,
                   LVGL_PORT_V_RES);
-//  lv_obj_set_style_bg_color(lv_object[BACKGROUND_MAIN_MENU], lv_color_black(),
-//                            0);
-//  lv_obj_set_style_bg_opa(lv_object[BACKGROUND_MAIN_MENU], LV_OPA_COVER, 0);
-
-/*STYLES*/
 #if ACTIVATE_BLOCK_TOP_LEFT
   create_block_top_left(ui);
 #endif
