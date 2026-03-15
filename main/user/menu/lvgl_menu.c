@@ -16,6 +16,19 @@
 #include "user/periphery/open_meteo.h"
 #include "user/periphery/wifi.h"
 
+#define SENSOR_HISTORY_POINTS     72    // 6 часов × 12 точек/час
+#define SENSOR_RECORD_INTERVAL   300    // тиков (секунд) между записями
+
+// Кольцевой буфер для истории датчиков
+typedef struct {
+    int16_t temperature[SENSOR_HISTORY_POINTS];  // °C × 10 (фиксированная точка)
+    uint8_t humidity[SENSOR_HISTORY_POINTS];     // %
+    uint8_t  head;       // индекс следующей записи
+    uint8_t  count;      // сколько точек уже заполнено (0..72)
+} sensor_history_t;
+
+static sensor_history_t sensor_history = {0};
+
 typedef struct {
   lv_obj_t *screen;
   lv_obj_t *btn_temperature;
@@ -121,6 +134,9 @@ typedef struct {
 } ui_weather_anim_t;
 
 typedef struct {
+	lv_obj_t *popup;
+	lv_obj_t *btn_close;
+	lv_obj_t *chart;
   lv_obj_t *screen;
   lv_obj_t *btn_temperature;
   lv_obj_t *btn_humidity;
@@ -197,6 +213,7 @@ void show_all_blocks(ui_main_menu_t *ui);
 static void ui_create_wifi_popup(ui_main_menu_t *ui);
 static void ui_create_weather_popup(ui_main_menu_t *ui);
 static void ui_create_settings_popup(ui_main_menu_t *ui);
+static void ui_create_sensor_popup(ui_main_menu_t *ui);
 
 void set_visible(lv_obj_t *parent, bool visible) {
   if (parent == NULL) {
@@ -627,54 +644,6 @@ static void rain_snow_anim_cb(void *var, int32_t v) {
     lv_obj_set_pos(r->obj, x, y + 30);
 }
 
-//lv_obj_t *create_rain_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
-//                                int16_t slope, uint32_t speed) {
-//  if (parent == NULL) {
-//    ESP_LOGE(TAG, "ERROR create_rain_snow_anim");
-//    // return;
-//  }
-//
-//  lv_obj_t *img = lv_img_create(parent);
-//  if (img == NULL)
-//    return NULL;
-//  lv_img_set_src(img, img_src);
-//
-//  lv_coord_t container_w = lv_obj_get_width(parent);
-//  lv_coord_t container_h = lv_obj_get_height(parent);
-//
-//  lv_coord_t img_w = lv_obj_get_width(img);
-//  lv_coord_t img_h = lv_obj_get_height(img);
-//
-//  static rain_snow_anim_t
-//      rain_snow_pool[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS +
-//                     BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS];
-//  static uint8_t pool_index = 0;
-//
-//  if (pool_index >= BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS +
-//                        BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS)
-//    pool_index = 0;
-//
-//  rain_snow_anim_t *r = &rain_snow_pool[pool_index++];
-//
-//  r->obj = img;
-//  r->container_w = container_w;
-//  r->container_h = container_h;
-//  r->img_w = img_w;
-//  r->img_h = img_h;
-//  r->slope = slope; // 1 = 45°, 2 = круче, 0 = вертикально
-//  r->phase = lv_rand(0, container_w);
-//
-//  lv_anim_t a;
-//  lv_anim_init(&a);
-//  lv_anim_set_var(&a, r);
-//  lv_anim_set_exec_cb(&a, rain_snow_anim_cb);
-//  lv_anim_set_values(&a, 0, container_w + img_w);
-//  lv_anim_set_time(&a, speed);
-//  lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
-//  lv_anim_start(&a);
-//
-//  return img;
-//}
 
 lv_obj_t *create_rain_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
                             int16_t slope, uint32_t speed) {
@@ -766,12 +735,150 @@ lv_obj_t *create_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
     return img;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void sensor_history_push(sensor_history_t *h) {
+    // Записываем температуру с одним знаком после запятой (×10)
+    // get_temperature_aht10() возвращает float — умножаем и округляем
+    h->temperature[h->head] = (int16_t)(get_temperature_aht10() * 10.0f + 0.5f);
+    h->humidity[h->head]    = get_humidity_aht10();
+ 
+    h->head = (h->head + 1) % SENSOR_HISTORY_POINTS;
+ 
+    if (h->count < SENSOR_HISTORY_POINTS)
+        h->count++;
+}
+static void sensor_history_get(const sensor_history_t *h, uint8_t idx,
+                                int16_t *temp_x10, uint8_t *hum) {
+    // Вычисляем реальный индекс в кольцевом буфере
+    // head указывает на следующую ячейку для записи
+    // старейшая точка: (head - count + POINTS) % POINTS
+    uint8_t real_idx = (h->head - h->count + idx + SENSOR_HISTORY_POINTS)
+                       % SENSOR_HISTORY_POINTS;
+    *temp_x10 = h->temperature[real_idx];
+    *hum      = h->humidity[real_idx];
+}  
+
+
+  
+/////////////////////////////////////////////////temperature inside events
+static void btn_tepmerature_inside_open_popup_event_handler(lv_event_t *e){
+	 ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
+ 
+    // [FIX] Guard от двойного открытия
+    if (ui->sensor.popup != NULL && lv_obj_is_valid(ui->sensor.popup))
+        return;
+ 
+    hide_all_blocks(ui);
+    ui_create_sensor_popup(ui); 
+}
+static void btn_sensor_close_popup_event_handler(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
+ 
+    lv_obj_del(ui->sensor.popup);
+ 
+    ui->sensor.popup     = NULL;
+    ui->sensor.btn_close = NULL;
+    ui->sensor.chart     = NULL;
+ 
+    show_all_blocks(ui);
+}
+/////////////////////////////////////////////////temperature inside events
+
+static void ui_create_sensor_popup(ui_main_menu_t *ui){
+
+   // --- Фон popup ---
+    ui->sensor.popup =
+        create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
+                          POPUP_WINDOW_ALIGN, 0, 0);
+    lv_obj_set_scrollbar_mode(ui->sensor.popup, LV_SCROLLBAR_MODE_OFF);
+ 
+    // --- Заголовок ---
+    create_text("Temperature / Humidity  (6h)", ui->sensor.popup,
+                STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
+ 
+    // --- Кнопка закрытия ---
+    ui->sensor.btn_close =
+        create_btn_cb(ui->sensor.popup, 50, 50, LV_ALIGN_TOP_RIGHT, -5, -5,
+                      btn_sensor_close_popup_event_handler, ui);
+    lv_obj_set_style_bg_img_src(ui->sensor.btn_close, LV_SYMBOL_HOME, 0);
+ 
+    // --- График ---
+    // Размер: почти весь popup, отступы под оси
+    lv_obj_t *chart = lv_chart_create(ui->sensor.popup);
+    lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 40, POPUP_WINDOW_HEIGHT - 90);
+    lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+    lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
+ 
+    // Сетка
+    lv_chart_set_div_line_count(chart, 6, 6);
+ 
+    // Диапазоны осей
+    // Ось Y левая  — температура: 10..35 °C (×10 → 100..350)
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 100, 350);
+    // Ось Y правая — влажность: 20..80 %
+    lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, 20, 80);
+ 
+    // Засечки осей
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y,
+                           5, 3,   // major/minor tick length
+                           6, 1,   // 6 делений, каждая подписана
+                           true, 50);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y,
+                           5, 3,
+                           6, 1,
+                           true, 40);
+ 
+    // --- Серия температуры (левая ось, красная) ---
+    lv_chart_series_t *ser_temp =
+        lv_chart_add_series(chart,
+                            lv_palette_main(LV_PALETTE_RED),
+                            LV_CHART_AXIS_PRIMARY_Y);
+ 
+    // --- Серия влажности (правая ось, синяя) ---
+    lv_chart_series_t *ser_hum =
+        lv_chart_add_series(chart,
+                            lv_palette_main(LV_PALETTE_BLUE),
+                            LV_CHART_AXIS_SECONDARY_Y);
+ 
+    // --- Заполняем серии из кольцевого буфера ---
+    uint8_t n = sensor_history.count;
+ 
+    if (n == 0) {
+        // Буфер пустой — заполняем LV_CHART_POINT_NONE (пунктир не рисуется)
+        for (uint8_t i = 0; i < SENSOR_HISTORY_POINTS; i++) {
+            lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
+            lv_chart_set_value_by_id(chart, ser_hum,  i, LV_CHART_POINT_NONE);
+        }
+    } else {
+        // Сначала заполняем пустые слоты в начале (если буфер ещё не полный)
+        uint8_t empty_slots = SENSOR_HISTORY_POINTS - n;
+        for (uint8_t i = 0; i < empty_slots; i++) {
+            lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
+            lv_chart_set_value_by_id(chart, ser_hum,  i, LV_CHART_POINT_NONE);
+        }
+        // Затем реальные данные из буфера (старые → новые)
+        for (uint8_t i = 0; i < n; i++) {
+            int16_t temp_x10;
+            uint8_t hum;
+            sensor_history_get(&sensor_history, i, &temp_x10, &hum);
+            lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i, temp_x10);
+            lv_chart_set_value_by_id(chart, ser_hum,  empty_slots + i, hum);
+        }
+    }
+ 
+    lv_chart_refresh(chart);
+    ui->sensor.chart = chart;
+                
+}
 
 static void create_block_top_left(ui_main_menu_t *ui) {
   /*STYLES*/
 
   /*BLOCK TOP LEFT*/
   lv_obj_t *bg =
+
       create_background(ui->screen, BLOCK_TOP_LEFT_WIDTH, BLOCK_TOP_LEFT_HEIGHT,
                         BLOCK_TOP_LEFT_ALIGN_BACKGROUND, BLOCK_TOP_LEFT_X_START,
                         BLOCK_TOP_LEFT_Y_START);
@@ -780,14 +887,16 @@ static void create_block_top_left(ui_main_menu_t *ui) {
   ui->sensor.screen = bg;
 
   lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
+    lv_obj_set_scrollbar_mode(ui->sensor.screen, LV_SCROLLBAR_MODE_OFF);
+  
 
   create_text("inside", ui->sensor.screen, STYLE_TEXT_SMALL,
               BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE, ui);
 
-  lv_obj_t *btn_symbol = create_button(
+  lv_obj_t *btn_symbol =   create_btn_cb(
       ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
       BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-      BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_1);
+      BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_1,btn_tepmerature_inside_open_popup_event_handler,ui);
   if (!btn_symbol)
     return;
   ui->sensor.btn_temperature = btn_symbol;
@@ -931,6 +1040,7 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
 
   ui->meteo.screen = bg;
   lv_obj_add_style(ui->meteo.screen, &ui->style.bot_left, 0);
+  lv_obj_set_scrollbar_mode(ui->meteo.screen, LV_SCROLLBAR_MODE_OFF);
   create_text("outside", ui->meteo.screen, STYLE_TEXT_SMALL,
               BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE, ui);
 
@@ -1204,6 +1314,8 @@ static void set_current_city_weather_event_handler(lv_event_t *e) {
     build_weather_url(city);
 }
 /////////////////////////////////////////////////weather settings events
+
+
 
 static void ui_create_co2(ui_main_menu_t *ui) {
   create_text("co2 24h", ui->screen, STYLE_TEXT_SMALL,
@@ -1882,9 +1994,13 @@ static void timer_1000(lv_timer_t *timer) {
 #if ACTIVATE_BLOCK_BOT_RIGHT
   update_block_bot_right(&ui);
 #endif
-  // heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+     static uint16_t cnt_sensor_history = 0;
+   cnt_sensor_history++;
+   if (cnt_sensor_history >= SENSOR_RECORD_INTERVAL) {
+       sensor_history_push(&sensor_history);
+       cnt_sensor_history = 0;
 }
-
+}
 static void timer_200(lv_timer_t *timer) {
   LV_UNUSED(timer);
   standby_handle();
@@ -1939,3 +2055,4 @@ void init_lv_objects() {
   lv_timer_create(timer_1000, 1000, NULL);
   lv_timer_create(timer_200, 200, NULL);
 }
+
