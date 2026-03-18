@@ -4,19 +4,18 @@
 #include "user/menu/lvgl_user_config.h"
 #include "waveshare_rgb_lcd_port.h"
 
-
-
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "freertos/event_groups.h"
-#include "nvs_flash.h"
+//#include "nvs_flash.h"
 
 
 #include "user/periphery/open_meteo.h"
 #include "user/periphery/wifi.h"
 #include "user/periphery/time.h"
+#include "user/periphery/nvs_user.h"
 
-#include "user/periphery/sd_card.h"
+//#include "user/periphery/sd_card.h"
 
 extern SemaphoreHandle_t weather_mutex;
 #if  ACTIVATE_BLOCK_BOT_RIGHT || ACTIVATE_BLOCK_BOT_LEFT
@@ -25,18 +24,14 @@ void weather_task(void *arg) {
 #if DEBUG_INET
     ESP_LOGI(TAG, "Fetching weather...");
 #endif
-
     wifi_print_info();
     fetch_weather();
     vTaskDelay(pdMS_TO_TICKS(60000));
-  
   }
-  
 }
  #endif 
 void app_main() {
-  nvs_flash_init();
-
+nvs_user_init();
   wifi_init_sta(); // ← ДО запуска weather_task
   #if ACTIVATE_BLOCK_TOP_RIGHT
   setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);

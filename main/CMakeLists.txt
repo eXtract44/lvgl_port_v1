@@ -5,6 +5,7 @@ idf_component_register(
     "user/periphery/open_meteo.c"
     "user/periphery/time.c"
     "user/periphery/sd_card.c"
+     "user/periphery/nvs_user.c"
     
     "user/menu/lvgl_menu.c" 
     "user/periphery/periphery.c" 

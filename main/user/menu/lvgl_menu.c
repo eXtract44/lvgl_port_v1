@@ -15,6 +15,7 @@
 #include "esp_wifi.h"
 #include "user/periphery/open_meteo.h"
 #include "user/periphery/wifi.h"
+#include "user/periphery/nvs_user.h"
 
 #define SENSOR_HISTORY_POINTS     72    // 6 часов × 12 точек/час
 #define SENSOR_RECORD_INTERVAL   300    // тиков (секунд) между записями
@@ -55,6 +56,9 @@ typedef struct {
 
 typedef struct {
 	lv_obj_t *standby;
+	lv_obj_t *theme;
+	bool standby_status;
+	bool theme_status;
 } ui_switchs_t;
 
 typedef struct {
@@ -806,7 +810,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui){
     // --- График ---
     // Размер: почти весь popup, отступы под оси
     lv_obj_t *chart = lv_chart_create(ui->sensor.popup);
-    lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 40, POPUP_WINDOW_HEIGHT - 90);
+    lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 80, POPUP_WINDOW_HEIGHT - 150);
     lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -10);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
     lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
@@ -1240,11 +1244,6 @@ static void btn_settings_close_popup_event_handler(lv_event_t *e) {
  
     show_all_blocks(ui);
 }
-static void btn_settings_save_popup_event_handler(lv_event_t *e) {
-   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    if (!ui) return;
-    // TODO: сохранение настроек
-}
 /////////////////////////////////////////////////settings events
 
 /////////////////////////////////////////////////weather settings events
@@ -1480,9 +1479,34 @@ static void ui_create_standby(ui_main_menu_t *ui) {
   lv_bar_set_range(ui->standby.bar, 0, MAX_STANDBY_TIME);
 }
 
+static void switch_event_cb(lv_event_t *e) {
+    // Вызывается при любом изменении любого свитча
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+
+    ui->settings.switch_.standby_status = lv_obj_has_state(ui->settings.switch_.standby, LV_STATE_CHECKED);
+    ui->settings.switch_.theme_status   = lv_obj_has_state(ui->settings.switch_.theme,   LV_STATE_CHECKED);
+
+    settings_save(ui->settings.switch_.standby_status, ui->settings.switch_.theme_status);
+}
+
 static void ui_create_settigs_switches(ui_main_menu_t *ui) {
   ui->settings.switch_.standby = lv_switch_create(ui->settings.popup);
-  lv_obj_align(ui->settings.switch_.standby, LV_ALIGN_TOP_LEFT, 250, 90);
+    lv_obj_align(ui->settings.switch_.standby, LV_ALIGN_TOP_LEFT, 500, 90);
+
+    ui->settings.switch_.theme = lv_switch_create(ui->settings.popup);
+    lv_obj_align(ui->settings.switch_.theme, LV_ALIGN_TOP_LEFT, 500, 180);
+lv_obj_add_event_cb(ui->settings.switch_.standby, switch_event_cb, LV_EVENT_VALUE_CHANGED, ui);
+lv_obj_add_event_cb(ui->settings.switch_.theme,   switch_event_cb, LV_EVENT_VALUE_CHANGED, ui);
+    // Загружаем сохранённые значения
+
+    settings_load(&ui->settings.switch_.standby_status, &ui->settings.switch_.theme_status);
+
+
+    if (ui->settings.switch_.standby_status) lv_obj_add_state(ui->settings.switch_.standby, LV_STATE_CHECKED);
+    else         lv_obj_clear_state(ui->settings.switch_.standby, LV_STATE_CHECKED);
+
+    if (ui->settings.switch_.theme_status)   lv_obj_add_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+    else         lv_obj_clear_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
 }
 
 
@@ -1496,20 +1520,14 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
                 LV_ALIGN_TOP_MID, 0, 0, ui);
     create_text("Standby:", ui->settings.popup, STYLE_TEXT_SMALL,
                 LV_ALIGN_TOP_LEFT, 15, 90, ui);
-    create_text("Standby time:", ui->settings.popup, STYLE_TEXT_SMALL,
+    create_text("Theme Light/Dark:", ui->settings.popup, STYLE_TEXT_SMALL,
                 LV_ALIGN_TOP_LEFT, 15, 180, ui);
-    create_text("option 3:", ui->settings.popup, STYLE_TEXT_SMALL,
-                LV_ALIGN_TOP_LEFT, 15, 270, ui);
  
     ui->settings.btn_close =
         create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
                       btn_settings_close_popup_event_handler, ui);
     lv_obj_set_style_bg_img_src(ui->settings.btn_close, LV_SYMBOL_HOME, 0);
  
-    ui->settings.btn_save =
-        create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 300, 250,
-                      btn_settings_save_popup_event_handler, ui);
-    lv_obj_set_style_bg_img_src(ui->settings.btn_save, LV_SYMBOL_SAVE, 0);
  
     // [FIX 4A] Switches создаются здесь — внутри popup, не при init
     ui_create_settigs_switches(ui);
@@ -1631,6 +1649,7 @@ static void create_block_bot_right(ui_main_menu_t *ui) {
 }
 
 static void create_menu(ui_main_menu_t *ui) {
+settings_load(&ui->settings.switch_.standby_status, &ui->settings.switch_.theme_status);
   ui->screen = lv_obj_create(NULL);
   lv_obj_set_style_bg_color(ui->screen, lv_color_black(), 0);
   lv_obj_set_style_bg_opa(ui->screen, LV_OPA_COVER, 0);
@@ -1953,7 +1972,7 @@ void update_block_bot_right(ui_main_menu_t *ui) {
 
 bool is_screen_pressed(void) { return standby_touched; }
 
-static void standby_handle() {
+static void standby_handle(ui_main_menu_t *ui) {
 
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
@@ -1965,7 +1984,7 @@ static void standby_handle() {
       timer_standby_sec = MAX_STANDBY_TIME * 5;
     }
   }
-  if (get_is_day()) {
+  if (ui->settings.switch_.standby_status) {
     timer_standby_sec = 0;
   }
 }
@@ -2003,7 +2022,7 @@ static void timer_1000(lv_timer_t *timer) {
 }
 static void timer_200(lv_timer_t *timer) {
   LV_UNUSED(timer);
-  standby_handle();
+  standby_handle(&ui);
 }
 
 static void init_fonts(ui_main_menu_t *ui) {
