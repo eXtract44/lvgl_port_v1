@@ -10,8 +10,12 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
-void settings_save(bool standby, bool theme);
-void settings_load(bool *standby, bool *theme);
+void main_settings_save(bool standby, bool theme);
+void main_settings_load(bool *standby, bool *theme);
+
+void weather_settings_save(uint16_t city);
+void weather_settings_load(uint16_t *city) ;
+
 void nvs_user_init();
 
 

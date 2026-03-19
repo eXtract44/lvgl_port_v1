@@ -10,6 +10,8 @@
 
 #include "../components/lvgl__lvgl/lvgl.h"
 #include <stdio.h>
+#include "user/periphery/open_meteo.h"
+#include "user/menu/lvgl_user_config.h"
 
 #define constrain(input, min, max)                                             \
   ({                                                                           \
@@ -30,6 +32,175 @@
 #define MY_TEMPERATURE_SYMBOL "\xEF\x8B\x89"
 #define MY_CLOUD_SYMBOL "\xEF\x83\x82"
 
+#define SENSOR_HISTORY_POINTS     72    // 6 часов × 12 точек/час
+#define SENSOR_RECORD_INTERVAL   300    // тиков (секунд) между записями
+
+// Кольцевой буфер для истории датчиков
+typedef struct {
+    int16_t temperature[SENSOR_HISTORY_POINTS];  // °C × 10 (фиксированная точка)
+    uint8_t humidity[SENSOR_HISTORY_POINTS];     // %
+    uint8_t  head;       // индекс следующей записи
+    uint8_t  count;      // сколько точек уже заполнено (0..72)
+} sensor_history_t;
+
+typedef struct {
+  lv_obj_t *screen;
+  lv_obj_t *btn_temperature;
+  lv_obj_t *btn_humidity;
+  lv_obj_t *btn_wind;
+  lv_obj_t *temperature_label;
+  lv_obj_t *humidity_label;
+  lv_obj_t *wind_label;
+} ui_weather_value_t;
+
+typedef struct {
+  lv_obj_t *popup;
+  lv_obj_t *btn_open;
+  lv_obj_t *btn_close;
+
+  lv_obj_t *city_label;
+  lv_obj_t *citys_list;
+  lv_obj_t *btn_open_city_list;
+  const city_t *cities_de;
+  uint16_t city_count;
+   uint16_t saved_city;
+
+} ui_weather_t;
+
+typedef struct {
+	lv_obj_t *standby;
+	lv_obj_t *theme;
+	bool standby_status;
+	bool theme_status;
+} ui_switchs_t;
+
+typedef struct {
+  lv_obj_t *btn_open;
+
+  lv_obj_t *popup;
+  lv_obj_t *btn_close;
+
+  lv_obj_t *ssid_label;
+  lv_obj_t *pass_label;
+  lv_obj_t *rssi_label;
+
+  lv_obj_t *btn_keyboard_ssid;
+  lv_obj_t *btn_keyboard_pass;
+
+  lv_obj_t *keyboard;
+  lv_obj_t *ta_ssid;
+  lv_obj_t *ta_pass;
+
+} ui_wifi_t;
+
+typedef struct {
+	ui_switchs_t switch_;
+  lv_obj_t *btn_open;
+
+  lv_obj_t *popup;
+  lv_obj_t *btn_close;
+  lv_obj_t *btn_save;
+
+  lv_obj_t *standby_flag;
+  lv_obj_t *standby_time;
+  lv_obj_t *standby_day_night;
+} ui_settings_t;
+
+typedef struct {
+  lv_obj_t *meter;
+  lv_obj_t *co2_label;
+  lv_meter_indicator_t *indicator;
+  lv_obj_t *chart;
+  lv_obj_t *title;
+
+} ui_co2_t;
+
+typedef struct {
+  lv_obj_t *bar;
+} ui_standby_t;
+
+typedef struct {
+  lv_obj_t *big_110_50;
+  lv_obj_t *mid_90_45;
+  lv_obj_t *small_70_35;
+  lv_obj_t *thin_80_30;
+} ui_cloud_t;
+
+typedef struct {
+  lv_obj_t *sun_48_48;
+  lv_obj_t *moon_42_42;
+  ui_cloud_t cloud;
+  lv_obj_t *wind_60_50;
+  lv_obj_t *rain_9_22;
+  lv_obj_t *snow_15_15;
+} ui_images_t;
+
+typedef struct {
+  lv_obj_t *slow;
+  lv_obj_t *med;
+  lv_obj_t *fast;
+} ui_wind_t;
+
+typedef struct {
+  lv_obj_t *screen;
+  ui_images_t image;
+  ui_wind_t wind;
+  lv_obj_t *rain[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS];
+  lv_obj_t *snow[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS];
+
+} ui_weather_anim_t;
+
+typedef struct {
+	lv_obj_t *popup;
+	lv_obj_t *btn_close;
+	lv_obj_t *chart;
+  lv_obj_t *screen;
+  lv_obj_t *btn_temperature;
+  lv_obj_t *btn_humidity;
+  lv_obj_t *btn_tvoc;
+  lv_obj_t *temperature_label;
+  lv_obj_t *humidity_label;
+  lv_obj_t *tvoc_label;
+} ui_sensor_t;
+
+typedef struct {
+  lv_obj_t *screen;
+  lv_obj_t *hour_minute_label;
+  lv_obj_t *mday_month_label;
+  lv_obj_t *wday_label;
+} ui_time_t;
+
+typedef struct {
+  lv_style_t small;
+  lv_style_t very_large;
+
+} font_style_t;
+
+typedef struct {
+	lv_style_t main;
+  lv_style_t top_left;
+  lv_style_t top_right;
+  lv_style_t bot_left;
+  lv_style_t bot_right;
+  lv_style_t chart_co2;
+
+} screen_style_t;
+
+typedef struct {
+  lv_obj_t *screen;
+
+  ui_weather_anim_t animation;
+  ui_co2_t co2;
+  ui_weather_t weather;
+  ui_wifi_t wifi;
+  ui_standby_t standby;
+  ui_settings_t settings;
+  ui_sensor_t sensor;
+  ui_time_t time;
+  ui_weather_value_t meteo;
+  font_style_t font;
+  screen_style_t style;
+} ui_main_menu_t;
 
 
 enum namesOfFonts {

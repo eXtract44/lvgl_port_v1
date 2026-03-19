@@ -13,9 +13,12 @@
 #include "esp_log.h"
 #include "open_meteo.h"
 #include "user/periphery/periphery.h"
+#include "user/menu/lvgl_menu.h"
 #include <stdint.h>
 
 static const char *TAG = "WEATHER_APP";
+
+extern ui_main_menu_t ui;
 
 const city_t cities_de[CITY_COUNT] = {
     {"Berlin", 52.5200, 13.4050},       {"Hamburg", 53.5511, 9.9937},
@@ -92,7 +95,7 @@ void build_weather_url(int city_index) {
 
            "https://api.open-meteo.com/v1/forecast?"
            "latitude=%.4f&longitude=%.4f&"
-           "current=temperature_2m_min,relative_humidity_2m,"
+           "current=temperature_2m,relative_humidity_2m,"
            "cloud_cover,wind_speed_10m,rain,snowfall,is_day&&"
            //"current_weather=true&"
            "timeformat=unixtime&timezone=auto",
@@ -106,7 +109,7 @@ void build_weather_url(int city_index) {
 }
 
 void fetch_weather(void) {
-  build_weather_url(CITY_DORTMUND);
+  build_weather_url(ui.weather.saved_city);
   // ESP_LOGI(TAG, "build_weather_url: %s",url);
   //   static const char *WEATHER_URL_CURRENT =
   //      "https://api.open-meteo.com/v1/forecast?"
@@ -144,7 +147,7 @@ void fetch_weather(void) {
         if (current) {
           cJSON *item = NULL;
 
-          item = cJSON_GetObjectItem(current, "temperature_2m_min");
+          item = cJSON_GetObjectItem(current, "temperature_2m");
           if (cJSON_IsNumber(item))
             current_weather_data.temperature_2m = item->valuedouble;
 
