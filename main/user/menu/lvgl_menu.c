@@ -78,9 +78,6 @@ static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
   case STYLE_TEXT_TITLE:
     lv_obj_add_style(cont, &ui->font.title, 0);
     break;
-    //  case STYLE_TEXT_LARGE:
-    //    lv_obj_add_style(cont, &style[STYLE_TEXT_LARGE], 0);
-    //    break;
   }
   lv_label_set_text(cont, text);
   lv_obj_align(cont, align, x_ofs, y_ofs);
@@ -157,7 +154,7 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 
   return meter;
 }
-static lv_chart_series_t *ser_co2;
+
 
 static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                               lv_align_t align, lv_coord_t x_ofs,
@@ -175,7 +172,8 @@ static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                      MAX_VALUE_CO2);
   // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 3, 12,2,true,
   // 40);
-  ser_co2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_BROWN),
+  
+  ui.co2.series_co2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_BROWN),
                                 LV_CHART_AXIS_PRIMARY_Y);
 
   return chart;
@@ -1349,16 +1347,6 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
   set_visible(ui->wifi.keyboard, false);
 }
 
-static void ui_create_standby(ui_main_menu_t *ui) {
-
-  ui->standby.bar = lv_bar_create(ui->screen);
-  lv_obj_align(ui->standby.bar, BLOCK_BOT_MID_ALIGN_STANDBY_BAR, 0,
-               BLOCK_BOT_MID_Y_START_STANDBY_BAR);
-  lv_obj_set_size(ui->standby.bar, BLOCK_BOT_MID_WIDTH_STANDBY_BAR,
-                  BLOCK_BOT_MID_HEIGHT_STANDBY_BAR);
-  lv_bar_set_range(ui->standby.bar, 0, MAX_STANDBY_TIME);
-}
-
 void ui_apply_theme(ui_main_menu_t *ui) {
   if (ui->settings.switch_.theme_status) {
     apply_theme_dark(ui);
@@ -1865,12 +1853,10 @@ void update_block_bot_middle(ui_main_menu_t *ui) {
     if (temp_co2_chart > MAX_VALUE_CO2)
       temp_co2_chart = MAX_VALUE_CO2;
 
-    lv_chart_set_next_value(ui->co2.chart, ser_co2, temp_co2_chart);
+    lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, temp_co2_chart);
     cnt_chart_co2 = 0;
   }
   draw_symbol_wifi(ui);
-
- // lv_bar_set_value(ui->standby.bar, timer_standby_sec, LV_ANIM_OFF);
 }
 
 void update_block_bot_right(ui_main_menu_t *ui) {
