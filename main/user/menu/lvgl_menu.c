@@ -75,9 +75,9 @@ static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
 
     lv_obj_add_style(cont, &ui->font.small, 0);
     break;
-    //  case STYLE_TEXT_MEDIUM:
-    //    lv_obj_add_style(cont, &style[STYLE_TEXT_MEDIUM], 0);
-    //    break;
+  case STYLE_TEXT_TITLE:
+    lv_obj_add_style(cont, &ui->font.title, 0);
+    break;
     //  case STYLE_TEXT_LARGE:
     //    lv_obj_add_style(cont, &style[STYLE_TEXT_LARGE], 0);
     //    break;
@@ -261,19 +261,51 @@ void print_mday(uint8_t date_day, uint8_t date_month, ui_main_menu_t *ui) {
   lv_label_set_text(parent, string_buffer);
 }
 
-static lv_obj_t *create_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-
-                               lv_align_t align, lv_coord_t x_ofs,
-                               lv_coord_t y_ofs) {
+static lv_obj_t *create_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
+                             lv_align_t align, lv_coord_t x_ofs,
+                             lv_coord_t y_ofs, const char *symbol,
+                             ui_main_menu_t *ui) {
   if (parent == NULL) {
-    ESP_LOGE(TAG, "ERROR create_button");
-    // return;
+    ESP_LOGE(TAG, "ERROR create_icon");
+    return NULL;
   }
-
-  lv_obj_t *cont = lv_btn_create(parent);
+  lv_obj_t *cont =
+      lv_obj_create(parent); // lv_obj вместо lv_btn — нет дефолтных стилей
+  lv_obj_remove_style_all(cont);
   lv_obj_set_size(cont, w, h);
   lv_obj_align(cont, align, x_ofs, y_ofs);
+
+  lv_obj_t *label = lv_label_create(cont);
+  lv_label_set_text(label, symbol);
+  lv_obj_add_style(label, &ui->font.icon, 0);
+  lv_obj_center(label);
+
   return cont;
+}
+static lv_obj_t *create_btn_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
+                                  lv_align_t align, lv_coord_t x_ofs,
+                                  lv_coord_t y_ofs, lv_event_cb_t event_cb,
+                                  void *user_data, const char *symbol,
+                                  lv_style_t *icon_style,
+                                  const lv_font_t *font) {  // добавили font
+    if (parent == NULL) {
+        ESP_LOGE(TAG, "ERROR create_btn_icon");
+        return NULL;
+    }
+    lv_obj_t *cont = lv_btn_create(parent);
+    lv_obj_remove_style_all(cont);
+    lv_obj_set_size(cont, w, h);
+    lv_obj_align(cont, align, x_ofs, y_ofs);
+    lv_obj_add_event_cb(cont, event_cb, LV_EVENT_CLICKED, user_data);
+
+    lv_obj_t *label = lv_label_create(cont);
+    lv_label_set_text(label, symbol);
+    if (icon_style) lv_obj_add_style(label, icon_style, 0);
+    if (font) lv_obj_set_style_text_font(label, font, 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(0x4A80B8), 0);
+    lv_obj_center(label);
+
+    return cont;
 }
 
 static lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
@@ -288,6 +320,7 @@ static lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_obj_set_size(cont, w, h);
   lv_obj_align(cont, align, x_ofs, y_ofs);
   lv_obj_add_event_cb(cont, event_cb, LV_EVENT_CLICKED, user_data);
+
   return cont;
 }
 
@@ -619,6 +652,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
   lv_obj_set_scrollbar_mode(ui->sensor.popup, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_style(ui->sensor.popup, &ui->style.main, 0);
 
   // --- Заголовок ---
   create_text("Temperature / Humidity  (6h)", ui->sensor.popup,
@@ -709,65 +743,68 @@ static void create_block_top_left(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
   lv_obj_set_scrollbar_mode(ui->sensor.screen, LV_SCROLLBAR_MODE_OFF);
 
-  create_text("inside", ui->sensor.screen, STYLE_TEXT_SMALL,
+  create_text("inside", ui->sensor.screen, STYLE_TEXT_TITLE,
               BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE, ui);
 
-  lv_obj_t *btn_symbol = create_btn_cb(
+  lv_obj_t *icon =
+      create_icon(ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
+                  BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
+                  BLOCK_TOP_LEFT_X_START_SYMBOLS,
+                  BLOCK_TOP_LEFT_Y_START_SYMBOLS_1, MY_TEMPERATURE_SYMBOL, ui);
+  if (!icon) {
+    return;
+  }
+
+  ui->sensor.icon_temperature = icon;
+
+  icon =
+      create_icon(ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
+                  BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
+                  BLOCK_TOP_LEFT_X_START_SYMBOLS,
+                  BLOCK_TOP_LEFT_Y_START_SYMBOLS_2, MY_HUMIDITY_SYMBOL, ui);
+  if (!icon) {
+    return;
+  }
+
+  ui->sensor.icon_humidity = icon;
+
+  icon =
+      create_icon(
       ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
       BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-      BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_1,
-      btn_tepmerature_inside_open_popup_event_handler, ui);
-  if (!btn_symbol)
+      BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_3,MY_TVOC_SYMBOL, ui);
+   if (!icon) {
     return;
-  ui->sensor.btn_temperature = btn_symbol;
+  }
 
-  lv_obj_set_style_text_font(ui->sensor.btn_temperature, &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(ui->sensor.btn_temperature, MY_TEMPERATURE_SYMBOL,
-                              0);
-
-  btn_symbol = create_button(
-      ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-      BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-      BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_2);
-  if (!btn_symbol)
-    return;
-
-  ui->sensor.btn_humidity = btn_symbol;
-  lv_obj_set_style_text_font(ui->sensor.btn_humidity, &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(ui->sensor.btn_humidity, MY_HUMIDITY_SYMBOL, 0);
-
-  btn_symbol = create_button(
-      ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-      BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-      BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_3);
-  if (!btn_symbol)
-    return;
-
-  ui->sensor.btn_tvoc = btn_symbol;
-  lv_obj_set_style_text_font(ui->sensor.btn_tvoc, &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(ui->sensor.btn_tvoc, MY_TVOC_SYMBOL, 0);
+  ui->sensor.icon_tvoc = icon;
 
   lv_obj_t *value = create_label(
       ui->sensor.screen, "0 c*", BLOCK_TOP_LEFT_ALIGN_VALUES,
       BLOCK_TOP_LEFT_X_START_VALUES, BLOCK_TOP_LEFT_Y_START_VALUE_1);
-  if (!value)
+  if (!value) {
     return;
+  }
 
+  lv_obj_add_style(value, &ui->font.small, 0);
   ui->sensor.temperature_label = value;
 
   value = create_label(ui->sensor.screen, "0 %*", BLOCK_TOP_LEFT_ALIGN_VALUES,
                        BLOCK_TOP_LEFT_X_START_VALUES,
                        BLOCK_TOP_LEFT_Y_START_VALUE_2);
-  if (!value)
+  if (!value) {
     return;
-
+  }
+  lv_obj_add_style(value, &ui->font.small, 0);
   ui->sensor.humidity_label = value;
 
   value = create_label(ui->sensor.screen, "0 ppm", BLOCK_TOP_LEFT_ALIGN_VALUES,
                        BLOCK_TOP_LEFT_X_START_VALUES,
                        BLOCK_TOP_LEFT_Y_START_VALUE_3);
-  if (!value)
+  if (!value) {
     return;
+  }
+  lv_obj_add_style(value, &ui->font.small, 0);
   ui->sensor.tvoc_label = value;
 
   /*BLOCK TOP LEFT*/
@@ -782,7 +819,7 @@ static void create_block_top_middle(ui_main_menu_t *ui) {
       BLOCK_TOP_MID_Y_START, ui);
   if (!ui->co2.meter)
     return;
-lv_obj_add_style(ui->co2.meter, &ui->style.meter_co2, 0);
+  lv_obj_add_style(ui->co2.meter, &ui->style.meter_co2, 0);
   lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, 0);
   //	create_text("ppm", ui->screen, STYLE_TEXT_SMALL,
   //			BLOCK_TOP_MID_ALIGN_CO2_CHART, BLOCK_TOP_MID_X_START,
@@ -815,18 +852,21 @@ static void create_block_top_right(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->time.screen, &ui->style.top_right, 0);
   lv_obj_set_scrollbar_mode(ui->time.screen, LV_SCROLLBAR_MODE_OFF);
 
-  create_text("time", ui->time.screen, STYLE_TEXT_SMALL,
-              BLOCK_TOP_RIGHT_ALIGN_TITLE, 0, BLOCK_TOP_RIGHT_Y_START_TITLE,
-              ui);
+//  create_text("time", ui->time.screen, STYLE_TEXT_TITLE,
+//              BLOCK_TOP_RIGHT_ALIGN_TITLE, 0, BLOCK_TOP_RIGHT_Y_START_TITLE,
+//              ui);
 
   lv_obj_t *time = create_label(
       ui->time.screen, "00:00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
       BLOCK_TOP_RIGHT_X_START_VALUES, BLOCK_TOP_RIGHT_Y_START_VALUE_1);
-  if (!time)
+
+  if (!time) {
     return;
+  }
 
   ui->time.hour_minute_label = time;
-  lv_obj_set_style_text_font(ui->time.hour_minute_label, &my_time_font, 0);
+  lv_obj_add_style(ui->time.hour_minute_label, &ui->font.time, 0);
+  // lv_obj_set_style_text_font(ui->time.hour_minute_label, &my_time_font, 0);
 
   time = create_label(ui->time.screen, "00.00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
                       BLOCK_TOP_RIGHT_X_START_VALUES,
@@ -835,16 +875,16 @@ static void create_block_top_right(ui_main_menu_t *ui) {
     return;
 
   ui->time.mday_month_label = time;
-  lv_obj_set_style_text_font(ui->time.mday_month_label, &my_time_font, 0);
-
+  // lv_obj_set_style_text_font(ui->time.mday_month_label, &my_time_font, 0);
+  lv_obj_add_style(ui->time.mday_month_label, &ui->font.time, 0);
   time = create_label(ui->time.screen, "load...", BLOCK_TOP_RIGHT_ALIGN_VALUES,
                       BLOCK_TOP_RIGHT_X_START_VALUE_3,
                       BLOCK_TOP_RIGHT_Y_START_VALUE_3);
   if (!time)
     return;
   ui->time.wday_label = time;
-
-  lv_obj_set_style_text_font(ui->time.wday_label, &lv_font_montserrat_32, 0);
+  lv_obj_add_style(ui->time.wday_label, &ui->font.small, 0);
+  // lv_obj_set_style_text_font(ui->time.wday_label, &lv_font_montserrat_32, 0);
   /*BLOCK TOP RIGHT*/
 }
 
@@ -860,70 +900,71 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
   ui->meteo.screen = bg;
   lv_obj_add_style(ui->meteo.screen, &ui->style.bot_left, 0);
   lv_obj_set_scrollbar_mode(ui->meteo.screen, LV_SCROLLBAR_MODE_OFF);
-  create_text("outside", ui->meteo.screen, STYLE_TEXT_SMALL,
+  create_text("outside", ui->meteo.screen, STYLE_TEXT_TITLE,
               BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE, ui);
 
-  ui->meteo.screen = bg;
-  lv_obj_add_style(ui->meteo.screen, &ui->style.bot_left, 0);
-  create_text("outside", ui->meteo.screen, STYLE_TEXT_SMALL,
-              BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE, ui);
-
-  lv_obj_t *btn_symbol = create_button(
+   lv_obj_t *icon =
+      create_icon(
       ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
       BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
-      BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_1);
-  if (!btn_symbol)
+      BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_1, MY_TEMPERATURE_SYMBOL, ui);
+   if (!icon) {
     return;
+  }
 
-  ui->meteo.btn_temperature = btn_symbol;
-  lv_obj_set_style_text_font(ui->meteo.btn_temperature, &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(ui->meteo.btn_temperature, MY_TEMPERATURE_SYMBOL,
-                              0);
+  ui->meteo.icon_temperature = icon;
 
-  btn_symbol = create_button(
+
+  icon =
+      create_icon(
       ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
       BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
-      BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_2);
-  if (!btn_symbol)
+      BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_2, MY_HUMIDITY_SYMBOL, ui);
+   if (!icon) {
     return;
-  ui->meteo.btn_humidity = btn_symbol;
-  lv_obj_set_style_text_font(ui->meteo.btn_humidity, &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(ui->meteo.btn_humidity, MY_HUMIDITY_SYMBOL, 0);
+  }
 
-  btn_symbol = create_button(
+  ui->meteo.icon_humidity = icon;
+  
+   icon =
+      create_icon(
       ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
       BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
-      BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_3);
-  if (!btn_symbol)
+      BLOCK_BOT_LEFT_X_START_SYMBOLS, BLOCK_BOT_LEFT_Y_START_SYMBOLS_3, MY_WIND_SYMBOL, ui);
+   if (!icon) {
     return;
+  }
 
-  ui->meteo.btn_wind = btn_symbol;
-  lv_obj_set_style_text_font(ui->meteo.btn_wind, &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(ui->meteo.btn_wind, MY_WIND_SYMBOL, 0);
+  ui->meteo.icon_wind = icon;
 
   lv_obj_t *value = create_label(
       ui->meteo.screen, "0 c*", BLOCK_BOT_LEFT_ALIGN_VALUES,
       BLOCK_BOT_LEFT_X_START_VALUES, BLOCK_BOT_LEFT_Y_START_VALUE_1);
 
-  if (!value)
+  if (!value) {
     return;
-
+  }
+  lv_obj_add_style(value, &ui->font.small, 0);
   ui->meteo.temperature_label = value;
 
   value = create_label(ui->meteo.screen, "0 %", BLOCK_BOT_LEFT_ALIGN_VALUES,
                        BLOCK_BOT_LEFT_X_START_VALUES,
                        BLOCK_BOT_LEFT_Y_START_VALUE_2);
 
-  if (!value)
+  if (!value) {
     return;
+  }
+  lv_obj_add_style(value, &ui->font.small, 0);
 
   ui->meteo.humidity_label = value;
 
   value = create_label(ui->meteo.screen, "0 m/s", BLOCK_BOT_LEFT_ALIGN_VALUES,
                        BLOCK_BOT_LEFT_X_START_VALUES,
                        BLOCK_BOT_LEFT_Y_START_VALUE_3);
-  if (!value)
+  if (!value) {
     return;
+  }
+  lv_obj_add_style(value, &ui->font.small, 0);
   ui->meteo.wind_label = value;
   /*BLOCK BOT LEFT*/
 }
@@ -1088,9 +1129,11 @@ static void btn_weather_open_popup_event_handler(lv_event_t *e) {
 
   // Показываем последний выбранный город сразу при открытии
   // (ui_create_city_list_weather тоже это делает, но на случай изменений)
-  if (lv_obj_is_valid(ui->weather.city_label))
+  if (lv_obj_is_valid(ui->weather.city_label)) {
     lv_label_set_text(ui->weather.city_label,
                       ui->weather.cities_de[ui->weather.saved_city].name);
+    lv_obj_add_style(ui->weather.city_label, &ui->font.small, 0);
+  }
 }
 static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -1149,7 +1192,7 @@ static void set_current_city_weather_event_handler(lv_event_t *e) {
 /////////////////////////////////////////////////weather settings events
 
 static void ui_create_co2(ui_main_menu_t *ui) {
-  create_text("co2 24h", ui->screen, STYLE_TEXT_SMALL,
+  create_text("CO2 24H", ui->screen, STYLE_TEXT_TITLE,
               BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
               BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART, ui);
 
@@ -1194,6 +1237,7 @@ static void ui_create_weather_popup(ui_main_menu_t *ui) {
   ui->weather.popup =
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
+  lv_obj_add_style(ui->weather.popup, &ui->style.main, 0);
 
   ui->weather.btn_close =
       create_btn_cb(ui->weather.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
@@ -1210,7 +1254,7 @@ static void ui_create_weather_popup(ui_main_menu_t *ui) {
 
   create_text("Weather Settings", ui->weather.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
-  create_text("CITY:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+  create_text("City:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
               15, 90, ui);
   //  create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL,
   //  LV_ALIGN_TOP_LEFT,
@@ -1222,26 +1266,23 @@ static void ui_create_weather_popup(ui_main_menu_t *ui) {
 }
 
 static void ui_create_settings_popup_btns(ui_main_menu_t *ui) {
-  ///////////////////////////////////////////////////////////////
-  ui->weather.btn_open = create_btn_cb(
-      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_1,
-      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_weather_open_popup_event_handler, ui);
-  lv_obj_set_style_text_font(ui->weather.btn_open, &my_symbols, 0);
-  lv_obj_set_style_bg_img_src(ui->weather.btn_open, MY_CLOUD_SYMBOL, 0);
+ ui->weather.btn_open = create_btn_icon(
+    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_1,
+    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_weather_open_popup_event_handler,
+    ui, MY_CLOUD_SYMBOL, &ui->font.nav_btn, NULL);  // my_symbols через стиль
 
-  ui->wifi.btn_open = create_btn_cb(
-      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_2,
-      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_wifi_open_popup_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_SETTINGS, 0);
+ui->wifi.btn_open = create_btn_icon(
+    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_2,
+    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_wifi_open_popup_event_handler,
+    ui, LV_SYMBOL_WIFI, NULL, &lv_font_montserrat_32);  // стандартный шрифт
 
-  ui->settings.btn_open = create_btn_cb(
-      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_3,
-      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_settings_open_popup_event_handler,
-      ui); // [FIX] Было &ui — адрес локального параметра!
-  lv_obj_set_style_bg_img_src(ui->settings.btn_open, LV_SYMBOL_SETTINGS, 0);
+ui->settings.btn_open = create_btn_icon(
+    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_3,
+    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_settings_open_popup_event_handler,
+    ui, LV_SYMBOL_SETTINGS, NULL, &lv_font_montserrat_32);
 }
 
 static void ui_create_wifi_popup(ui_main_menu_t *ui) {
@@ -1250,6 +1291,7 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
   lv_obj_set_scrollbar_mode(ui->wifi.popup, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_style(ui->wifi.popup, &ui->style.main, 0);
 
   create_text("WIFI Settings", ui->wifi.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
@@ -1279,11 +1321,13 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
 
   ui->wifi.ssid_label =
       create_label(ui->wifi.popup, "WiFiName", LV_ALIGN_TOP_LEFT, 220, 90);
+  lv_obj_add_style(ui->wifi.ssid_label, &ui->font.small, 0);
   ui->wifi.pass_label =
       create_label(ui->wifi.popup, "*********", LV_ALIGN_TOP_LEFT, 220, 180);
+  lv_obj_add_style(ui->wifi.pass_label, &ui->font.small, 0);
   ui->wifi.rssi_label =
       create_label(ui->wifi.popup, "WiFiRSSI", LV_ALIGN_TOP_LEFT, 220, 270);
-
+  lv_obj_add_style(ui->wifi.rssi_label, &ui->font.small, 0);
   ui->wifi.keyboard = lv_keyboard_create(ui->wifi.popup);
   // [FIX] Было &ui (адрес локального параметра функции — UB после возврата!)
   // Теперь ui — указатель на глобальную структуру, всегда валиден
@@ -1328,6 +1372,13 @@ void ui_apply_theme(ui_main_menu_t *ui) {
   lv_obj_report_style_change(&ui->style.bot_left);
   lv_obj_report_style_change(&ui->style.top_right);
   lv_obj_report_style_change(&ui->style.bot_right);
+  lv_obj_report_style_change(&ui->font.small);
+  lv_obj_report_style_change(&ui->font.very_large);
+   lv_obj_report_style_change(&ui->font.nav_btn);
+    lv_obj_report_style_change(&ui->font.title);
+     lv_obj_report_style_change(&ui->font.time);
+     lv_obj_report_style_change(&ui->font.icon);
+    
 }
 static void switch_event_cb(lv_event_t *e) {
   // Вызывается при любом изменении любого свитча
@@ -1375,6 +1426,7 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
   lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_style(ui->settings.popup, &ui->style.main, 0);
 
   create_text("Settings", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
@@ -1395,7 +1447,7 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
 static void create_block_bot_middle(ui_main_menu_t *ui) {
   ui_create_co2(ui);
   ui_create_settings_popup_btns(ui);
-  ui_create_standby(ui);
+  //ui_create_standby(ui);
 }
 
 static void create_block_bot_right(ui_main_menu_t *ui) {
@@ -1506,10 +1558,7 @@ static void create_block_bot_right(ui_main_menu_t *ui) {
 }
 
 static void create_menu(ui_main_menu_t *ui) {
-  main_settings_load(&ui->settings.switch_.standby_status,
-                     &ui->settings.switch_.theme_status);
-  weather_settings_load(&ui->weather.saved_city);
-  build_weather_url(ui->weather.saved_city);
+
   ui->screen = lv_obj_create(NULL);
   lv_obj_add_style(ui->screen, &ui->style.main, 0);
 
@@ -1737,27 +1786,27 @@ void draw_weather(ui_main_menu_t *ui) {
 }
 
 void draw_symbol_wifi(ui_main_menu_t *ui) {
-  static uint8_t status_wifi_old = 254;
-  uint8_t curent_status = get_wifi_status();
-  if (curent_status != status_wifi_old) {
-    switch (curent_status) {
+static uint8_t status_wifi_old = 254;
+    uint8_t current_status = get_wifi_status();
+    if (current_status == status_wifi_old) return;
+
+    // label — первый дочерний объект кнопки
+    lv_obj_t *label = lv_obj_get_child(ui->wifi.btn_open, 0);
+    if (!label) return;
+
+    switch (current_status) {
     case WIFI_RECONNECT:
-
-      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_REFRESH, 0);
-      break;
+        lv_label_set_text(label, LV_SYMBOL_REFRESH);
+        break;
     case WIFI_CONNECTED:
-      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_WIFI, 0);
-      break;
+        lv_label_set_text(label, LV_SYMBOL_WIFI);
+        break;
     case WIFI_DISCONNECTED:
-      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_WARNING, 0);
-      break;
     default:
-      lv_obj_set_style_bg_img_src(ui->wifi.btn_open, LV_SYMBOL_WARNING, 0);
-
-      break;
+        lv_label_set_text(label, LV_SYMBOL_WARNING);
+        break;
     }
-    status_wifi_old = curent_status;
-  }
+    status_wifi_old = current_status;
 }
 
 void hide_all_blocks(ui_main_menu_t *ui) {
@@ -1767,7 +1816,7 @@ void hide_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->time.screen, false);
   set_visible(ui->co2.meter, false);
   set_visible(ui->co2.chart, false);
-  set_visible(ui->standby.bar, false);
+  //set_visible(ui->standby.bar, false);
 }
 void show_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->animation.screen, true);
@@ -1776,12 +1825,12 @@ void show_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->time.screen, true);
   set_visible(ui->co2.meter, true);
   set_visible(ui->co2.chart, true);
-  set_visible(ui->standby.bar, true);
+  //set_visible(ui->standby.bar, true);
 }
 
 void update_block_top_left(ui_main_menu_t *ui) {
   read_sensors();
-  print_value("%.1f c*", get_temperature_aht10(), ui->sensor.temperature_label);
+  print_value("%.1f °C", get_temperature_aht10(), ui->sensor.temperature_label);
   print_value("%.f %%", get_humidity_aht10(), ui->sensor.humidity_label);
   print_value("%.f ppm", get_tvoc_sgp30(), ui->sensor.tvoc_label);
 }
@@ -1801,7 +1850,7 @@ void update_block_top_right(ui_main_menu_t *ui) {
 }
 
 void update_block_bot_left(ui_main_menu_t *ui) {
-  print_value("%.1f c*", get_weather_temperature(),
+  print_value("%.1f °C", get_weather_temperature(),
               ui->meteo.temperature_label);
   print_value("%.f %%", get_weather_humidity(), ui->meteo.humidity_label);
 
@@ -1821,7 +1870,7 @@ void update_block_bot_middle(ui_main_menu_t *ui) {
   }
   draw_symbol_wifi(ui);
 
-  lv_bar_set_value(ui->standby.bar, timer_standby_sec, LV_ANIM_OFF);
+ // lv_bar_set_value(ui->standby.bar, timer_standby_sec, LV_ANIM_OFF);
 }
 
 void update_block_bot_right(ui_main_menu_t *ui) {
@@ -1894,19 +1943,35 @@ static void timer_200(lv_timer_t *timer) {
 static void init_fonts(ui_main_menu_t *ui) {
   lv_style_init(&ui->font.small);
   lv_style_set_text_font(&ui->font.small, &lv_font_montserrat_32);
-  //  lv_style_init(&style[STYLE_TEXT_MEDIUM]);
-  //  lv_style_set_text_font(&style[STYLE_TEXT_MEDIUM],
-  //  &lv_font_montserrat_40); lv_style_init(&style[STYLE_TEXT_LARGE]);
-  //  lv_style_set_text_font(&style[STYLE_TEXT_LARGE],
-  //  &lv_font_montserrat_48);
+
+  lv_style_init(&ui->font.time);
+  lv_style_set_text_font(&ui->font.time, &my_time_font);
 
   lv_style_init(&ui->font.very_large);
   lv_style_set_text_font(&ui->font.very_large, &lv_font_montserrat_48);
+
+  lv_style_init(&ui->font.title);
+  lv_style_set_text_font(&ui->font.title, &lv_font_montserrat_20);
+
+  lv_style_init(&ui->font.icon);
+  lv_style_set_bg_opa(&ui->font.icon, LV_OPA_TRANSP); // убираем фон
+  lv_style_set_border_width(&ui->font.icon, 0); // убираем рамку
+  lv_style_set_shadow_width(&ui->font.icon, 0); // убираем тень
+  lv_style_set_text_font(&ui->font.icon, &my_symbols); // шрифт символов
+  
+  lv_style_init(&ui->font.nav_btn);
+lv_style_set_bg_opa(&ui->font.nav_btn, LV_OPA_TRANSP);
+lv_style_set_border_width(&ui->font.nav_btn, 0);
+lv_style_set_shadow_width(&ui->font.nav_btn, 0);
+lv_style_set_text_font(&ui->font.nav_btn, &my_symbols);
 }
 
 static void apply_theme_dark(ui_main_menu_t *ui) {
-  lv_style_reset(&ui->style.main);
-  lv_style_set_bg_color(&ui->style.main, lv_color_hex(0x0D1117));
+lv_style_reset(&ui->style.main);
+lv_style_set_bg_color(&ui->style.main, lv_color_hex(0x0D1117));
+lv_style_set_bg_grad_color(&ui->style.main, lv_color_hex(0x161B22));
+lv_style_set_bg_grad_dir(&ui->style.main, LV_GRAD_DIR_VER);
+lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
   lv_style_reset(&ui->style.top_left);
   lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0x1A2E22));
@@ -1932,24 +1997,34 @@ static void apply_theme_dark(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.bot_right, 1);
   lv_style_set_radius(&ui->style.bot_right, 12);
 
-  lv_style_reset(&ui->style.chart_co2);
-  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
-  lv_style_set_bg_color(&ui->style.chart_co2, lv_palette_main(LV_PALETTE_RED));
-  lv_style_set_bg_grad_color(&ui->style.chart_co2,
-                             lv_palette_lighten(LV_PALETTE_GREEN, 1));
-  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
-  lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
-  lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
-  
-    lv_style_reset(&ui->style.meter_co2);
+lv_style_reset(&ui->style.chart_co2);
+lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0x7A2E2E));      // тёмный красный
+lv_style_set_bg_grad_color(&ui->style.chart_co2, lv_color_hex(0x1E5C30)); // тёмный зелёный
+lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
+lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
+lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
+
+  lv_style_reset(&ui->style.meter_co2);
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0x1A2E22));
   lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x2EA843));
   lv_style_set_border_width(&ui->style.meter_co2, 1);
+
+  // Шрифты
+  lv_style_set_text_color(&ui->font.small, lv_color_hex(0xE6EDF3));
+  lv_style_set_text_color(&ui->font.very_large, lv_color_hex(0xE6EDF3));
+  lv_style_set_text_color(&ui->font.time, lv_color_hex(0xE6EDF3));
+  lv_style_set_text_color(&ui->font.title, lv_color_hex(0xE6EDF3));
+  lv_style_set_text_color(&ui->font.icon, lv_color_hex(0x60A5FA));
+  lv_style_set_text_color(&ui->font.nav_btn, lv_color_hex(0x60A5FA));
 }
 
 static void apply_theme_light(ui_main_menu_t *ui) {
-  lv_style_reset(&ui->style.main);
-  lv_style_set_bg_color(&ui->style.main, lv_color_hex(0xF0F4F8));
+lv_style_reset(&ui->style.main);
+lv_style_set_bg_color(&ui->style.main, lv_color_hex(0xF0F4F8));
+lv_style_set_bg_grad_color(&ui->style.main, lv_color_hex(0xE2EAF4));
+lv_style_set_bg_grad_dir(&ui->style.main, LV_GRAD_DIR_VER);
+lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
   lv_style_reset(&ui->style.top_left);
   lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0xDCF5E7));
@@ -1975,21 +2050,26 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.bot_right, 1);
   lv_style_set_radius(&ui->style.bot_right, 12);
 
-  lv_style_reset(&ui->style.chart_co2);
-  lv_style_set_bg_color(&ui->style.chart_co2, lv_palette_main(LV_PALETTE_RED));
-  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+ lv_style_reset(&ui->style.chart_co2);
+lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0xD4888A));      // пастельный красный
+lv_style_set_bg_grad_color(&ui->style.chart_co2, lv_color_hex(0x88B898)); // пастельный зелёный
+lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
+lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
+lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
 
-  lv_style_set_bg_grad_color(&ui->style.chart_co2,
-                             lv_palette_lighten(LV_PALETTE_GREEN, 1));
-  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
-  lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
-  lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
-  
-  
   lv_style_reset(&ui->style.meter_co2);
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0xEDE9FF));
   lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x5E4E90));
   lv_style_set_border_width(&ui->style.meter_co2, 1);
+
+  // Шрифты — только text_color, font не трогаем
+  lv_style_set_text_color(&ui->font.small, lv_color_hex(0x1A1A2A));
+  lv_style_set_text_color(&ui->font.very_large, lv_color_hex(0x1A1A2A));
+  lv_style_set_text_color(&ui->font.time, lv_color_hex(0x1A1A2A));
+  lv_style_set_text_color(&ui->font.title, lv_color_hex(0x1A1A2A));
+  lv_style_set_text_color(&ui->font.icon, lv_color_hex(0x4A80B8));
+  lv_style_set_text_color(&ui->font.nav_btn, lv_color_hex(0x4A80B8));
 }
 
 static void init_styles(ui_main_menu_t *ui) {
@@ -2000,11 +2080,15 @@ static void init_styles(ui_main_menu_t *ui) {
   lv_style_init(&ui->style.bot_right);
   lv_style_init(&ui->style.meter_co2);
   lv_style_init(&ui->style.chart_co2);
-  
+
   ui_apply_theme(ui); // применяем нужную тему
 }
 
 void init_lv_objects() {
+  main_settings_load(&ui.settings.switch_.standby_status,
+                     &ui.settings.switch_.theme_status);
+  weather_settings_load(&ui.weather.saved_city);
+  build_weather_url(ui.weather.saved_city);
   init_fonts(&ui);
   init_styles(&ui);
   create_menu(&ui);

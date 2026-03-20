@@ -45,9 +45,9 @@ typedef struct {
 
 typedef struct {
   lv_obj_t *screen;
-  lv_obj_t *btn_temperature;
-  lv_obj_t *btn_humidity;
-  lv_obj_t *btn_wind;
+  lv_obj_t *icon_temperature;
+  lv_obj_t *icon_humidity;
+  lv_obj_t *icon_wind;
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
   lv_obj_t *wind_label;
@@ -155,9 +155,13 @@ typedef struct {
 	lv_obj_t *btn_close;
 	lv_obj_t *chart;
   lv_obj_t *screen;
-  lv_obj_t *btn_temperature;
-  lv_obj_t *btn_humidity;
-  lv_obj_t *btn_tvoc;
+  lv_obj_t *icon_temperature;
+  lv_obj_t *icon_humidity;
+  lv_obj_t *icon_tvoc;
+  lv_obj_t *icon_wind;
+  //lv_obj_t *btn_temperature;
+  //lv_obj_t *btn_humidity;
+  //lv_obj_t *btn_tvoc;
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
   lv_obj_t *tvoc_label;
@@ -173,7 +177,10 @@ typedef struct {
 typedef struct {
   lv_style_t small;
   lv_style_t very_large;
-
+lv_style_t time;
+lv_style_t title; 
+  lv_style_t icon;
+  lv_style_t nav_btn;
 } font_style_t;
 
 typedef struct {
@@ -213,8 +220,9 @@ enum namesOfFonts {
 };
 
 enum namesOfStyles {
+	STYLE_TEXT_TITLE,
   STYLE_TEXT_SMALL,
-//  STYLE_TEXT_MEDIUM,
+  
 //  STYLE_TEXT_LARGE,
   STYLE_TEXT_VERY_LARGE,
   STYLE_SYMBOLS,
