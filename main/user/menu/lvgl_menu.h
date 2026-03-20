@@ -183,6 +183,7 @@ typedef struct {
   lv_style_t bot_left;
   lv_style_t bot_right;
   lv_style_t chart_co2;
+   lv_style_t meter_co2;
 
 } screen_style_t;
 
@@ -248,5 +249,15 @@ typedef struct {
 
 
 void init_lv_objects();
+
+static void apply_theme_dark(ui_main_menu_t *ui);
+static void apply_theme_light(ui_main_menu_t *ui);
+
+void hide_all_blocks(ui_main_menu_t *ui);
+void show_all_blocks(ui_main_menu_t *ui);
+static void ui_create_wifi_popup(ui_main_menu_t *ui);
+static void ui_create_weather_popup(ui_main_menu_t *ui);
+static void ui_create_settings_popup(ui_main_menu_t *ui);
+static void ui_create_sensor_popup(ui_main_menu_t *ui);
 
 #endif /* INC_LVGL_MENU_H_ */

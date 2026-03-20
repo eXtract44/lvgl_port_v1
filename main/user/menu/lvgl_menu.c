@@ -42,13 +42,6 @@ LV_IMG_DECLARE(wind_60_50);
 LV_IMG_DECLARE(rain_drop_heavy_9_22);
 LV_IMG_DECLARE(snow_flake_2_15_15);
 
-void hide_all_blocks(ui_main_menu_t *ui);
-void show_all_blocks(ui_main_menu_t *ui);
-static void ui_create_wifi_popup(ui_main_menu_t *ui);
-static void ui_create_weather_popup(ui_main_menu_t *ui);
-static void ui_create_settings_popup(ui_main_menu_t *ui);
-static void ui_create_sensor_popup(ui_main_menu_t *ui);
-
 void set_visible(lv_obj_t *parent, bool visible) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR set_visible");
@@ -123,6 +116,7 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_obj_t *meter = lv_meter_create(parent);
   lv_obj_set_size(meter, w, h);
   lv_obj_align(meter, align, x_ofs, y_ofs);
+
   /*Add a scale first*/
 
   lv_meter_scale_t *scale = lv_meter_add_scale(meter);
@@ -788,9 +782,8 @@ static void create_block_top_middle(ui_main_menu_t *ui) {
       BLOCK_TOP_MID_Y_START, ui);
   if (!ui->co2.meter)
     return;
-
+lv_obj_add_style(ui->co2.meter, &ui->style.meter_co2, 0);
   lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, 0);
-
   //	create_text("ppm", ui->screen, STYLE_TEXT_SMALL,
   //			BLOCK_TOP_MID_ALIGN_CO2_CHART, BLOCK_TOP_MID_X_START,
   // meter_co2.y_ofs + 45,ui);
@@ -1322,6 +1315,20 @@ static void ui_create_standby(ui_main_menu_t *ui) {
   lv_bar_set_range(ui->standby.bar, 0, MAX_STANDBY_TIME);
 }
 
+void ui_apply_theme(ui_main_menu_t *ui) {
+  if (ui->settings.switch_.theme_status) {
+    apply_theme_dark(ui);
+  } else {
+    apply_theme_light(ui);
+  }
+
+  // Говорим LVGL перерисовать все объекты
+  lv_obj_report_style_change(&ui->style.main);
+  lv_obj_report_style_change(&ui->style.top_left);
+  lv_obj_report_style_change(&ui->style.bot_left);
+  lv_obj_report_style_change(&ui->style.top_right);
+  lv_obj_report_style_change(&ui->style.bot_right);
+}
 static void switch_event_cb(lv_event_t *e) {
   // Вызывается при любом изменении любого свитча
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -1330,6 +1337,8 @@ static void switch_event_cb(lv_event_t *e) {
       lv_obj_has_state(ui->settings.switch_.standby, LV_STATE_CHECKED);
   ui->settings.switch_.theme_status =
       lv_obj_has_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+
+  ui_apply_theme(ui);
 
   main_settings_save(ui->settings.switch_.standby_status,
                      ui->settings.switch_.theme_status);
@@ -1502,7 +1511,7 @@ static void create_menu(ui_main_menu_t *ui) {
   weather_settings_load(&ui->weather.saved_city);
   build_weather_url(ui->weather.saved_city);
   ui->screen = lv_obj_create(NULL);
-lv_obj_add_style(ui->screen, &ui->style.main, 0);
+  lv_obj_add_style(ui->screen, &ui->style.main, 0);
 
   lv_obj_set_size(ui->screen, LVGL_PORT_H_RES, LVGL_PORT_V_RES);
 #if ACTIVATE_BLOCK_TOP_LEFT
@@ -1895,10 +1904,35 @@ static void init_fonts(ui_main_menu_t *ui) {
   lv_style_set_text_font(&ui->font.very_large, &lv_font_montserrat_48);
 }
 
-static void init_styles(ui_main_menu_t *ui) {
-	 
-	
-	  lv_style_init(&ui->style.chart_co2);
+static void apply_theme_dark(ui_main_menu_t *ui) {
+  lv_style_reset(&ui->style.main);
+  lv_style_set_bg_color(&ui->style.main, lv_color_hex(0x0D1117));
+
+  lv_style_reset(&ui->style.top_left);
+  lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0x1A2E22));
+  lv_style_set_border_color(&ui->style.top_left, lv_color_hex(0x2EA843));
+  lv_style_set_border_width(&ui->style.top_left, 1);
+  lv_style_set_radius(&ui->style.top_left, 12);
+
+  lv_style_reset(&ui->style.bot_left);
+  lv_style_set_bg_color(&ui->style.bot_left, lv_color_hex(0x2A2212));
+  lv_style_set_border_color(&ui->style.bot_left, lv_color_hex(0xD48200));
+  lv_style_set_border_width(&ui->style.bot_left, 1);
+  lv_style_set_radius(&ui->style.bot_left, 12);
+
+  lv_style_reset(&ui->style.top_right);
+  lv_style_set_bg_color(&ui->style.top_right, lv_color_hex(0x1A1A2A));
+  lv_style_set_border_color(&ui->style.top_right, lv_color_hex(0x5E4E90));
+  lv_style_set_border_width(&ui->style.top_right, 1);
+  lv_style_set_radius(&ui->style.top_right, 12);
+
+  lv_style_reset(&ui->style.bot_right);
+  lv_style_set_bg_color(&ui->style.bot_right, lv_color_hex(0x161B22));
+  lv_style_set_border_color(&ui->style.bot_right, lv_color_hex(0x30363D));
+  lv_style_set_border_width(&ui->style.bot_right, 1);
+  lv_style_set_radius(&ui->style.bot_right, 12);
+
+  lv_style_reset(&ui->style.chart_co2);
   lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
   lv_style_set_bg_color(&ui->style.chart_co2, lv_palette_main(LV_PALETTE_RED));
   lv_style_set_bg_grad_color(&ui->style.chart_co2,
@@ -1906,71 +1940,70 @@ static void init_styles(ui_main_menu_t *ui) {
   lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
   lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
   lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
-
-  /*
-   lv_style_init(&ui->style.main);
-	  lv_style_set_bg_color(&ui->style.main, lv_color_hex(0x0D1117));
-  //lv_obj_set_style_bg_opa(ui->screen, LV_OPA_COVER, 0);
   
-  // Weather (оставляем тёмным, чуть светлее фона)
-  lv_style_init(&ui->style.bot_right);
-  lv_style_set_bg_color(&ui->style.bot_right, lv_color_hex(0x161B22));
-  lv_style_set_border_color(&ui->style.bot_right, lv_color_hex(0x30363D));
+    lv_style_reset(&ui->style.meter_co2);
+  lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0x1A2E22));
+  lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x2EA843));
+  lv_style_set_border_width(&ui->style.meter_co2, 1);
+}
+
+static void apply_theme_light(ui_main_menu_t *ui) {
+  lv_style_reset(&ui->style.main);
+  lv_style_set_bg_color(&ui->style.main, lv_color_hex(0xF0F4F8));
+
+  lv_style_reset(&ui->style.top_left);
+  lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0xDCF5E7));
+  lv_style_set_border_color(&ui->style.top_left, lv_color_hex(0x2EA843));
+  lv_style_set_border_width(&ui->style.top_left, 1);
+  lv_style_set_radius(&ui->style.top_left, 12);
+
+  lv_style_reset(&ui->style.bot_left);
+  lv_style_set_bg_color(&ui->style.bot_left, lv_color_hex(0xFFF3D6));
+  lv_style_set_border_color(&ui->style.bot_left, lv_color_hex(0xD48200));
+  lv_style_set_border_width(&ui->style.bot_left, 1);
+  lv_style_set_radius(&ui->style.bot_left, 12);
+
+  lv_style_reset(&ui->style.top_right);
+  lv_style_set_bg_color(&ui->style.top_right, lv_color_hex(0xEDE9FF));
+  lv_style_set_border_color(&ui->style.top_right, lv_color_hex(0x5E4E90));
+  lv_style_set_border_width(&ui->style.top_right, 1);
+  lv_style_set_radius(&ui->style.top_right, 12);
+
+  lv_style_reset(&ui->style.bot_right);
+  lv_style_set_bg_color(&ui->style.bot_right, lv_color_hex(0x6B9FD4)); // небо
+  lv_style_set_border_color(&ui->style.bot_right, lv_color_hex(0x4A80B8));
   lv_style_set_border_width(&ui->style.bot_right, 1);
   lv_style_set_radius(&ui->style.bot_right, 12);
 
-  // Outside (янтарный, приглушённый)
-  lv_style_init(&ui->style.bot_left);
-  lv_style_set_bg_color(&ui->style.bot_left, lv_color_hex(0x2A2212));
-  lv_style_set_border_color(&ui->style.bot_left, lv_color_hex(0xD48200));
-  lv_style_set_border_width(&ui->style.bot_left, 1);
-  lv_style_set_border_opa(&ui->style.bot_left, 80);
-  lv_style_set_radius(&ui->style.bot_left, 12);
+  lv_style_reset(&ui->style.chart_co2);
+  lv_style_set_bg_color(&ui->style.chart_co2, lv_palette_main(LV_PALETTE_RED));
+  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
 
-  // Inside (зелёный, приглушённый)
-  lv_style_init(&ui->style.top_left);
-  lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0x1A2E22));
-  lv_style_set_border_color(&ui->style.top_left, lv_color_hex(0x2EA843));
-  lv_style_set_border_width(&ui->style.top_left, 1);
-  lv_style_set_border_opa(&ui->style.top_left, 80);
-  lv_style_set_radius(&ui->style.top_left, 12);
-
-  // Time (фиолетовый, приглушённый)
-  lv_style_init(&ui->style.top_right);
-  lv_style_set_bg_color(&ui->style.top_right, lv_color_hex(0x1A1A2A));
-  lv_style_set_border_color(&ui->style.top_right, lv_color_hex(0x5E4E90));
-  lv_style_set_border_width(&ui->style.top_right, 1);
-  lv_style_set_border_opa(&ui->style.top_right, 80);
-  lv_style_set_radius(&ui->style.top_right, 12);
+  lv_style_set_bg_grad_color(&ui->style.chart_co2,
+                             lv_palette_lighten(LV_PALETTE_GREEN, 1));
+  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
+  lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
+  lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
   
-  */
-  ////////////////////////////////////////////////////////////light
-   lv_style_init(&ui->style.main);
-  lv_style_set_bg_color(&ui->style.main, lv_color_hex(0xF0F4F8));
-
-// Inside
-lv_style_init(&ui->style.top_left);
-lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0xDCF5E7));
-lv_style_set_border_color(&ui->style.top_left, lv_color_hex(0x2EA843));
-
-// Outside
-lv_style_init(&ui->style.bot_left);
-lv_style_set_bg_color(&ui->style.bot_left, lv_color_hex(0xFFF3D6));
-lv_style_set_border_color(&ui->style.bot_left, lv_color_hex(0xD48200));
-
-// Time
-lv_style_init(&ui->style.top_right);
-lv_style_set_bg_color(&ui->style.top_right, lv_color_hex(0xEDE9FF));
-lv_style_set_border_color(&ui->style.top_right, lv_color_hex(0x5E4E90));
-
-// Weather
-lv_style_init(&ui->style.bot_right);
-lv_style_set_bg_color(&ui->style.bot_right, lv_color_hex(0x6B9FD4)); // голубой
-lv_style_set_bg_opa(&ui->style.bot_right, LV_OPA_COVER);
-lv_style_set_radius(&ui->style.bot_right, 12);
   
+  lv_style_reset(&ui->style.meter_co2);
+  lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0xEDE9FF));
+  lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x5E4E90));
+  lv_style_set_border_width(&ui->style.meter_co2, 1);
 }
- 
+
+static void init_styles(ui_main_menu_t *ui) {
+  lv_style_init(&ui->style.main);
+  lv_style_init(&ui->style.top_left);
+  lv_style_init(&ui->style.bot_left);
+  lv_style_init(&ui->style.top_right);
+  lv_style_init(&ui->style.bot_right);
+  lv_style_init(&ui->style.meter_co2);
+  lv_style_init(&ui->style.chart_co2);
+  
+  ui_apply_theme(ui); // применяем нужную тему
+}
+
 void init_lv_objects() {
   init_fonts(&ui);
   init_styles(&ui);
