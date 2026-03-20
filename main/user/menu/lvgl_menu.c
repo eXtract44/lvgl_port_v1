@@ -167,13 +167,13 @@ static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_obj_t *chart = lv_chart_create(parent);
   lv_obj_set_size(chart, w, h);
   lv_obj_align(chart, align, x_ofs, y_ofs);
-  lv_chart_set_div_line_count(chart, 6, 9);
+    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+    lv_chart_set_point_count(chart, 24);        // 24 точки = 24 часа
+  lv_chart_set_div_line_count(chart, 3, 6);
   lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, MIN_VALUE_CO2,
                      MAX_VALUE_CO2);
-  // lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 3, 12,2,true,
-  // 40);
   
-  ui.co2.series_co2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_BROWN),
+  ui.co2.series_co2 = lv_chart_add_series(chart, lv_color_hex(0x2E86C1),
                                 LV_CHART_AXIS_PRIMARY_Y);
 
   return chart;
@@ -796,7 +796,7 @@ static void create_block_top_left(ui_main_menu_t *ui) {
   lv_obj_add_style(value, &ui->font.small, 0);
   ui->sensor.humidity_label = value;
 
-  value = create_label(ui->sensor.screen, "0 ppm", BLOCK_TOP_LEFT_ALIGN_VALUES,
+  value = create_label(ui->sensor.screen, "0", BLOCK_TOP_LEFT_ALIGN_VALUES,
                        BLOCK_TOP_LEFT_X_START_VALUES,
                        BLOCK_TOP_LEFT_Y_START_VALUE_3);
   if (!value) {
@@ -846,9 +846,6 @@ static void create_block_top_right(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->time.screen, &ui->style.top_right, 0);
   lv_obj_set_scrollbar_mode(ui->time.screen, LV_SCROLLBAR_MODE_OFF);
 
-  ui->time.screen = bg;
-  lv_obj_add_style(ui->time.screen, &ui->style.top_right, 0);
-  lv_obj_set_scrollbar_mode(ui->time.screen, LV_SCROLLBAR_MODE_OFF);
 
 //  create_text("time", ui->time.screen, STYLE_TEXT_TITLE,
 //              BLOCK_TOP_RIGHT_ALIGN_TITLE, 0, BLOCK_TOP_RIGHT_Y_START_TITLE,
@@ -856,7 +853,7 @@ static void create_block_top_right(ui_main_menu_t *ui) {
 
   lv_obj_t *time = create_label(
       ui->time.screen, "00:00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
-      BLOCK_TOP_RIGHT_X_START_VALUES, BLOCK_TOP_RIGHT_Y_START_VALUE_1);
+      BLOCK_TOP_RIGHT_X_START_VALUES, BLOCK_TOP_RIGHT_Y_START_VALUE_1-10);
 
   if (!time) {
     return;
@@ -864,16 +861,14 @@ static void create_block_top_right(ui_main_menu_t *ui) {
 
   ui->time.hour_minute_label = time;
   lv_obj_add_style(ui->time.hour_minute_label, &ui->font.time, 0);
-  // lv_obj_set_style_text_font(ui->time.hour_minute_label, &my_time_font, 0);
 
   time = create_label(ui->time.screen, "00.00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
                       BLOCK_TOP_RIGHT_X_START_VALUES,
-                      BLOCK_TOP_RIGHT_Y_START_VALUE_2);
+                      BLOCK_TOP_RIGHT_Y_START_VALUE_2-5);
   if (!time)
     return;
 
   ui->time.mday_month_label = time;
-  // lv_obj_set_style_text_font(ui->time.mday_month_label, &my_time_font, 0);
   lv_obj_add_style(ui->time.mday_month_label, &ui->font.time, 0);
   time = create_label(ui->time.screen, "load...", BLOCK_TOP_RIGHT_ALIGN_VALUES,
                       BLOCK_TOP_RIGHT_X_START_VALUE_3,
@@ -882,7 +877,6 @@ static void create_block_top_right(ui_main_menu_t *ui) {
     return;
   ui->time.wday_label = time;
   lv_obj_add_style(ui->time.wday_label, &ui->font.small, 0);
-  // lv_obj_set_style_text_font(ui->time.wday_label, &lv_font_montserrat_32, 0);
   /*BLOCK TOP RIGHT*/
 }
 
@@ -1190,9 +1184,9 @@ static void set_current_city_weather_event_handler(lv_event_t *e) {
 /////////////////////////////////////////////////weather settings events
 
 static void ui_create_co2(ui_main_menu_t *ui) {
-  create_text("CO2 24H", ui->screen, STYLE_TEXT_TITLE,
-              BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
-              BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART, ui);
+//  create_text("CO2 24H", ui->screen, STYLE_TEXT_TITLE,
+//              BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
+//              BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART, ui);
 
   ui->co2.chart = create_chart(
       ui->screen, BLOCK_BOT_MID_WIDTH_CO2_CHART, BLOCK_BOT_MID_HEIGHT_CO2_CHART,
@@ -1820,7 +1814,7 @@ void update_block_top_left(ui_main_menu_t *ui) {
   read_sensors();
   print_value("%.1f °C", get_temperature_aht10(), ui->sensor.temperature_label);
   print_value("%.f %%", get_humidity_aht10(), ui->sensor.humidity_label);
-  print_value("%.f ppm", get_tvoc_sgp30(), ui->sensor.tvoc_label);
+  print_value("%.f", get_tvoc_sgp30(), ui->sensor.tvoc_label);
 }
 
 void update_block_top_middle(ui_main_menu_t *ui) {
@@ -1954,8 +1948,8 @@ lv_style_set_text_font(&ui->font.nav_btn, &my_symbols);
 
 static void apply_theme_dark(ui_main_menu_t *ui) {
 lv_style_reset(&ui->style.main);
-lv_style_set_bg_color(&ui->style.main, lv_color_hex(0x0D1117));
-lv_style_set_bg_grad_color(&ui->style.main, lv_color_hex(0x161B22));
+lv_style_set_bg_color(&ui->style.main, lv_color_hex(0x0D1117));      // почти чёрный сверху
+lv_style_set_bg_grad_color(&ui->style.main, lv_color_hex(0x1E3A5F)); // тёмно-синий снизу
 lv_style_set_bg_grad_dir(&ui->style.main, LV_GRAD_DIR_VER);
 lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
@@ -2007,8 +2001,8 @@ lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
 
 static void apply_theme_light(ui_main_menu_t *ui) {
 lv_style_reset(&ui->style.main);
-lv_style_set_bg_color(&ui->style.main, lv_color_hex(0xF0F4F8));
-lv_style_set_bg_grad_color(&ui->style.main, lv_color_hex(0xE2EAF4));
+lv_style_set_bg_color(&ui->style.main, lv_color_hex(0xF0F4F8));      // светло-серый сверху
+lv_style_set_bg_grad_color(&ui->style.main, lv_color_hex(0xB8D0E8)); // голубой снизу
 lv_style_set_bg_grad_dir(&ui->style.main, LV_GRAD_DIR_VER);
 lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
