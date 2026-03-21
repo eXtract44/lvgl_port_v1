@@ -1,4 +1,5 @@
-#include "time.h"
+#include "time_user.h"
+#include <time.h>
 
 static const char *TAG = "NTP_TIME";
 struct tm timeinfo;
@@ -11,6 +12,11 @@ void initialize_sntp(void)
      esp_sntp_setservername(0, "pool.ntp.org");
      esp_sntp_setservername(1, "time.google.com");
      esp_sntp_init();
+     
+  
+     
+     
+     
 } else {
     ESP_LOGI(TAG, "SNTP already initialized");
 }

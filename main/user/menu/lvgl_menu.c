@@ -1811,7 +1811,6 @@ void show_all_blocks(ui_main_menu_t *ui) {
 }
 
 void update_block_top_left(ui_main_menu_t *ui) {
-  read_sensors();
   print_value("%.1f °C", get_temperature_aht10(), ui->sensor.temperature_label);
   print_value("%.f %%", get_humidity_aht10(), ui->sensor.humidity_label);
   print_value("%.f", get_tvoc_sgp30(), ui->sensor.tvoc_label);
@@ -1879,7 +1878,7 @@ static void standby_handle(ui_main_menu_t *ui) {
       timer_standby_sec = MAX_STANDBY_TIME * 5;
     }
   }
-  if (ui->settings.switch_.standby_status) {
+  if (!ui->settings.switch_.standby_status) {
     timer_standby_sec = 0;
   }
 }

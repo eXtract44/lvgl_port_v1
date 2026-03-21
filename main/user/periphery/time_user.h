@@ -5,8 +5,8 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_PERIPHERY_TIME_H_
-#define MAIN_USER_PERIPHERY_TIME_H_
+#ifndef MAIN_USER_PERIPHERY_TIME_USER_H_
+#define MAIN_USER_PERIPHERY_TIME_USER_H_
 #include "esp_log.h"
 #include "esp_sntp.h"
 #include <time.h>
@@ -17,4 +17,4 @@ void start_ntp_time_task(void);
 void initialize_sntp(void);
 
 
-#endif /* MAIN_USER_PERIPHERY_TIME_H_ */
+#endif /* MAIN_USER_PERIPHERY_TIME_USER_H_ */

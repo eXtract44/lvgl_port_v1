@@ -16,6 +16,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_touch.h"
 #include "esp_lcd_touch_gt911.h"
+#include "i2c_bus.h"
 
 static const char *TAG = "GT911";
 
@@ -397,11 +398,16 @@ static esp_err_t touch_gt911_read_cfg(esp_lcd_touch_handle_t tp)
 
 static esp_err_t touch_gt911_i2c_read(esp_lcd_touch_handle_t tp, uint16_t reg, uint8_t *data, uint8_t len)
 {
+	
     assert(tp != NULL);
     assert(data != NULL);
 
     /* Read data */
-    return esp_lcd_panel_io_rx_param(tp->io, reg, data, len);
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+        esp_err_t ret = esp_lcd_panel_io_rx_param(tp->io, reg, data, len);
+    xSemaphoreGive(i2c_bus_mutex);
+    return ret;
+    //return esp_lcd_panel_io_rx_param(tp->io, reg, data, len);
 }
 
 static esp_err_t touch_gt911_i2c_write(esp_lcd_touch_handle_t tp, uint16_t reg, uint8_t data)
@@ -410,6 +416,10 @@ static esp_err_t touch_gt911_i2c_write(esp_lcd_touch_handle_t tp, uint16_t reg, 
 
     // *INDENT-OFF*
     /* Write data */
-    return esp_lcd_panel_io_tx_param(tp->io, reg, (uint8_t[]){data}, 1);
+    //return esp_lcd_panel_io_tx_param(tp->io, reg, (uint8_t[]){data}, 1);
     // *INDENT-ON*
+       xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    esp_err_t ret = esp_lcd_panel_io_tx_param(tp->io, reg, (uint8_t[]){data}, 1);
+    xSemaphoreGive(i2c_bus_mutex);
+    return ret;
 }

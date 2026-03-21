@@ -3,9 +3,10 @@ idf_component_register(
     
     "user/periphery/wifi.c"
     "user/periphery/open_meteo.c"
-    "user/periphery/time.c"
+    "user/periphery/time_user.c"
     "user/periphery/sd_card.c"
      "user/periphery/nvs_user.c"
+     "user/periphery/i2c_bus.c"
     
     "user/menu/lvgl_menu.c" 
     "user/periphery/periphery.c" 

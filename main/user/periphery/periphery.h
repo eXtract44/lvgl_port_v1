@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#define AHT10_ADRESS (0x38 << 1) // 0b1110000; Adress[7-bit]
+#define AHT10_ADRESS 0x40 
 
 #define AHTX0_I2CADDR_DEFAULT 0x38   ///< AHT default i2c address
 #define AHTX0_I2CADDR_ALTERNATE 0x39 ///< AHT alternate i2c address
@@ -23,6 +23,7 @@
 typedef struct aht10_data_st {
     float temperature;
     uint8_t humidity;
+    uint32_t raw;
 }aht10_data_t;
 
 void aht10_init();
@@ -78,6 +79,8 @@ typedef struct {
   int is_day;
 
 } current_weather_t;
+
+void aht10_init();
 
 uint8_t get_wifi_status();
 const char* get_wifi_ssid();

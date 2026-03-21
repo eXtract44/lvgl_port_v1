@@ -17,10 +17,10 @@
 
 
 
-#define ACTIVATE_BLOCK_TOP_LEFT 1  // OK
-#define ACTIVATE_BLOCK_TOP_MID 1   // OK
-#define ACTIVATE_BLOCK_TOP_RIGHT 1 // OK
-#define ACTIVATE_BLOCK_BOT_LEFT 1  // OK
+#define ACTIVATE_BLOCK_TOP_LEFT 1  
+#define ACTIVATE_BLOCK_TOP_MID 	1 
+#define ACTIVATE_BLOCK_TOP_RIGHT 1 
+#define ACTIVATE_BLOCK_BOT_LEFT 1  
 #define ACTIVATE_BLOCK_BOT_MID 1
 #define ACTIVATE_BLOCK_BOT_RIGHT 1
 
@@ -45,7 +45,7 @@
 #define DAY_START_HOUR 7
 #define DAY_END_HOUR 20
 
-#define MAX_STANDBY_TIME 3600 // sec
+#define MAX_STANDBY_TIME 180 // sec
 /////////////////////////////////////////////////////////////////////////BLOCK_TOP_LEFT
 #define BLOCK_TOP_LEFT_WIDTH 250
 #define BLOCK_TOP_LEFT_HEIGHT 225

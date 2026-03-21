@@ -10,7 +10,17 @@
 #include "esp_wifi.h"
 #include "user/menu/lvgl_user_config.h"
 #include "waveshare_rgb_lcd_port.h"
-#include <time.h>
+#include "time_user.h"
+#include "esp_timer.h"
+#include "i2c_bus.h"
+
+typedef enum {
+    AHT10_STATE_IDLE,
+    AHT10_STATE_TRIGGERED,
+} aht10_state_t;
+
+static aht10_state_t aht10_state = AHT10_STATE_IDLE;
+static int64_t aht10_trigger_time = 0;
 
 current_weather_t current_weather_data = {0};
 extern struct tm timeinfo;
@@ -18,7 +28,7 @@ extern wifi_ap_record_t ap_info;
 extern uint8_t wifi_ssid[];
 extern uint8_t wifi_password[];
 
-#define SIMULATE_AHT10_VALUES 1
+#define SIMULATE_AHT10_VALUES 0
 #define SIMULATE_SGP30_VALUES 1
 #define SIMULATE_INET_VALUES 0
 #define SIMULATE_STANDBY 0
@@ -32,52 +42,87 @@ uint8_t AHT10_TmpHum_Cmd[3] = {AHTX0_CMD_TRIGGER, 0x33, 0x00};
 uint8_t AHT10_RX_Data[6];
 
 void aht10_init() {
-  uint8_t soft_res = AHTX0_CMD_SOFTRESET;
-  i2c_master_write_to_device(I2C_MASTER_NUM, AHT10_ADRESS, &soft_res, 1,
-                             I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-  vTaskDelay(pdMS_TO_TICKS(50));
-  uint8_t calib = AHTX0_CMD_CALIBRATE;
-  i2c_master_write_to_device(I2C_MASTER_NUM, AHT10_ADRESS, &calib, 1,
-                             I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+   vTaskDelay(pdMS_TO_TICKS(100));
+
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+
+    uint8_t soft_res = AHTX0_CMD_SOFTRESET;
+    i2c_master_write_to_device(I2C_MASTER_NUM, AHT10_ADRESS,
+                        &soft_res, 1, pdMS_TO_TICKS(100));
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    uint8_t calib_cmd[3] = {AHTX0_CMD_CALIBRATE, 0x08, 0x00};
+    i2c_master_write_to_device(I2C_MASTER_NUM, AHT10_ADRESS,
+              calib_cmd, 3, pdMS_TO_TICKS(100));
+
+   xSemaphoreGive(i2c_bus_mutex);
+    vTaskDelay(pdMS_TO_TICKS(500)); // даём AHT10 полностью успокоиться
+    ESP_LOGI("AHT10", "Init done");
 }
 
 void aht10_read() {
 #if SIMULATE_AHT10_VALUES
-  static uint8_t temp = 0;
-  temp++;
-  if (temp > 100)
-    temp = 0;
-  aht_data.humidity = temp;
+    static uint8_t temp = 0;
+    temp++;
+    if (temp > 100) temp = 0;
+    aht_data.humidity = temp;
 
-  static float temp_f = -10;
-  temp_f = temp_f + 0.3f;
-  if (temp_f > 60)
-    temp_f = -10;
-  aht_data.temperature = temp_f;
+    static float temp_f = -10;
+    temp_f = temp_f + 0.3f;
+    if (temp_f > 60) temp_f = -10;
+    aht_data.temperature = temp_f;
 
 #else
-  i2c_master_write_to_device(I2C_MASTER_NUM, AHT10_ADRESS,
-                             (uint8_t *)AHT10_TmpHum_Cmd, 3,
-                             I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-  vTaskDelay(pdMS_TO_TICKS(50));
-  /* Receive data: STATUS[1]:HIMIDITY[2.5]:TEMPERATURE[2.5] */
-  i2c_master_read_from_device(I2C_MASTER_NUM, AHT10_ADRESS,
-                              (uint8_t *)AHT10_RX_Data, 6,
-                              I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    if (aht10_state == AHT10_STATE_IDLE) {
+        xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+        esp_err_t ret = i2c_master_write_to_device(I2C_MASTER_NUM, AHT10_ADRESS,
+                            AHT10_TmpHum_Cmd, 3, pdMS_TO_TICKS(100));
+        xSemaphoreGive(i2c_bus_mutex);
 
-  if (~AHT10_RX_Data[0] & AHTX0_STATUS_BUSY) // aht10 not busy
-  {
-    /* Convert to Temperature in °C */
-    AHT10_ADC_Raw = (((uint32_t)AHT10_RX_Data[3] & 15U) << 16U) |
-                    ((uint32_t)AHT10_RX_Data[4] << 8U) | AHT10_RX_Data[5];
-    aht_data.temperature =
-        (float)(AHT10_ADC_Raw * 200.00f / 1048576.00f) - 50.00f;
-    //			/* Convert to Relative Humidity in % */
-    AHT10_ADC_Raw = ((uint32_t)AHT10_RX_Data[1] << 12U) |
-                    ((uint32_t)AHT10_RX_Data[2] << 4U) |
-                    (AHT10_RX_Data[3] >> 4U);
-    aht_data.humidity = (uint8_t)(AHT10_ADC_Raw * 100.00f / 1048576.00f);
-  }
+        if (ret != ESP_OK) {
+            ESP_LOGE("AHT10", "Trigger failed: %s", esp_err_to_name(ret));
+            return;
+        }
+        aht10_trigger_time = esp_timer_get_time();
+        aht10_state = AHT10_STATE_TRIGGERED;
+        return;
+    }
+
+    if (aht10_state == AHT10_STATE_TRIGGERED) {
+        if ((esp_timer_get_time() - aht10_trigger_time) < 100000) {
+            return;
+        }
+
+        xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+        esp_err_t ret = i2c_master_read_from_device(I2C_MASTER_NUM, AHT10_ADRESS,
+                            AHT10_RX_Data, 6, pdMS_TO_TICKS(100));
+        xSemaphoreGive(i2c_bus_mutex);
+
+        if (ret != ESP_OK) {
+            ESP_LOGE("AHT10", "Read failed: %s", esp_err_to_name(ret));
+            aht10_state = AHT10_STATE_IDLE;
+            return;
+        }
+
+        if (!(AHT10_RX_Data[0] & AHTX0_STATUS_BUSY)) {
+            aht_data.raw = (((uint32_t)AHT10_RX_Data[3] & 0x0F) << 16U) |
+                           ((uint32_t)AHT10_RX_Data[4] << 8U) |
+                            AHT10_RX_Data[5];
+            aht_data.temperature = (float)(aht_data.raw * 200.0f / 1048576.0f) - 50.0f;
+
+            aht_data.raw = ((uint32_t)AHT10_RX_Data[1] << 12U) |
+                           ((uint32_t)AHT10_RX_Data[2] << 4U) |
+                           (AHT10_RX_Data[3] >> 4U);
+            aht_data.humidity = (uint8_t)(aht_data.raw * 100.0f / 1048576.0f);
+
+            ESP_LOGI("AHT10", "Temp: %.1f C, Humidity: %d%%",
+                     aht_data.temperature, aht_data.humidity);
+        } else {
+            ESP_LOGW("AHT10", "Sensor busy, status: 0x%02X", AHT10_RX_Data[0]);
+        }
+        aht10_state = AHT10_STATE_IDLE;
+    }
 #endif
 }
 float get_temperature_aht10() { return aht_data.temperature; }
@@ -372,7 +417,7 @@ uint8_t get_is_day() {
     current_snow = 0;
   }
 #else
-  current= current_weather_data.is_day;
+  current = current_weather_data.is_day;
 #endif
   return current;
 }
