@@ -2,7 +2,7 @@
 #include <time.h>
 
 static const char *TAG = "NTP_TIME";
-struct tm timeinfo;
+struct tm timeinfo_user;
 
 // Инициализация SNTP (NTP клиент)
 void initialize_sntp(void)
@@ -46,7 +46,7 @@ void update_time_task(void *pvParameter)
 {
     while(1) {
         
-        get_local_time(&timeinfo);
+        get_local_time(&timeinfo_user);
 
 //        ESP_LOGI(TAG, "Current time: %04d-%02d-%02d %02d:%02d:%02d",
 //                 timeinfo.tm_year + 1900,

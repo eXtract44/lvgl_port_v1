@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#define AHT10_ADRESS 0x40 
+#define AHT10_ADRESS 0x44 
 
 #define AHTX0_I2CADDR_DEFAULT 0x38   ///< AHT default i2c address
 #define AHTX0_I2CADDR_ALTERNATE 0x39 ///< AHT alternate i2c address
@@ -33,8 +33,8 @@ uint8_t get_humidity_aht10();
 
 #define CRC8_POLYNOMIAL 0x31
 #define SGP30_ADDR          0x58
-#define	SGP30_ADDR_WRITE	SGP30_ADDR<<1       //0xb0
-#define	SGP30_ADDR_READ		(SGP30_ADDR<<1)+1   //0xb1
+#define	SGP30_ADDR_WRITE	SGP30_ADDR      
+#define	SGP30_ADDR_READ		SGP30_ADDR   
 
 typedef struct sgp30_data_st {
     uint16_t co2;
@@ -47,8 +47,8 @@ typedef enum sgp30_cmd_en {
 } sgp30_cmd_t;
 
 
-int sgp30_init(void);
-int sgp30_read(void);
+int sgp30_init();
+int sgp30_read();
 uint16_t get_co2_sgp30();
 uint16_t get_tvoc_sgp30();
 
@@ -58,14 +58,6 @@ enum namesOfWiFiStatus{
 	WIFI_RECONNECT,
 	WIFI_CONNECTED,
 	WIFI_DISCONNECTED
-};
-
-enum namesOfBatteryStatus{
-	BATTERY_EMPTY,
-	BATTERY_20,
-	BATTERY_50,
-	BATTERY_70,
-	BATTERY_FULL,
 };
 
 typedef struct {
@@ -100,9 +92,6 @@ uint8_t get_weather_clouds();
 uint8_t get_weather_rain();
 uint8_t get_weather_snow();
 uint8_t get_is_day();
-
-uint8_t get_battery_status();
-uint8_t get_volume();
 
 
 #endif /* MAIN_PERIPHERY_H_ */

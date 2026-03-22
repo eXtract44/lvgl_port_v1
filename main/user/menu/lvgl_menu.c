@@ -188,28 +188,28 @@ void print_wday(uint8_t wday, ui_main_menu_t *ui) {
 
   switch (wday) {
   case 1:
-    lv_label_set_text(parent, "mo");
+    lv_label_set_text(parent, "monday");
     break;
   case 2:
-    lv_label_set_text(parent, "tu");
+    lv_label_set_text(parent, "thursday");
     break;
   case 3:
-    lv_label_set_text(parent, "we");
+    lv_label_set_text(parent, "wednesday");
     break;
   case 4:
-    lv_label_set_text(parent, "th");
+    lv_label_set_text(parent, "tuesday");
     break;
   case 5:
-    lv_label_set_text(parent, "fr");
+    lv_label_set_text(parent, "friday");
     break;
   case 6:
-    lv_label_set_text(parent, "sa");
+    lv_label_set_text(parent, "saturday");
     break;
   case 7:
-    lv_label_set_text(parent, "su");
+    lv_label_set_text(parent, "sunday");
     break;
   default:
-    lv_label_set_text(parent, "no wifi");
+    lv_label_set_text(parent, "day of the week");
     break;
   }
 }

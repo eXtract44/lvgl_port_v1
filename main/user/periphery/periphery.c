@@ -23,13 +23,13 @@ static aht10_state_t aht10_state = AHT10_STATE_IDLE;
 static int64_t aht10_trigger_time = 0;
 
 current_weather_t current_weather_data = {0};
-extern struct tm timeinfo;
+extern struct tm timeinfo_user;
 extern wifi_ap_record_t ap_info;
 extern uint8_t wifi_ssid[];
 extern uint8_t wifi_password[];
 
-#define SIMULATE_AHT10_VALUES 0
-#define SIMULATE_SGP30_VALUES 1
+#define SIMULATE_AHT10_VALUES 1
+#define SIMULATE_SGP30_VALUES 0
 #define SIMULATE_INET_VALUES 0
 #define SIMULATE_STANDBY 0
 #define SIMULATE_BATTERY 0
@@ -56,21 +56,24 @@ void aht10_init() {
     i2c_master_write_to_device(I2C_MASTER_NUM, AHT10_ADRESS,
               calib_cmd, 3, pdMS_TO_TICKS(100));
 
-   xSemaphoreGive(i2c_bus_mutex);
-    vTaskDelay(pdMS_TO_TICKS(500)); // даём AHT10 полностью успокоиться
+ 
+    vTaskDelay(pdMS_TO_TICKS(200));
+    i2c_reset_tx_fifo(I2C_MASTER_NUM);
+    i2c_reset_rx_fifo(I2C_MASTER_NUM);
     ESP_LOGI("AHT10", "Init done");
+    xSemaphoreGive(i2c_bus_mutex);
 }
 
 void aht10_read() {
 #if SIMULATE_AHT10_VALUES
-    static uint8_t temp = 0;
+    static uint8_t temp = 30;
     temp++;
-    if (temp > 100) temp = 0;
+    if (temp > 92) temp = 30;
     aht_data.humidity = temp;
 
-    static float temp_f = -10;
-    temp_f = temp_f + 0.3f;
-    if (temp_f > 60) temp_f = -10;
+    static float temp_f = 12;
+    temp_f = temp_f + 0.1f;
+    if (temp_f > 29) temp_f = 12;
     aht_data.temperature = temp_f;
 
 #else
@@ -146,16 +149,17 @@ static int sgp30_soft_reset(void) {
 }
 
 int sgp30_init(void) {
-  int status;
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
 
-  status = sgp30_soft_reset();
-  vTaskDelay(pdMS_TO_TICKS(100));
+    int status;
+    status = sgp30_soft_reset();
+    vTaskDelay(pdMS_TO_TICKS(100));
 
-  status = sgp30_send_cmd(INIT_AIR_QUALITY);
+    status = sgp30_send_cmd(INIT_AIR_QUALITY);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
-  vTaskDelay(pdMS_TO_TICKS(100));
-
-  return status == 0 ? 0 : -1;
+    xSemaphoreGive(i2c_bus_mutex);
+    return status == 0 ? 0 : -1;
 }
 
 static int sgp30_start(void) { return sgp30_send_cmd(MEASURE_AIR_QUALITY); }
@@ -181,40 +185,47 @@ static uint8_t CheckCrc8(uint8_t *const message, uint8_t initial_value) {
 
 int sgp30_read(void) {
 #if SIMULATE_SGP30_VALUES
-  static uint16_t temp = 400;
-  temp += 10;
-  if (temp > 9999)
-    temp = 400;
-  sgp30_data.co2 = temp;
-  sgp30_data.tvoc = temp - 111;
+    static uint16_t temp = 400;
+    temp += 10;
+    if (temp > 9999) temp = 400;
+    sgp30_data.co2 = temp;
+    sgp30_data.tvoc = temp - 111;
 #else
-  int status;
-  uint8_t recv_buffer[6] = {0};
+    int status;
+    uint8_t recv_buffer[6] = {0};
 
-  /* 启动测量 */
-  status = sgp30_start();
-  if (status != 0) {
-  }
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
 
-  vTaskDelay(pdMS_TO_TICKS(100));
+    status = sgp30_start();
+    if (status != 0) {
+        ESP_LOGE("SGP30", "Start failed");
+        xSemaphoreGive(i2c_bus_mutex);
+        return -1;
+    }
 
-  status = i2c_master_read_from_device(
-      I2C_MASTER_NUM, SGP30_ADDR_READ, (uint8_t *)recv_buffer, 6,
-      I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
-  if (CheckCrc8(&recv_buffer[0], 0xFF) != recv_buffer[2]) {
-    // printf("co2 recv data crc check fail\r\n");
-    return -1;
-  }
-  if (CheckCrc8(&recv_buffer[3], 0xFF) != recv_buffer[5]) {
-    // printf("tvoc recv data crc check fail\r\n");
-    return -1;
-  }
-  sgp30_data.co2 = recv_buffer[0] << 8 | recv_buffer[1];
-  sgp30_data.tvoc = recv_buffer[3] << 8 | recv_buffer[4];
+    status = i2c_master_read_from_device(I2C_MASTER_NUM, SGP30_ADDR_READ,
+                 recv_buffer, 6, pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
 
+    xSemaphoreGive(i2c_bus_mutex);
+
+    if (status != 0) {
+        ESP_LOGE("SGP30", "Read failed");
+        return -1;
+    }
+
+    if (CheckCrc8(&recv_buffer[0], 0xFF) != recv_buffer[2]) {
+        return -1;
+    }
+    if (CheckCrc8(&recv_buffer[3], 0xFF) != recv_buffer[5]) {
+        return -1;
+    }
+
+    sgp30_data.co2 = recv_buffer[0] << 8 | recv_buffer[1];
+    sgp30_data.tvoc = recv_buffer[3] << 8 | recv_buffer[4];
 #endif
-  return 0;
+    return 0;
 }
 
 uint16_t get_co2_sgp30() { return sgp30_data.co2; }
@@ -274,7 +285,7 @@ uint8_t get_time_mday() {
     current_mday = 1;
   }
 #else
-  current_mday = timeinfo.tm_mday;
+  current_mday = timeinfo_user.tm_mday;
 #endif
   return current_mday;
 }
@@ -287,7 +298,7 @@ uint8_t get_time_month() {
     current_monts = 1;
   }
 #else
-  current_monts = timeinfo.tm_mon + 1;
+  current_monts = timeinfo_user.tm_mon + 1;
 #endif
   return current_monts;
 }
@@ -300,7 +311,7 @@ uint8_t get_time_hour() {
     current_hour = 0;
   }
 #else
-  current_hour = timeinfo.tm_hour;
+  current_hour = timeinfo_user.tm_hour;
 #endif
   return current_hour;
 }
@@ -313,7 +324,7 @@ uint8_t get_time_minute() {
     current_minute = 0;
   }
 #else
-  current_minute = timeinfo.tm_min;
+  current_minute = timeinfo_user.tm_min;
 #endif
   return current_minute;
 }
@@ -326,7 +337,7 @@ uint8_t get_time_wday() {
     current_wday = 1;
   }
 #else
-  current_wday = timeinfo.tm_wday;
+  current_wday = timeinfo_user.tm_wday;
 #endif
   return current_wday;
 }
@@ -410,40 +421,6 @@ uint8_t get_weather_snow() {
 }
 
 uint8_t get_is_day() {
-  uint8_t current = 0;
-#if SIMULATE_INET_VALUES
-  current_snow += 1;
-  if (current_snow > 5) {
-    current_snow = 0;
-  }
-#else
-  current = current_weather_data.is_day;
-#endif
-  return current;
-}
-
-uint8_t get_battery_status() {
-  static uint8_t current_battery_status = BATTERY_EMPTY;
-#if SIMULATE_BATTERY
-  current_battery_status++;
-  if (current_battery_status > BATTERY_FULL) {
-    current_battery_status = BATTERY_EMPTY;
-  }
-#else
-
-#endif
-  return current_battery_status;
-}
-
-uint8_t get_volume() {
-  static uint8_t current_volume = 1;
-#if SIMULATE_VOLUME
-  current_volume++;
-  if (current_volume > 3) {
-    current_volume = 1;
-  }
-#else
-
-#endif
-  return current_volume;
+  
+  return current_weather_data.is_day;
 }

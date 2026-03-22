@@ -404,6 +404,7 @@ static esp_err_t touch_gt911_i2c_read(esp_lcd_touch_handle_t tp, uint16_t reg, u
 
     /* Read data */
     xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    //ESP_LOGI("GT911", "i2c_read reg=0x%04X", reg);
         esp_err_t ret = esp_lcd_panel_io_rx_param(tp->io, reg, data, len);
     xSemaphoreGive(i2c_bus_mutex);
     return ret;
