@@ -20,10 +20,17 @@
 #define AHTX0_STATUS_BUSY 0x80       ///< Status bit for busy
 #define AHTX0_STATUS_CALIBRATED 0x08 ///< Status bit for calibrated
 
+typedef enum {
+	AHT10_STATE_IDLE,
+	AHT10_STATE_TRIGGERED,
+} aht10_state_t;
+
 typedef struct aht10_data_st {
+	int64_t trigger_time;
     float temperature;
     uint8_t humidity;
     uint32_t raw;
+	uint8_t state;
 }aht10_data_t;
 
 void aht10_init();

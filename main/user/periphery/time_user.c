@@ -48,13 +48,14 @@ void update_time_task(void *pvParameter)
         
         get_local_time(&timeinfo_user);
 
-//        ESP_LOGI(TAG, "Current time: %04d-%02d-%02d %02d:%02d:%02d",
-//                 timeinfo.tm_year + 1900,
-//                 timeinfo.tm_mon + 1,
-//                 timeinfo.tm_mday,
-//                 timeinfo.tm_hour,
-//                 timeinfo.tm_min,
-//                 timeinfo.tm_sec);
+//        ESP_LOGI(TAG, "Current time: year:%04d mon:%02d mday:%02d wday:%02d time:%02d:%02d:%02d",
+//                 timeinfo_user.tm_year + 1900,
+//                 timeinfo_user.tm_mon + 1,
+//                 timeinfo_user.tm_mday,
+//				 timeinfo_user.tm_wday,
+//                 timeinfo_user.tm_hour,
+//                 timeinfo_user.tm_min,
+//                 timeinfo_user.tm_sec);
 
         vTaskDelay(5000 / portTICK_PERIOD_MS); // обновлять каждую минуту
     }
