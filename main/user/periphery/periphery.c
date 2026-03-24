@@ -21,7 +21,7 @@ extern wifi_ap_record_t ap_info;
 extern uint8_t wifi_ssid[];
 extern uint8_t wifi_password[];
 
-#define SIMULATE_SHT31_VALUES 1
+#define SIMULATE_SHT31_VALUES 0
 #define SIMULATE_SGP30_VALUES 0
 #define SIMULATE_INET_VALUES 0
 
@@ -145,8 +145,8 @@ void sht31_read(void) {
         uint16_t raw_hum  = ((uint16_t)rx[3] << 8) | rx[4];
         sht31_data.humidity = (uint8_t)(100.0f * (float)raw_hum / 65535.0f);
  
-        ESP_LOGI("SHT31", "__Temp__: %.1f C, Humidity: %d%%",
-                 sht31_data.temperature, sht31_data.humidity);
+//        ESP_LOGI("SHT31", "__Temp__: %.1f C, Humidity: %d%%",
+//                 sht31_data.temperature, sht31_data.humidity);
     }
 #endif
 }
