@@ -112,6 +112,8 @@ typedef struct {
   lv_obj_t *chart;
   lv_obj_t *title;
   lv_chart_series_t *series_co2;
+  int32_t co2_target;
+int32_t co2_display;
 
 } ui_co2_t;
 
@@ -205,6 +207,7 @@ typedef struct {
   ui_weather_value_t meteo;
   font_style_t font;
   screen_style_t style;
+  char string_buffer[20];
 } ui_main_menu_t;
 
 enum namesOfStyles {

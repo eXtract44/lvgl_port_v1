@@ -6,16 +6,17 @@
 #include "lvgl_user_config.h"
 #include "misc/lv_area.h"
 #include "misc/lv_color.h"
-#include "user/periphery/periphery.h"
+
 #include "waveshare_rgb_lcd_port.h"
 #include <esp_log.h>
 #include <math.h>
 #include <stdbool.h>
-
 #include "esp_wifi.h"
 
+#include "user/periphery/periphery.h"
 #include "user/periphery/nvs_user.h"
 #include "user/periphery/wifi.h"
+
 
 static sensor_history_t sensor_history = {0};
 extern const city_t cities_de[];
@@ -27,10 +28,8 @@ extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
 extern wifi_ap_record_t ap_info;
 
-static char string_buffer[STRING_MAX_LENGHT];
+int standby_touched = 0;  //callback for extern touch driver 
 
-int standby_touched = 0;
-static uint32_t timer_standby_sec;
 
 LV_IMG_DECLARE(sun_48_48);
 LV_IMG_DECLARE(moon_42_42);
@@ -187,28 +186,28 @@ void print_wday(uint8_t wday, ui_main_menu_t *ui) {
 
   switch (wday) {
   case 0:
-    lv_label_set_text(parent, "sunday");
+    lv_label_set_text(parent, "sonntag");
     break;
   case 1:
-    lv_label_set_text(parent, "monday");
+    lv_label_set_text(parent, "montag");
     break;
   case 2:
-    lv_label_set_text(parent, "thursday");
+    lv_label_set_text(parent, "dienstag");
     break;
   case 3:
-    lv_label_set_text(parent, "wednesday");
+    lv_label_set_text(parent, "mittwoch");
     break;
   case 4:
-    lv_label_set_text(parent, "tuesday");
+    lv_label_set_text(parent, "donnerstag");
     break;
   case 5:
-    lv_label_set_text(parent, "friday");
+    lv_label_set_text(parent, "freitag");
     break;
   case 6:
-    lv_label_set_text(parent, "saturday");
+    lv_label_set_text(parent, "samstag");
     break;
   default:
-    lv_label_set_text(parent, "dayOfTheWeek");
+    lv_label_set_text(parent, "wochentag");
     break;
   }
 }
@@ -221,19 +220,19 @@ void print_time(uint8_t time_hour, uint8_t time_minute, ui_main_menu_t *ui) {
   }
   if (get_wifi_status() == WIFI_CONNECTED) {
     if (time_hour < 10 && time_minute < 10) {
-      sprintf(string_buffer, "0%d:0%d", (int)time_hour, (int)time_minute);
+      sprintf(ui->string_buffer, "0%d:0%d", (int)time_hour, (int)time_minute);
     } else if (time_hour > 9 && time_minute < 10) {
-      sprintf(string_buffer, "%d:0%d", (int)time_hour, (int)time_minute);
+      sprintf(ui->string_buffer, "%d:0%d", (int)time_hour, (int)time_minute);
     } else if (time_hour < 10 && time_minute > 9) {
-      sprintf(string_buffer, "0%d:%d", (int)time_hour, (int)time_minute);
+      sprintf(ui->string_buffer, "0%d:%d", (int)time_hour, (int)time_minute);
     } else {
-      sprintf(string_buffer, "%d:%d", (int)time_hour, (int)time_minute);
+      sprintf(ui->string_buffer, "%d:%d", (int)time_hour, (int)time_minute);
     }
   } else {
-    sprintf(string_buffer, "0%d:0%d", (int)0, 0);
+    sprintf(ui->string_buffer, "0%d:0%d", (int)0, 0);
   }
 
-  lv_label_set_text(parent, string_buffer);
+  lv_label_set_text(parent, ui->string_buffer);
 }
 
 void print_mday(uint8_t date_day, uint8_t date_month, ui_main_menu_t *ui) {
@@ -244,18 +243,18 @@ void print_mday(uint8_t date_day, uint8_t date_month, ui_main_menu_t *ui) {
   }
   if (get_wifi_status() == WIFI_CONNECTED) {
     if (date_day < 10 && date_month < 10) {
-      sprintf(string_buffer, "0%d.0%d", (int)date_day, (int)date_month);
+      sprintf(ui->string_buffer, "0%d.0%d", (int)date_day, (int)date_month);
     } else if (date_day > 9 && date_month < 10) {
-      sprintf(string_buffer, "%d.0%d", (int)date_day, (int)date_month);
+      sprintf(ui->string_buffer, "%d.0%d", (int)date_day, (int)date_month);
     } else if (date_day < 10 && date_month > 9) {
-      sprintf(string_buffer, "0%d.%d", (int)date_day, (int)date_month);
+      sprintf(ui->string_buffer, "0%d.%d", (int)date_day, (int)date_month);
     } else {
-      sprintf(string_buffer, "%d.%d", (int)date_day, (int)date_month);
+      sprintf(ui->string_buffer, "%d.%d", (int)date_day, (int)date_month);
     }
   } else {
-    sprintf(string_buffer, "0%d.0%d", 0, 0);
+    sprintf(ui->string_buffer, "0%d.0%d", 0, 0);
   }
-  lv_label_set_text(parent, string_buffer);
+  lv_label_set_text(parent, ui->string_buffer);
 }
 
 static lv_obj_t *create_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
@@ -611,8 +610,8 @@ lv_obj_t *create_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
 void sensor_history_push(sensor_history_t *h) {
   // Записываем температуру с одним знаком после запятой (×10)
   // get_temperature_aht10() возвращает float — умножаем и округляем
-  h->temperature[h->head] = (int16_t)(get_temperature_aht10() * 10.0f + 0.5f);
-  h->humidity[h->head] = get_humidity_aht10();
+  h->temperature[h->head] = (int16_t)(get_temperature_sht31() * 10.0f + 0.5f);
+  h->humidity[h->head] = get_humidity_sht31();
 
   h->head = (h->head + 1) % SENSOR_HISTORY_POINTS;
 
@@ -668,7 +667,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->sensor.popup, &ui->style.main, 0);
 
   // --- Заголовок ---
-  create_text("Temperature / Humidity  (6h)", ui->sensor.popup,
+  create_text("Temperature / Feuchtigkeit  (6h)", ui->sensor.popup,
               STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
 
   // --- Кнопка закрытия ---
@@ -756,7 +755,7 @@ static void create_block_top_left(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
   lv_obj_set_scrollbar_mode(ui->sensor.screen, LV_SCROLLBAR_MODE_OFF);
 
-  create_text("inside", ui->sensor.screen, STYLE_TEXT_TITLE,
+  create_text("innen", ui->sensor.screen, STYLE_TEXT_TITLE,
               BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE, ui);
 
   lv_obj_t *icon =
@@ -884,7 +883,7 @@ static void create_block_top_right(ui_main_menu_t *ui) {
 
   ui->time.mday_month_label = time;
   lv_obj_add_style(ui->time.mday_month_label, &ui->font.time, 0);
-  time = create_label(ui->time.screen, "load...", LV_ALIGN_BOTTOM_MID,
+  time = create_label(ui->time.screen, "laden...", LV_ALIGN_BOTTOM_MID,
                       BLOCK_TOP_RIGHT_X_START_VALUE_3,
                       BLOCK_TOP_RIGHT_Y_START_VALUE_3);
   if (!time)
@@ -906,7 +905,7 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
   ui->meteo.screen = bg;
   lv_obj_add_style(ui->meteo.screen, &ui->style.bot_left, 0);
   lv_obj_set_scrollbar_mode(ui->meteo.screen, LV_SCROLLBAR_MODE_OFF);
-  create_text("outside", ui->meteo.screen, STYLE_TEXT_TITLE,
+  create_text("aussen", ui->meteo.screen, STYLE_TEXT_TITLE,
               BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE, ui);
 
   lv_obj_t *icon =
@@ -1256,11 +1255,11 @@ static void ui_create_weather_popup(ui_main_menu_t *ui) {
   lv_obj_set_style_bg_img_src(ui->weather.btn_open_city_list, LV_SYMBOL_GPS, 0);
 
   ui->weather.city_label =
-      create_label(ui->weather.popup, "CityName", LV_ALIGN_TOP_LEFT, 220, 90);
+      create_label(ui->weather.popup, "Stadt", LV_ALIGN_TOP_LEFT, 220, 90);
 
-  create_text("Weather Settings", ui->weather.popup, STYLE_TEXT_SMALL,
+  create_text("Wetter Einstellungen", ui->weather.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
-  create_text("City:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+  create_text("Stadt:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
               15, 90, ui);
   //  create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL,
   //  LV_ALIGN_TOP_LEFT,
@@ -1299,13 +1298,13 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
   lv_obj_set_scrollbar_mode(ui->wifi.popup, LV_SCROLLBAR_MODE_OFF);
   lv_obj_add_style(ui->wifi.popup, &ui->style.main, 0);
 
-  create_text("WIFI Settings", ui->wifi.popup, STYLE_TEXT_SMALL,
+  create_text("WIFI Einstellungen", ui->wifi.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
-  create_text("SSID:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+  create_text("Name:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
               90, ui);
-  create_text("PASS:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+  create_text("Passwort:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
               180, ui);
-  create_text("RSSI:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
+  create_text("Signal:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
               270, ui);
 
   ui->wifi.btn_close =
@@ -1341,13 +1340,13 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
 
   ui->wifi.ta_ssid = lv_textarea_create(ui->wifi.popup);
   lv_obj_align(ui->wifi.ta_ssid, LV_ALIGN_TOP_MID, 0, 35);
-  lv_textarea_set_placeholder_text(ui->wifi.ta_ssid, "WiFi SSID");
+  lv_textarea_set_placeholder_text(ui->wifi.ta_ssid, "WiFi Name");
   lv_obj_set_size(ui->wifi.ta_ssid, 600, 120);
 
   ui->wifi.ta_pass = lv_textarea_create(ui->wifi.popup);
   lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 35);
   // [FIX] Было "WiFi SSID" — опечатка в placeholder для pass
-  lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "WiFi Password");
+  lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "WiFi Passwort");
   lv_obj_set_size(ui->wifi.ta_pass, 600, 120);
 
   set_visible(ui->wifi.ta_ssid, false);
@@ -1423,11 +1422,11 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
   lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
   lv_obj_add_style(ui->settings.popup, &ui->style.main, 0);
 
-  create_text("Settings", ui->settings.popup, STYLE_TEXT_SMALL,
+  create_text("Einstellungen", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
   create_text("Standby:", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 90, ui);
-  create_text("Theme Light/Dark:", ui->settings.popup, STYLE_TEXT_SMALL,
+  create_text("Thema Light/Dark:", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 180, ui);
 
   ui->settings.btn_close =
@@ -1816,17 +1815,16 @@ void show_all_blocks(ui_main_menu_t *ui) {
 }
 
 void update_block_top_left(ui_main_menu_t *ui) {
-  print_value("%.1f °C", get_temperature_aht10(), ui->sensor.temperature_label);
-  print_value("%.f %%", get_humidity_aht10(), ui->sensor.humidity_label);
+  print_value("%.1f °C", get_temperature_sht31(), ui->sensor.temperature_label);
+  print_value("%.f %%", get_humidity_sht31(), ui->sensor.humidity_label);
   print_value("%.f", get_tvoc_sgp30(), ui->sensor.tvoc_label);
 }
 
-void update_block_top_middle(ui_main_menu_t *ui) {
-  uint16_t current_co2_value = get_co2_sgp30();
-
-  print_value("%.f", current_co2_value, ui->co2.co2_label);
-  lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator,
-                               current_co2_value);
+void update_block_top_middle(ui_main_menu_t *ui) {	
+	 uint16_t raw = get_co2_sgp30();
+	 ui->co2.co2_target = raw;
+    // Лейбл показываем реальное значение (или display — на вкус)
+    print_value("%.f", raw, ui->co2.co2_label);
 }
 
 void update_block_top_right(ui_main_menu_t *ui) {
@@ -1869,9 +1867,37 @@ void update_block_bot_right(ui_main_menu_t *ui) {
   }
 }
 
+
+
+void co2_meter_anim_cb(lv_timer_t *timer) {
+     ui_main_menu_t *ui = timer->user_data;
+
+    if (ui->co2.co2_target < 0) return;
+
+    if (ui->co2.co2_display < 0) {
+        ui->co2.co2_display = ui->co2.co2_target;
+    }
+
+    // заменяешь эту строку:
+    // co2_display += (co2_target - co2_display) / 8;
+
+    // на это:
+    int32_t diff = ui->co2.co2_target - ui->co2.co2_display;
+    if (diff == 0) return;
+
+    int32_t step = diff / 8;
+    if (step == 0) step = (diff > 0) ? 1 : -1;
+
+    ui->co2.co2_display += step;
+
+    lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator,
+                                 (uint16_t)ui->co2.co2_display);
+}
+
 bool is_screen_pressed(void) { return standby_touched; }
 
 static void standby_handle(ui_main_menu_t *ui) {
+static uint32_t timer_standby_sec = 0;
 
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
@@ -2077,6 +2103,8 @@ static void init_styles(ui_main_menu_t *ui) {
 }
 
 void init_lv_objects() {
+	ui.co2.co2_display = -1;
+	ui.co2.co2_target = -1;
   main_settings_load(&ui.settings.switch_.standby_status,
                      &ui.settings.switch_.theme_status);
   weather_settings_load(&ui.weather.saved_city);
@@ -2088,4 +2116,5 @@ void init_lv_objects() {
   lv_timer_create(timer_10000, 10000, NULL);
   lv_timer_create(timer_1000, 1000, NULL);
   lv_timer_create(timer_200, 200, NULL);
+  lv_timer_create(co2_meter_anim_cb, 33, &ui);
 }

@@ -23,7 +23,7 @@ static void sensors_task(void *arg) {
      vTaskDelay(pdMS_TO_TICKS(1000));
     
     if (lvgl_port_lock(2000)) {  // берём мьютекс на время инита
-        //aht10_init();
+        //sht31_init();
         sgp30_init();
         lvgl_port_unlock();
     }

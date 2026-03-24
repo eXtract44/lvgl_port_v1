@@ -10,33 +10,49 @@
 
 #include <stdint.h>
 
-#define AHT10_ADRESS 0x44 
-
-#define AHTX0_I2CADDR_DEFAULT 0x38   ///< AHT default i2c address
-#define AHTX0_I2CADDR_ALTERNATE 0x39 ///< AHT alternate i2c address
-#define AHTX0_CMD_CALIBRATE 0xE1     ///< Calibration command
-#define AHTX0_CMD_TRIGGER 0xAC       ///< Trigger reading command
-#define AHTX0_CMD_SOFTRESET 0xBA     ///< Soft reset command
-#define AHTX0_STATUS_BUSY 0x80       ///< Status bit for busy
-#define AHTX0_STATUS_CALIBRATED 0x08 ///< Status bit for calibrated
-
+// SHT31 I2C address (ADDR pin low = 0x44, high = 0x45)
+#define SHT31_ADDRESS           0x44
+ 
+// SHT31 commands (2 bytes each)
+#define SHT31_CMD_SOFTRESET_MSB 0x30
+#define SHT31_CMD_SOFTRESET_LSB 0xA2
+ 
+// Single-shot measurement: High Repeatability, Clock Stretching Disabled
+#define SHT31_CMD_MEAS_MSB      0x24
+#define SHT31_CMD_MEAS_LSB      0x00
+ 
+// Status register read
+#define SHT31_CMD_STATUS_MSB    0xF3
+#define SHT31_CMD_STATUS_LSB    0x2D
+ 
+// Measurement ready time: High repeatability requires ~15ms
+#define SHT31_MEAS_DELAY_US     15000
+ 
 typedef enum {
-	AHT10_STATE_IDLE,
-	AHT10_STATE_TRIGGERED,
-} aht10_state_t;
-
-typedef struct aht10_data_st {
-	int64_t trigger_time;
-    float temperature;
-    uint8_t humidity;
+    SHT31_STATE_IDLE = 0,
+    SHT31_STATE_TRIGGERED,
+} sht31_state_t;
+ 
+typedef struct {
+    float    temperature;
+    uint8_t  humidity;
     uint32_t raw;
-	uint8_t state;
-}aht10_data_t;
+    sht31_state_t state;
+    int64_t  trigger_time;
+} sht31_data_t;
+ 
+static sht31_data_t sht31_data = {
+    .temperature  = 0,
+    .humidity     = 0,
+    .raw          = 0,
+    .state        = SHT31_STATE_IDLE,
+    .trigger_time = 0,
+};
 
-void aht10_init();
-void aht10_read();
-float get_temperature_aht10();
-uint8_t get_humidity_aht10();
+void    sht31_init(void);
+void    sht31_read(void);
+float   get_temperature_sht31(void);
+uint8_t get_humidity_sht31(void);
 
 #define CRC8_POLYNOMIAL 0x31
 #define SGP30_ADDR          0x58
@@ -79,7 +95,7 @@ typedef struct {
 
 } current_weather_t;
 
-void aht10_init();
+void sht31_init();
 
 uint8_t get_wifi_status();
 const char* get_wifi_ssid();
