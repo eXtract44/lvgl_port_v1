@@ -118,7 +118,7 @@ int32_t co2_display;
 } ui_co2_t;
 
 typedef struct {
-  lv_obj_t *bar;
+  lv_obj_t *background;
 } ui_standby_t;
 
 typedef struct {

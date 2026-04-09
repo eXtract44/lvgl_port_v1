@@ -21,8 +21,7 @@
 static sensor_history_t sensor_history = {0};
 extern const city_t cities_de[];
 
-ui_main_menu_t ui = {
-    .weather = {.cities_de = cities_de, .city_count = CITY_COUNT}};
+ui_main_menu_t ui;
 
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
@@ -1555,6 +1554,9 @@ static void create_menu(ui_main_menu_t *ui) {
 
   ui->screen = lv_obj_create(NULL);
   lv_obj_add_style(ui->screen, &ui->style.main, 0);
+  
+  ui->standby.background = lv_obj_create(ui->screen);
+  lv_obj_add_style(ui->standby.background, &ui->style.main, 0);
 
   lv_obj_set_size(ui->screen, LVGL_PORT_H_RES, LVGL_PORT_V_RES);
 #if ACTIVATE_BLOCK_TOP_LEFT
@@ -1901,11 +1903,14 @@ static uint32_t timer_standby_sec = 0;
 
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
+    set_visible(ui->standby.background, false);
+    
     wavesahre_rgb_lcd_bl_on();
   } else {
     timer_standby_sec++;
     if (timer_standby_sec > MAX_STANDBY_TIME * 5) {
       wavesahre_rgb_lcd_bl_off();
+      set_visible(ui->standby.background, true);
       timer_standby_sec = MAX_STANDBY_TIME * 5;
     }
   }
@@ -2104,7 +2109,10 @@ static void init_styles(ui_main_menu_t *ui) {
 
 void init_lv_objects() {
 	ui.co2.co2_display = -1;
-	ui.co2.co2_target = -1;
+	ui.co2.co2_target = -1;   
+    ui.weather.cities_de = cities_de;
+    ui.weather.city_count = CITY_COUNT;
+    
   main_settings_load(&ui.settings.switch_.standby_status,
                      &ui.settings.switch_.theme_status);
   weather_settings_load(&ui.weather.saved_city);
