@@ -36,7 +36,6 @@ typedef enum {
 typedef struct {
     float    temperature;
     uint8_t  humidity;
-    uint32_t raw;
     sht31_state_t state;
     int64_t  trigger_time;
 } sht31_data_t;
@@ -44,7 +43,6 @@ typedef struct {
 static sht31_data_t sht31_data = {
     .temperature  = 0,
     .humidity     = 0,
-    .raw          = 0,
     .state        = SHT31_STATE_IDLE,
     .trigger_time = 0,
 };

@@ -470,7 +470,6 @@ lv_obj_t *create_wind_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
   lv_coord_t container_w = lv_obj_get_width(parent);
   lv_coord_t img_w = lv_obj_get_width(img);
   
-  ESP_LOGI(TAG, "WIND: container_w=%d img_w=%d speed=%d",container_w, img_w, (int)speed);
 
   static wind_anim_t wind_pool[BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_WINDS];
   static uint8_t pool_index = 0;
@@ -651,6 +650,117 @@ static void weather_history_get(const sensor_history_t *h, uint8_t idx,
   *hum = h->humidity[real_idx];
 }
 
+
+/////////////////////////////////////////////////temperature weather events
+static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
+
+  // --- Фон popup ---
+  ui->weather.history_popup.popup =
+      create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
+                        POPUP_WINDOW_ALIGN, 0, 0);
+  lv_obj_set_scrollbar_mode(ui->weather.history_popup.popup, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_style(ui->weather.history_popup.popup, &ui->style.main, 0);
+
+  // --- Заголовок ---
+  create_text("Temp./Feucht.(6std)", ui->weather.history_popup.popup,
+              STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
+			  
+	
+
+  // --- Кнопка закрытия ---
+  ui->weather.history_popup.btn_close =
+      create_btn_cb(ui->weather.history_popup.popup, 50, 50, LV_ALIGN_TOP_RIGHT, -5, -5,
+                    btn_weather_close_history_popup_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->weather.history_popup.btn_close, LV_SYMBOL_HOME, 0);
+
+  // --- График ---
+  // Размер: почти весь popup, отступы под оси
+  lv_obj_t *chart = lv_chart_create(ui->weather.history_popup.popup);
+  lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 130, POPUP_WINDOW_HEIGHT - 150);
+  lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -10);
+  lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+  lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
+  
+  lv_obj_t *lbl_temp = lv_label_create(ui->weather.history_popup.popup);
+    lv_label_set_text(lbl_temp, "°C");
+    lv_obj_set_style_text_color(lbl_temp, lv_palette_main(LV_PALETTE_RED), 0);
+    lv_obj_set_style_text_font(lbl_temp, &lv_font_montserrat_32, 0);
+    lv_obj_align_to(lbl_temp, chart, LV_ALIGN_OUT_LEFT_TOP, -10, -35);
+
+    // Лейбл "%" справа от графика — синий
+    lv_obj_t *lbl_hum = lv_label_create(ui->weather.history_popup.popup);
+    lv_label_set_text(lbl_hum, "%");
+    lv_obj_set_style_text_color(lbl_hum, lv_palette_main(LV_PALETTE_BLUE), 0);
+    lv_obj_set_style_text_font(lbl_hum, &lv_font_montserrat_32, 0);
+    lv_obj_align_to(lbl_hum, chart, LV_ALIGN_OUT_RIGHT_TOP, 15, -35);
+
+  // Сетка
+  lv_chart_set_div_line_count(chart, 6, 6);
+
+  // Диапазоны осей
+  // Ось Y левая  — температура: 10..35 °C (×10 → 100..350)
+  lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, -10, 35);
+  // Ось Y правая — влажность: 20..80 %
+  lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, 10, 99);
+
+  // Засечки осей
+  lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5,
+                         3,    // major/minor tick length
+                         6, 1, // 6 делений, каждая подписана
+                         true, 50);
+  lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 3, 6, 1, true,
+                         40);
+
+  // --- Серия температуры (левая ось, красная) ---
+  lv_chart_series_t *ser_temp = lv_chart_add_series(
+      chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
+
+  // --- Серия влажности (правая ось, синяя) ---
+  lv_chart_series_t *ser_hum = lv_chart_add_series(
+      chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_SECONDARY_Y);
+
+  // --- Заполняем серии из кольцевого буфера ---
+  uint16_t n = ui->weather.history_popup.history.count;
+
+  if (n == 0) {
+    // Буфер пустой — заполняем LV_CHART_POINT_NONE (пунктир не рисуется)
+    for (uint16_t i = 0; i < SENSOR_HISTORY_POINTS; i++) {
+      lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
+      lv_chart_set_value_by_id(chart, ser_hum, i, LV_CHART_POINT_NONE);
+    }
+  } else {
+    // Сначала заполняем пустые слоты в начале (если буфер ещё не полный)
+    uint16_t empty_slots = SENSOR_HISTORY_POINTS - n;
+    for (uint8_t i = 0; i < empty_slots; i++) {
+      lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
+      lv_chart_set_value_by_id(chart, ser_hum, i, LV_CHART_POINT_NONE);
+    }
+    // Затем реальные данные из буфера (старые → новые)
+    for (uint16_t i = 0; i < n; i++) {
+      int16_t temp_x10;
+      uint8_t hum;
+      weather_history_get(&ui->weather.history_popup.history, i, &temp_x10, &hum);
+      lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i, temp_x10/10);
+      lv_chart_set_value_by_id(chart, ser_hum, empty_slots + i, hum);
+    }
+  }
+
+  lv_chart_refresh(chart);
+  ui->weather.history_popup.chart = chart;
+}
+
+static void block_bot_left_open_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (!ui)
+    return;
+
+  // [FIX] Guard от двойного открытия
+  if (ui->weather.history_popup.popup != NULL && lv_obj_is_valid(ui->weather.history_popup.popup))
+    return;
+
+  hide_all_blocks(ui);
+  ui_create_weather_history_popup(ui);
+}
 /////////////////////////////////////////////////temperature inside events
 static void block_top_left_open_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -658,64 +768,79 @@ static void block_top_left_open_popup_event_handler(lv_event_t *e) {
     return;
 
   // [FIX] Guard от двойного открытия
-  if (ui->sensor.popup != NULL && lv_obj_is_valid(ui->sensor.popup))
+  if (ui->sensor.popup.popup != NULL && lv_obj_is_valid(ui->sensor.popup.popup))
     return;
 
   hide_all_blocks(ui);
-  ui_create_sensor_popup(ui);
+  ui_create_sensor_history_popup(ui);
 }
-static void btn_sensor_close_popup_event_handler(lv_event_t *e) {
+static void btn_sensor_close_history_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (!ui)
     return;
 
-  lv_obj_del(ui->sensor.popup);
+  lv_obj_del(ui->sensor.popup.popup);
 
-  ui->sensor.popup = NULL;
-  ui->sensor.btn_close = NULL;
-  ui->sensor.chart = NULL;
+  ui->sensor.popup.popup = NULL;
+  ui->sensor.popup.btn_close = NULL;
+  ui->sensor.popup.chart = NULL;
 
   show_all_blocks(ui);
 }
+
+static void btn_weather_close_history_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (!ui)
+    return;
+
+  lv_obj_del(ui->weather.history_popup.popup);
+
+  ui->weather.history_popup.popup = NULL;
+  ui->weather.history_popup.btn_close = NULL;
+  ui->weather.history_popup.chart = NULL;
+
+  show_all_blocks(ui);
+}
+
 /////////////////////////////////////////////////temperature inside events
 
-static void ui_create_sensor_popup(ui_main_menu_t *ui) {
+static void ui_create_sensor_history_popup(ui_main_menu_t *ui) {
 
   // --- Фон popup ---
-  ui->sensor.popup =
+  ui->sensor.popup.popup =
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_set_scrollbar_mode(ui->sensor.popup, LV_SCROLLBAR_MODE_OFF);
-  lv_obj_add_style(ui->sensor.popup, &ui->style.main, 0);
+  lv_obj_set_scrollbar_mode(ui->sensor.popup.popup, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_style(ui->sensor.popup.popup, &ui->style.main, 0);
 
   // --- Заголовок ---
-  create_text("Temp./Feucht.(6std)", ui->sensor.popup,
+  create_text("Temp./Feucht.(6std)", ui->sensor.popup.popup,
               STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
 			  
 	
 
   // --- Кнопка закрытия ---
-  ui->sensor.btn_close =
-      create_btn_cb(ui->sensor.popup, 50, 50, LV_ALIGN_TOP_RIGHT, -5, -5,
-                    btn_sensor_close_popup_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->sensor.btn_close, LV_SYMBOL_HOME, 0);
+  ui->sensor.popup.btn_close =
+      create_btn_cb(ui->sensor.popup.popup, 50, 50, LV_ALIGN_TOP_RIGHT, -5, -5,
+                    btn_sensor_close_history_popup_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->sensor.popup.btn_close, LV_SYMBOL_HOME, 0);
 
   // --- График ---
   // Размер: почти весь popup, отступы под оси
-  lv_obj_t *chart = lv_chart_create(ui->sensor.popup);
+  lv_obj_t *chart = lv_chart_create(ui->sensor.popup.popup);
   lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 130, POPUP_WINDOW_HEIGHT - 150);
   lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -10);
   lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
   lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
   
-  lv_obj_t *lbl_temp = lv_label_create(ui->sensor.popup);
+  lv_obj_t *lbl_temp = lv_label_create(ui->sensor.popup.popup);
     lv_label_set_text(lbl_temp, "°C");
     lv_obj_set_style_text_color(lbl_temp, lv_palette_main(LV_PALETTE_RED), 0);
     lv_obj_set_style_text_font(lbl_temp, &lv_font_montserrat_32, 0);
     lv_obj_align_to(lbl_temp, chart, LV_ALIGN_OUT_LEFT_TOP, -10, -35);
 
     // Лейбл "%" справа от графика — синий
-    lv_obj_t *lbl_hum = lv_label_create(ui->sensor.popup);
+    lv_obj_t *lbl_hum = lv_label_create(ui->sensor.popup.popup);
     lv_label_set_text(lbl_hum, "%");
     lv_obj_set_style_text_color(lbl_hum, lv_palette_main(LV_PALETTE_BLUE), 0);
     lv_obj_set_style_text_font(lbl_hum, &lv_font_montserrat_32, 0);
@@ -747,7 +872,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
       chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_SECONDARY_Y);
 
   // --- Заполняем серии из кольцевого буфера ---
-  uint16_t n = ui->sensor.sensor_history.count;
+  uint16_t n = ui->sensor.popup.history.count;
 
   if (n == 0) {
     // Буфер пустой — заполняем LV_CHART_POINT_NONE (пунктир не рисуется)
@@ -766,14 +891,14 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
     for (uint16_t i = 0; i < n; i++) {
       int16_t temp_x10;
       uint8_t hum;
-      sensor_history_get(&ui->sensor.sensor_history, i, &temp_x10, &hum);
+      sensor_history_get(&ui->sensor.popup.history, i, &temp_x10, &hum);
       lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i, temp_x10/10);
       lv_chart_set_value_by_id(chart, ser_hum, empty_slots + i, hum);
     }
   }
 
   lv_chart_refresh(chart);
-  ui->sensor.chart = chart;
+  ui->sensor.popup.chart = chart;
 }
 
 static void create_block_top_left(ui_main_menu_t *ui) {
@@ -942,14 +1067,15 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
   if (!bg)
     return;
 
-  ui->meteo.screen = bg;
-  lv_obj_add_style(ui->meteo.screen, &ui->style.bot_left, 0);
-  lv_obj_set_scrollbar_mode(ui->meteo.screen, LV_SCROLLBAR_MODE_OFF);
-  create_text("aussen", ui->meteo.screen, STYLE_TEXT_TITLE,
+  ui->weather.screen = bg;
+  lv_obj_add_style(ui->weather.screen, &ui->style.bot_left, 0);
+  lv_obj_set_scrollbar_mode(ui->weather.screen, LV_SCROLLBAR_MODE_OFF);
+   lv_obj_add_event_cb(ui->weather.screen, block_bot_left_open_popup_event_handler, LV_EVENT_CLICKED, ui);
+  create_text("aussen", ui->weather.screen, STYLE_TEXT_TITLE,
               BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE, ui);
 
   lv_obj_t *icon =
-      create_icon(ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
+      create_icon(ui->weather.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
                   BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
                   BLOCK_BOT_LEFT_X_START_SYMBOLS,
                   BLOCK_BOT_LEFT_Y_START_SYMBOLS_1, MY_TEMPERATURE_SYMBOL, ui);
@@ -957,10 +1083,10 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
     return;
   }
 
-  ui->meteo.icon_temperature = icon;
+  ui->weather.icon_temperature = icon;
 
   icon =
-      create_icon(ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
+      create_icon(ui->weather.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
                   BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
                   BLOCK_BOT_LEFT_X_START_SYMBOLS,
                   BLOCK_BOT_LEFT_Y_START_SYMBOLS_2, MY_HUMIDITY_SYMBOL, ui);
@@ -968,10 +1094,10 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
     return;
   }
 
-  ui->meteo.icon_humidity = icon;
+  ui->weather.icon_humidity = icon;
 
   icon =
-      create_icon(ui->meteo.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
+      create_icon(ui->weather.screen, BLOCK_BOT_LEFT_WIDTH_SYMBOLS,
                   BLOCK_BOT_LEFT_HEIGHT_SYMBOLS, BLOCK_BOT_LEFT_ALIGN_SYMBOLS,
                   BLOCK_BOT_LEFT_X_START_SYMBOLS,
                   BLOCK_BOT_LEFT_Y_START_SYMBOLS_3, MY_WIND_SYMBOL, ui);
@@ -979,19 +1105,19 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
     return;
   }
 
-  ui->meteo.icon_wind = icon;
+  ui->weather.icon_wind = icon;
 
   lv_obj_t *value = create_label(
-      ui->meteo.screen, "0 c*", BLOCK_BOT_LEFT_ALIGN_VALUES,
+      ui->weather.screen, "0 c*", BLOCK_BOT_LEFT_ALIGN_VALUES,
       BLOCK_BOT_LEFT_X_START_VALUES, BLOCK_BOT_LEFT_Y_START_VALUE_1);
 
   if (!value) {
     return;
   }
   lv_obj_add_style(value, &ui->font.small, 0);
-  ui->meteo.temperature_label = value;
+  ui->weather.temperature_label = value;
 
-  value = create_label(ui->meteo.screen, "0 %", BLOCK_BOT_LEFT_ALIGN_VALUES,
+  value = create_label(ui->weather.screen, "0 %", BLOCK_BOT_LEFT_ALIGN_VALUES,
                        BLOCK_BOT_LEFT_X_START_VALUES,
                        BLOCK_BOT_LEFT_Y_START_VALUE_2);
 
@@ -1000,16 +1126,16 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
   }
   lv_obj_add_style(value, &ui->font.small, 0);
 
-  ui->meteo.humidity_label = value;
+  ui->weather.humidity_label = value;
 
-  value = create_label(ui->meteo.screen, "0 m/s", BLOCK_BOT_LEFT_ALIGN_VALUES,
+  value = create_label(ui->weather.screen, "0 m/s", BLOCK_BOT_LEFT_ALIGN_VALUES,
                        BLOCK_BOT_LEFT_X_START_VALUES,
                        BLOCK_BOT_LEFT_Y_START_VALUE_3);
   if (!value) {
     return;
   }
   lv_obj_add_style(value, &ui->font.small, 0);
-  ui->meteo.wind_label = value;
+  ui->weather.wind_label = value;
   /*BLOCK BOT LEFT*/
 }
 /////////////////////////////////////////////////wifi events
@@ -1167,17 +1293,17 @@ static void btn_weather_open_popup_event_handler(lv_event_t *e) {
   // ESP_LOGI("WEATHER", "NVS city = %d", nvs_city);
 
   // [FIX] Guard от двойного открытия
-  if (ui->weather.popup != NULL && lv_obj_is_valid(ui->weather.popup))
+  if (ui->weather.settings_popup.popup != NULL && lv_obj_is_valid(ui->weather.settings_popup.popup))
     return;
   hide_all_blocks(ui);
-  ui_create_weather_popup(ui);
+  ui_create_weather_settings_popup(ui);
 
   // Показываем последний выбранный город сразу при открытии
   // (ui_create_city_list_weather тоже это делает, но на случай изменений)
-  if (lv_obj_is_valid(ui->weather.city_label)) {
-    lv_label_set_text(ui->weather.city_label,
-                      ui->weather.cities_de[ui->weather.saved_city].name);
-    lv_obj_add_style(ui->weather.city_label, &ui->font.small, 0);
+  if (lv_obj_is_valid(ui->weather.settings_popup.city_label)) {
+    lv_label_set_text(ui->weather.settings_popup.city_label,
+                      ui->weather.settings_popup.cities_de[ui->weather.settings_popup.saved_city].name);
+    lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.small, 0);
   }
 }
 static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
@@ -1185,23 +1311,23 @@ static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
   if (!ui)
     return;
 
-  if (lv_obj_is_valid(ui->weather.citys_list))
-    set_visible(ui->weather.citys_list, true);
+  if (lv_obj_is_valid(ui->weather.settings_popup.citys_list))
+    set_visible(ui->weather.settings_popup.citys_list, true);
 }
 static void btn_weather_close_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (!ui)
     return;
 
-  lv_obj_del(ui->weather.popup);
+  lv_obj_del(ui->weather.settings_popup.popup);
 
   // [FIX] Обнуляем ВСЕ дочерние указатели
   // citys_list и city_label — дочерние popup, удалены автоматически
-  ui->weather.popup = NULL;
-  ui->weather.btn_close = NULL;
-  ui->weather.btn_open_city_list = NULL;
-  ui->weather.city_label = NULL;
-  ui->weather.citys_list = NULL;
+  ui->weather.settings_popup.popup = NULL;
+  ui->weather.settings_popup.btn_close = NULL;
+  ui->weather.settings_popup.btn_open_city_list = NULL;
+  ui->weather.settings_popup.city_label = NULL;
+  ui->weather.settings_popup.citys_list = NULL;
 
   show_all_blocks(ui);
 }
@@ -1224,13 +1350,13 @@ static void set_current_city_weather_event_handler(lv_event_t *e) {
   // Сохраняем выбор — пригодится при следующем открытии popup
   weather_settings_save(city);
 
-  ui->weather.saved_city = city;
+  ui->weather.settings_popup.saved_city = city;
 
-  if (lv_obj_is_valid(ui->weather.citys_list))
-    set_visible(ui->weather.citys_list, false);
+  if (lv_obj_is_valid(ui->weather.settings_popup.citys_list))
+    set_visible(ui->weather.settings_popup.citys_list, false);
 
-  if (lv_obj_is_valid(ui->weather.city_label))
-    lv_label_set_text(ui->weather.city_label, ui->weather.cities_de[city].name);
+  if (lv_obj_is_valid(ui->weather.settings_popup.city_label))
+    lv_label_set_text(ui->weather.settings_popup.city_label, ui->weather.settings_popup.cities_de[city].name);
 
   build_weather_url(city);
 }
@@ -1253,13 +1379,13 @@ static void ui_create_city_list_weather(ui_main_menu_t *ui) {
   // [FIX] Родитель — ui->weather.popup, НЕ ui->screen!
   // Если родитель screen — список не удаляется вместе с popup
   // и зависает поверх интерфейса навсегда
-  ui->weather.citys_list = lv_list_create(ui->weather.popup);
-  lv_obj_set_size(ui->weather.citys_list, 350, 250);
-  lv_obj_center(ui->weather.citys_list);
+  ui->weather.settings_popup.citys_list = lv_list_create(ui->weather.settings_popup.popup);
+  lv_obj_set_size(ui->weather.settings_popup.citys_list, 350, 250);
+  lv_obj_center(ui->weather.settings_popup.citys_list);
 
-  for (int i = 0; i < ui->weather.city_count; i++) {
-    lv_obj_t *btn = lv_list_add_btn(ui->weather.citys_list, NULL,
-                                    ui->weather.cities_de[i].name);
+  for (int i = 0; i < ui->weather.settings_popup.city_count; i++) {
+    lv_obj_t *btn = lv_list_add_btn(ui->weather.settings_popup.citys_list, NULL,
+                                    ui->weather.settings_popup.cities_de[i].name);
 
     // [FIX] Индекс города — в объект кнопки (lv_obj_set_user_data)
     lv_obj_set_user_data(btn, (void *)(uintptr_t)i);
@@ -1271,35 +1397,35 @@ static void ui_create_city_list_weather(ui_main_menu_t *ui) {
   }
 
   // Показываем текущий выбранный город в лейбле сразу при открытии списка
-  if (lv_obj_is_valid(ui->weather.city_label))
-    lv_label_set_text(ui->weather.city_label,
-                      ui->weather.cities_de[ui->weather.saved_city].name);
+  if (lv_obj_is_valid(ui->weather.settings_popup.city_label))
+    lv_label_set_text(ui->weather.settings_popup.city_label,
+                      ui->weather.settings_popup.cities_de[ui->weather.settings_popup.saved_city].name);
 
-  set_visible(ui->weather.citys_list, false);
+  set_visible(ui->weather.settings_popup.citys_list, false);
 }
 
-static void ui_create_weather_popup(ui_main_menu_t *ui) {
-  ui->weather.popup =
+static void ui_create_weather_settings_popup(ui_main_menu_t *ui) {
+  ui->weather.settings_popup.popup =
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_add_style(ui->weather.popup, &ui->style.main, 0);
+  lv_obj_add_style(ui->weather.settings_popup.popup, &ui->style.main, 0);
 
-  ui->weather.btn_close =
-      create_btn_cb(ui->weather.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
+  ui->weather.settings_popup.btn_close =
+      create_btn_cb(ui->weather.settings_popup.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
                     btn_weather_close_popup_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->weather.btn_close, LV_SYMBOL_HOME, 0);
+  lv_obj_set_style_bg_img_src(ui->weather.settings_popup.btn_close, LV_SYMBOL_HOME, 0);
 
-  ui->weather.btn_open_city_list =
-      create_btn_cb(ui->weather.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, 90,
+  ui->weather.settings_popup.btn_open_city_list =
+      create_btn_cb(ui->weather.settings_popup.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, 90,
                     btn_weather_open_list_city_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->weather.btn_open_city_list, LV_SYMBOL_GPS, 0);
+  lv_obj_set_style_bg_img_src(ui->weather.settings_popup.btn_open_city_list, LV_SYMBOL_GPS, 0);
 
-  ui->weather.city_label =
-      create_label(ui->weather.popup, "Stadt", LV_ALIGN_TOP_LEFT, 220, 90);
+  ui->weather.settings_popup.city_label =
+      create_label(ui->weather.settings_popup.popup, "Stadt", LV_ALIGN_TOP_LEFT, 220, 90);
 
-  create_text("Wetter Einstellungen", ui->weather.popup, STYLE_TEXT_SMALL,
+  create_text("Wetter Einstellungen", ui->weather.settings_popup.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
-  create_text("Stadt:", ui->weather.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+  create_text("Stadt:", ui->weather.settings_popup.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
               15, 90, ui);
   //  create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL,
   //  LV_ALIGN_TOP_LEFT,
@@ -1311,7 +1437,7 @@ static void ui_create_weather_popup(ui_main_menu_t *ui) {
 }
 
 static void ui_create_settings_popup_btns(ui_main_menu_t *ui) {
-  ui->weather.btn_open = create_btn_icon(
+  ui->weather.settings_popup.btn_open = create_btn_icon(
       ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
       BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_1,
       BLOCK_BOT_MID_Y_START_SYMBOLS, btn_weather_open_popup_event_handler, ui,
@@ -1845,7 +1971,7 @@ void draw_symbol_wifi(ui_main_menu_t *ui) {
 void hide_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->animation.screen, false);
   set_visible(ui->sensor.screen, false);
-  set_visible(ui->meteo.screen, false);
+  set_visible(ui->weather.screen, false);
   set_visible(ui->time.screen, false);
   set_visible(ui->co2.meter, false);
   set_visible(ui->co2.chart, false);
@@ -1854,7 +1980,7 @@ void hide_all_blocks(ui_main_menu_t *ui) {
 void show_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->animation.screen, true);
   set_visible(ui->sensor.screen, true);
-  set_visible(ui->meteo.screen, true);
+  set_visible(ui->weather.screen, true);
   set_visible(ui->time.screen, true);
   set_visible(ui->co2.meter, true);
   set_visible(ui->co2.chart, true);
@@ -1883,10 +2009,10 @@ void update_block_top_right(ui_main_menu_t *ui) {
 
 void update_block_bot_left(ui_main_menu_t *ui) {
   print_value("%.1f °C", get_weather_temperature(),
-              ui->meteo.temperature_label);
-  print_value("%.f %%", get_weather_humidity(), ui->meteo.humidity_label);
+              ui->weather.temperature_label);
+  print_value("%.f %%", get_weather_humidity(), ui->weather.humidity_label);
 
-  print_value("%.1f m/s", get_weather_wind(), ui->meteo.wind_label);
+  print_value("%.1f m/s", get_weather_wind(), ui->weather.wind_label);
   weather_record_values(ui);
 }
 
@@ -1977,7 +2103,7 @@ static void sensor_record_values(ui_main_menu_t *ui){
 	static uint16_t cnt_sensor_history = 0;
 	cnt_sensor_history++;
 	if (cnt_sensor_history >= SENSOR_RECORD_INTERVAL) {		
-	  sensor_history_push(&ui->sensor.sensor_history);
+	  sensor_history_push(&ui->sensor.popup.history);
 	  cnt_sensor_history = 0;
 	}
 }
@@ -1986,7 +2112,7 @@ static void weather_record_values(ui_main_menu_t *ui){
 	static uint16_t cnt_weather_history = 0;
 	cnt_weather_history++;
 	if (cnt_weather_history >= SENSOR_RECORD_INTERVAL) {		
-	  weather_history_push(&ui->sensor.weather_history);
+	  weather_history_push(&ui->weather.history_popup.history);
 	  cnt_weather_history = 0;
 	}
 }
@@ -2170,13 +2296,13 @@ static void init_styles(ui_main_menu_t *ui) {
 void init_lv_objects() {
 	ui.co2.co2_display = -1;
 	ui.co2.co2_target = -1;   
-    ui.weather.cities_de = cities_de;
-    ui.weather.city_count = CITY_COUNT;
+    ui.weather.settings_popup.cities_de = cities_de;
+    ui.weather.settings_popup.city_count = CITY_COUNT;
     
   main_settings_load(&ui.settings.switch_.standby_status,
                      &ui.settings.switch_.theme_status);
-  weather_settings_load(&ui.weather.saved_city);
-  build_weather_url(ui.weather.saved_city);
+  weather_settings_load(&ui.weather.settings_popup.saved_city);
+  build_weather_url(ui.weather.settings_popup.saved_city);
   init_fonts(&ui);
   init_styles(&ui);
   create_menu(&ui);

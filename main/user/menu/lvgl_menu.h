@@ -43,16 +43,6 @@ typedef struct {
 } sensor_history_t;
 
 typedef struct {
-  lv_obj_t *screen;
-  lv_obj_t *icon_temperature;
-  lv_obj_t *icon_humidity;
-  lv_obj_t *icon_wind;
-  lv_obj_t *temperature_label;
-  lv_obj_t *humidity_label;
-  lv_obj_t *wind_label;
-} ui_weather_value_t;
-
-typedef struct {
   lv_obj_t *popup;
   lv_obj_t *btn_open;
   lv_obj_t *btn_close;
@@ -63,7 +53,33 @@ typedef struct {
   const city_t *cities_de;
   uint16_t city_count;
   uint16_t saved_city;
+  sensor_history_t history;
+} ui_weather_settings_popup_t;
 
+typedef struct {
+  lv_obj_t *popup;
+  lv_obj_t *btn_close;
+  lv_obj_t *chart;
+  sensor_history_t history;
+} ui_weather_history_popup_t;
+
+typedef struct {
+  lv_obj_t *popup;
+  lv_obj_t *btn_close;
+  lv_obj_t *chart;
+  sensor_history_t history;
+} ui_sensor_history_popup_t;
+
+typedef struct {
+  ui_weather_settings_popup_t settings_popup;
+  ui_weather_history_popup_t history_popup;
+  lv_obj_t *screen;
+  lv_obj_t *icon_temperature;
+  lv_obj_t *icon_humidity;
+  lv_obj_t *icon_wind;
+  lv_obj_t *temperature_label;
+  lv_obj_t *humidity_label;
+  lv_obj_t *wind_label;
 } ui_weather_t;
 
 typedef struct {
@@ -113,7 +129,7 @@ typedef struct {
   lv_obj_t *title;
   lv_chart_series_t *series_co2;
   int32_t co2_target;
-int32_t co2_display;
+  int32_t co2_display;
 
 } ui_co2_t;
 
@@ -153,9 +169,7 @@ typedef struct {
 } ui_weather_anim_t;
 
 typedef struct {
-  lv_obj_t *popup;
-  lv_obj_t *btn_close;
-  lv_obj_t *chart;
+  ui_sensor_history_popup_t popup;
   lv_obj_t *screen;
   lv_obj_t *icon_temperature;
   lv_obj_t *icon_humidity;
@@ -164,8 +178,6 @@ typedef struct {
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
   lv_obj_t *tvoc_label;
-  sensor_history_t sensor_history;
-  sensor_history_t weather_history;
 } ui_sensor_t;
 
 typedef struct {
@@ -197,7 +209,6 @@ typedef struct {
 
 typedef struct {
   lv_obj_t *screen;
-
   ui_weather_anim_t animation;
   ui_co2_t co2;
   ui_weather_t weather;
@@ -206,7 +217,7 @@ typedef struct {
   ui_settings_t settings;
   ui_sensor_t sensor;
   ui_time_t time;
-  ui_weather_value_t meteo;
+  // ui_weather_value_t meteo;
   font_style_t font;
   screen_style_t style;
   char string_buffer[20];
@@ -253,9 +264,9 @@ static void apply_theme_light(ui_main_menu_t *ui);
 void hide_all_blocks(ui_main_menu_t *ui);
 void show_all_blocks(ui_main_menu_t *ui);
 static void ui_create_wifi_popup(ui_main_menu_t *ui);
-static void ui_create_weather_popup(ui_main_menu_t *ui);
+static void ui_create_weather_settings_popup(ui_main_menu_t *ui);
 static void ui_create_settings_popup(ui_main_menu_t *ui);
-static void ui_create_sensor_popup(ui_main_menu_t *ui);
+static void ui_create_sensor_history_popup(ui_main_menu_t *ui);
 
 void set_visible(lv_obj_t *parent, bool visible);
 
@@ -297,5 +308,6 @@ static void anim_sun_moon_orbit(void *var, int32_t angle);
 
 static void sensor_record_values(ui_main_menu_t *ui);
 static void weather_record_values(ui_main_menu_t *ui);
+static void btn_weather_close_history_popup_event_handler(lv_event_t *e);
 
 #endif /* INC_LVGL_MENU_H_ */

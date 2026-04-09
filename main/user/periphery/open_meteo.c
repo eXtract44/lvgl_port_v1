@@ -109,7 +109,7 @@ void build_weather_url(int city_index) {
 }
 
 void fetch_weather(void) {
-  build_weather_url(ui.weather.saved_city);
+  build_weather_url(ui.weather.settings_popup.saved_city);
   // ESP_LOGI(TAG, "build_weather_url: %s",url);
   //   static const char *WEATHER_URL_CURRENT =
   //      "https://api.open-meteo.com/v1/forecast?"
