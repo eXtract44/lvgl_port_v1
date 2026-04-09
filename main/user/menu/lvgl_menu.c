@@ -666,7 +666,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->sensor.popup, &ui->style.main, 0);
 
   // --- Заголовок ---
-  create_text("Temperature / Feuchtigkeit  (6h)", ui->sensor.popup,
+  create_text("Temp./Feucht.(6std)", ui->sensor.popup,
               STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
 
   // --- Кнопка закрытия ---
@@ -678,7 +678,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
   // --- График ---
   // Размер: почти весь popup, отступы под оси
   lv_obj_t *chart = lv_chart_create(ui->sensor.popup);
-  lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 80, POPUP_WINDOW_HEIGHT - 150);
+  lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 130, POPUP_WINDOW_HEIGHT - 150);
   lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -10);
   lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
   lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
@@ -688,7 +688,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
 
   // Диапазоны осей
   // Ось Y левая  — температура: 10..35 °C (×10 → 100..350)
-  lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 100, 350);
+  lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 10, 35);
   // Ось Y правая — влажность: 20..80 %
   lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, 20, 80);
 
@@ -709,27 +709,27 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
       chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_SECONDARY_Y);
 
   // --- Заполняем серии из кольцевого буфера ---
-  uint8_t n = sensor_history.count;
+  uint16_t n = sensor_history.count;
 
   if (n == 0) {
     // Буфер пустой — заполняем LV_CHART_POINT_NONE (пунктир не рисуется)
-    for (uint8_t i = 0; i < SENSOR_HISTORY_POINTS; i++) {
+    for (uint16_t i = 0; i < SENSOR_HISTORY_POINTS; i++) {
       lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
       lv_chart_set_value_by_id(chart, ser_hum, i, LV_CHART_POINT_NONE);
     }
   } else {
     // Сначала заполняем пустые слоты в начале (если буфер ещё не полный)
-    uint8_t empty_slots = SENSOR_HISTORY_POINTS - n;
+    uint16_t empty_slots = SENSOR_HISTORY_POINTS - n;
     for (uint8_t i = 0; i < empty_slots; i++) {
       lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
       lv_chart_set_value_by_id(chart, ser_hum, i, LV_CHART_POINT_NONE);
     }
     // Затем реальные данные из буфера (старые → новые)
-    for (uint8_t i = 0; i < n; i++) {
+    for (uint16_t i = 0; i < n; i++) {
       int16_t temp_x10;
       uint8_t hum;
       sensor_history_get(&sensor_history, i, &temp_x10, &hum);
-      lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i, temp_x10);
+      lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i, temp_x10/10);
       lv_chart_set_value_by_id(chart, ser_hum, empty_slots + i, hum);
     }
   }
@@ -753,6 +753,9 @@ static void create_block_top_left(ui_main_menu_t *ui) {
 
   lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
   lv_obj_set_scrollbar_mode(ui->sensor.screen, LV_SCROLLBAR_MODE_OFF);
+  
+  lv_obj_add_event_cb(ui->sensor.screen, btn_tepmerature_inside_open_popup_event_handler, LV_EVENT_CLICKED, ui);
+  
 
   create_text("innen", ui->sensor.screen, STYLE_TEXT_TITLE,
               BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE, ui);
@@ -1554,11 +1557,15 @@ static void create_menu(ui_main_menu_t *ui) {
 
   ui->screen = lv_obj_create(NULL);
   lv_obj_add_style(ui->screen, &ui->style.main, 0);
+  lv_obj_set_size(ui->screen, LVGL_PORT_H_RES, LVGL_PORT_V_RES);
   
   ui->standby.background = lv_obj_create(ui->screen);
   lv_obj_add_style(ui->standby.background, &ui->style.main, 0);
-
-  lv_obj_set_size(ui->screen, LVGL_PORT_H_RES, LVGL_PORT_V_RES);
+  lv_obj_set_size(ui->standby.background, LVGL_PORT_H_RES, LVGL_PORT_V_RES);
+  lv_obj_move_foreground(ui->standby.background);  // ← всегда поверх всего
+  lv_obj_clear_flag(ui->standby.background, LV_OBJ_FLAG_SCROLLABLE);
+  set_visible(ui->standby.background, false);
+  
 #if ACTIVATE_BLOCK_TOP_LEFT
   create_block_top_left(ui);
 #endif
@@ -1903,13 +1910,13 @@ static uint32_t timer_standby_sec = 0;
 
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
-    set_visible(ui->standby.background, false);
-    
+    set_visible(ui->standby.background, false); 
     wavesahre_rgb_lcd_bl_on();
   } else {
     timer_standby_sec++;
     if (timer_standby_sec > MAX_STANDBY_TIME * 5) {
       wavesahre_rgb_lcd_bl_off();
+	  lv_obj_move_foreground(ui->standby.background);  
       set_visible(ui->standby.background, true);
       timer_standby_sec = MAX_STANDBY_TIME * 5;
     }

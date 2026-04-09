@@ -32,14 +32,14 @@
 #define MY_CLOUD_SYMBOL "\xEF\x83\x82"
 
 #define SENSOR_HISTORY_POINTS 72 // 6 часов × 12 точек/час
-#define SENSOR_RECORD_INTERVAL 300 // тиков (секунд) между записями
+#define SENSOR_RECORD_INTERVAL 3600 // тиков (секунд) между записями
 
 // Кольцевой буфер для истории датчиков
 typedef struct {
   int16_t temperature[SENSOR_HISTORY_POINTS]; // °C × 10 (фиксированная точка)
-  uint8_t humidity[SENSOR_HISTORY_POINTS]; // %
-  uint8_t head;  // индекс следующей записи
-  uint8_t count; // сколько точек уже заполнено (0..72)
+  uint16_t humidity[SENSOR_HISTORY_POINTS]; // %
+  uint16_t head;  // индекс следующей записи
+  uint16_t count; // сколько точек уже заполнено (0..72)
 } sensor_history_t;
 
 typedef struct {
