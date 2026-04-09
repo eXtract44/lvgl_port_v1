@@ -25,3 +25,7 @@ sdkconfig
 sdkconfig
 dependencies.lock
 components/espressif__esp_lcd_touch/idf_component.yml
+.clangd
+.project
+dependencies.lock
+sdkconfig
