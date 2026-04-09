@@ -18,10 +18,10 @@
 #include "user/periphery/wifi.h"
 
 
-static sensor_history_t sensor_history = {0};
+
 extern const city_t cities_de[];
 
-ui_main_menu_t ui;
+ui_main_menu_t ui = {0};
 
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
@@ -622,14 +622,37 @@ static void sensor_history_get(const sensor_history_t *h, uint8_t idx,
   // Вычисляем реальный индекс в кольцевом буфере
   // head указывает на следующую ячейку для записи
   // старейшая точка: (head - count + POINTS) % POINTS
-  uint8_t real_idx = (h->head - h->count + idx + SENSOR_HISTORY_POINTS) %
+  uint16_t real_idx = (h->head - h->count + idx + SENSOR_HISTORY_POINTS) %
+                     SENSOR_HISTORY_POINTS;
+  *temp_x10 = h->temperature[real_idx];
+  *hum = h->humidity[real_idx];
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void weather_history_push(sensor_history_t *h) {
+  // Записываем температуру с одним знаком после запятой (×10)
+  // get_temperature_aht10() возвращает float — умножаем и округляем
+  h->temperature[h->head] = (int16_t) (get_weather_temperature() * 10.0f + 0.5f);
+  h->humidity[h->head] =  get_weather_humidity();
+ 
+ 
+  h->head = (h->head + 1) % SENSOR_HISTORY_POINTS;
+
+  if (h->count < SENSOR_HISTORY_POINTS)
+    h->count++;
+}
+static void weather_history_get(const sensor_history_t *h, uint8_t idx,
+                               int16_t *temp_x10, uint8_t *hum) {
+  // Вычисляем реальный индекс в кольцевом буфере
+  // head указывает на следующую ячейку для записи
+  // старейшая точка: (head - count + POINTS) % POINTS
+  uint16_t real_idx = (h->head - h->count + idx + SENSOR_HISTORY_POINTS) %
                      SENSOR_HISTORY_POINTS;
   *temp_x10 = h->temperature[real_idx];
   *hum = h->humidity[real_idx];
 }
 
 /////////////////////////////////////////////////temperature inside events
-static void btn_tepmerature_inside_open_popup_event_handler(lv_event_t *e) {
+static void block_top_left_open_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (!ui)
     return;
@@ -668,6 +691,8 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
   // --- Заголовок ---
   create_text("Temp./Feucht.(6std)", ui->sensor.popup,
               STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
+			  
+	
 
   // --- Кнопка закрытия ---
   ui->sensor.btn_close =
@@ -682,6 +707,19 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
   lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -10);
   lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
   lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
+  
+  lv_obj_t *lbl_temp = lv_label_create(ui->sensor.popup);
+    lv_label_set_text(lbl_temp, "°C");
+    lv_obj_set_style_text_color(lbl_temp, lv_palette_main(LV_PALETTE_RED), 0);
+    lv_obj_set_style_text_font(lbl_temp, &lv_font_montserrat_32, 0);
+    lv_obj_align_to(lbl_temp, chart, LV_ALIGN_OUT_LEFT_TOP, -10, -35);
+
+    // Лейбл "%" справа от графика — синий
+    lv_obj_t *lbl_hum = lv_label_create(ui->sensor.popup);
+    lv_label_set_text(lbl_hum, "%");
+    lv_obj_set_style_text_color(lbl_hum, lv_palette_main(LV_PALETTE_BLUE), 0);
+    lv_obj_set_style_text_font(lbl_hum, &lv_font_montserrat_32, 0);
+    lv_obj_align_to(lbl_hum, chart, LV_ALIGN_OUT_RIGHT_TOP, 15, -35);
 
   // Сетка
   lv_chart_set_div_line_count(chart, 6, 6);
@@ -709,7 +747,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
       chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_SECONDARY_Y);
 
   // --- Заполняем серии из кольцевого буфера ---
-  uint16_t n = sensor_history.count;
+  uint16_t n = ui->sensor.sensor_history.count;
 
   if (n == 0) {
     // Буфер пустой — заполняем LV_CHART_POINT_NONE (пунктир не рисуется)
@@ -728,7 +766,7 @@ static void ui_create_sensor_popup(ui_main_menu_t *ui) {
     for (uint16_t i = 0; i < n; i++) {
       int16_t temp_x10;
       uint8_t hum;
-      sensor_history_get(&sensor_history, i, &temp_x10, &hum);
+      sensor_history_get(&ui->sensor.sensor_history, i, &temp_x10, &hum);
       lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i, temp_x10/10);
       lv_chart_set_value_by_id(chart, ser_hum, empty_slots + i, hum);
     }
@@ -754,7 +792,7 @@ static void create_block_top_left(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
   lv_obj_set_scrollbar_mode(ui->sensor.screen, LV_SCROLLBAR_MODE_OFF);
   
-  lv_obj_add_event_cb(ui->sensor.screen, btn_tepmerature_inside_open_popup_event_handler, LV_EVENT_CLICKED, ui);
+  lv_obj_add_event_cb(ui->sensor.screen, block_top_left_open_popup_event_handler, LV_EVENT_CLICKED, ui);
   
 
   create_text("innen", ui->sensor.screen, STYLE_TEXT_TITLE,
@@ -1827,6 +1865,7 @@ void update_block_top_left(ui_main_menu_t *ui) {
   print_value("%.1f °C", get_temperature_sht31(), ui->sensor.temperature_label);
   print_value("%.f %%", get_humidity_sht31(), ui->sensor.humidity_label);
   print_value("%.f", get_tvoc_sgp30(), ui->sensor.tvoc_label);
+  sensor_record_values(ui);
 }
 
 void update_block_top_middle(ui_main_menu_t *ui) {	
@@ -1848,6 +1887,7 @@ void update_block_bot_left(ui_main_menu_t *ui) {
   print_value("%.f %%", get_weather_humidity(), ui->meteo.humidity_label);
 
   print_value("%.1f m/s", get_weather_wind(), ui->meteo.wind_label);
+  weather_record_values(ui);
 }
 
 void update_block_bot_middle(ui_main_menu_t *ui) {
@@ -1933,6 +1973,24 @@ static void timer_10000(lv_timer_t *timer) {
 #endif
 }
 
+static void sensor_record_values(ui_main_menu_t *ui){
+	static uint16_t cnt_sensor_history = 0;
+	cnt_sensor_history++;
+	if (cnt_sensor_history >= SENSOR_RECORD_INTERVAL) {		
+	  sensor_history_push(&ui->sensor.sensor_history);
+	  cnt_sensor_history = 0;
+	}
+}
+
+static void weather_record_values(ui_main_menu_t *ui){
+	static uint16_t cnt_weather_history = 0;
+	cnt_weather_history++;
+	if (cnt_weather_history >= SENSOR_RECORD_INTERVAL) {		
+	  weather_history_push(&ui->sensor.weather_history);
+	  cnt_weather_history = 0;
+	}
+}
+
 static void timer_1000(lv_timer_t *timer) {
   LV_UNUSED(timer);
 #if ACTIVATE_BLOCK_TOP_LEFT
@@ -1950,12 +2008,7 @@ static void timer_1000(lv_timer_t *timer) {
 #if ACTIVATE_BLOCK_BOT_RIGHT
   update_block_bot_right(&ui);
 #endif
-  static uint16_t cnt_sensor_history = 0;
-  cnt_sensor_history++;
-  if (cnt_sensor_history >= SENSOR_RECORD_INTERVAL) {
-    sensor_history_push(&sensor_history);
-    cnt_sensor_history = 0;
-  }
+
 }
 static void timer_200(lv_timer_t *timer) {
   LV_UNUSED(timer);

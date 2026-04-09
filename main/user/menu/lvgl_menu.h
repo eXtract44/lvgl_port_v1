@@ -164,6 +164,8 @@ typedef struct {
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
   lv_obj_t *tvoc_label;
+  sensor_history_t sensor_history;
+  sensor_history_t weather_history;
 } ui_sensor_t;
 
 typedef struct {
@@ -292,5 +294,8 @@ static lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                    lv_coord_t y_ofs);
 
 static void anim_sun_moon_orbit(void *var, int32_t angle);
+
+static void sensor_record_values(ui_main_menu_t *ui);
+static void weather_record_values(ui_main_menu_t *ui);
 
 #endif /* INC_LVGL_MENU_H_ */
