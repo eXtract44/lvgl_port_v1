@@ -1,7 +1,7 @@
 
 #include "user/menu/lvgl_menu.h"
 #include "esp_heap_caps.h"
-#include "esp_log_timestamp.h"
+//#include "esp_log_timestamp.h"
 #include "font/lv_symbol_def.h"
 #include "lvgl_port.h"
 #include "lvgl_user_config.h"
@@ -13,10 +13,12 @@
 #include <esp_log.h>
 #include <math.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "user/periphery/nvs_user.h"
 #include "user/periphery/periphery.h"
 #include "user/periphery/wifi.h"
+#include "user/periphery/open_meteo.h"
 
 extern const city_t cities_de[];
 
@@ -27,6 +29,7 @@ extern lv_font_t my_time_font;
 extern wifi_ap_record_t ap_info;
 extern sht31_data_t sht31_data;
 extern sgp30_data_t sgp30_data;
+extern forecast_data_t forecast_data;
 
 int standby_touched = 0; // callback for extern touch driver
 
@@ -638,176 +641,147 @@ static void sensor_history_get(const sensor_history_t *h, uint16_t idx,
 	*hum = h->humidity[real_idx];
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void weather_history_push(sensor_history_t *h) {
-	// Записываем температуру с одним знаком после запятой (×10)
-	// get_temperature_aht10() возвращает float — умножаем и округляем
-	float t = get_weather_temperature();
-	h->temperature[h->head] =
-		(int16_t)(t >= 0 ? (t * 10.0f + 0.5f) : (t * 10.0f - 0.5f));
-
-	h->humidity[h->head] = get_weather_humidity();
-
-	h->head = (h->head + 1) % SENSOR_HISTORY_POINTS;
-
-	if (h->count < SENSOR_HISTORY_POINTS)
-		h->count++;
-}
-static void weather_history_get(const sensor_history_t *h, uint16_t idx,
-								int16_t *temp_x10, uint8_t *hum) {
-	// Вычисляем реальный индекс в кольцевом буфере
-	// head указывает на следующую ячейку для записи
-	// старейшая точка: (head - count + POINTS) % POINTS
-	uint16_t real_idx = (h->head - h->count + idx + SENSOR_HISTORY_POINTS) %
-						SENSOR_HISTORY_POINTS;
-	*temp_x10 = h->temperature[real_idx];
-	*hum = h->humidity[real_idx];
-}
 
 /////////////////////////////////////////////////temperature weather events
-static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
+static void ui_create_weather_forecast_popup(ui_main_menu_t *ui) {
 
-	// --- Фон popup ---
-	int16_t popup_width = LVGL_PORT_H_RES - 10;
-	int16_t popup_height = LVGL_PORT_V_RES - 10;
-	ui->weather.history_popup.popup = create_background(
-		ui->screen, popup_width, popup_height, POPUP_WINDOW_ALIGN, 0, 0);
-	lv_obj_set_scrollbar_mode(ui->weather.history_popup.popup,
-							  LV_SCROLLBAR_MODE_OFF);
-	lv_obj_add_style(ui->weather.history_popup.popup, &ui->style.main, 0);
+	int16_t popup_width  = LVGL_PORT_H_RES - 10;
+    int16_t popup_height = LVGL_PORT_V_RES - 10;
 
-	// --- Заголовок ---
-	create_text("Temperatur / Feuchtigkeit (12 std)",
-				ui->weather.history_popup.popup, STYLE_TEXT_SMALL,
-				LV_ALIGN_TOP_MID, 0, 5, ui);
+    // --- Фон ---
+    ui->weather.forecast_popup.popup =
+        create_background(ui->screen, popup_width, popup_height,
+                          POPUP_WINDOW_ALIGN, 0, 0);
+    lv_obj_set_scrollbar_mode(ui->weather.forecast_popup.popup,
+                              LV_SCROLLBAR_MODE_OFF);
+    lv_obj_add_style(ui->weather.forecast_popup.popup, &ui->style.main, 0);
 
-	// --- Кнопка закрытия ---
-	ui->weather.history_popup.btn_close = create_btn_cb(
-		ui->weather.history_popup.popup, 50, 50, LV_ALIGN_TOP_RIGHT, -5, -5,
-		btn_weather_close_history_popup_event_handler, ui);
-	lv_obj_set_style_bg_img_src(ui->weather.history_popup.btn_close,
-								LV_SYMBOL_HOME, 0);
+    // --- Заголовок ---
+    create_text("Wettervorhersage (3 Tage)",
+                ui->weather.forecast_popup.popup,
+                STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
 
-	// --- График ---
-	int16_t chart_width = popup_width - 160;
-	int16_t chart_height = popup_height - 125;
-	// Размер: почти весь popup, отступы под оси
-	lv_obj_t *chart = lv_chart_create(ui->weather.history_popup.popup);
-	lv_obj_set_size(chart, chart_width, chart_height);
-	lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, 10);
-	lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
-	lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
+    // --- Кнопка закрытия ---
+    ui->weather.forecast_popup.btn_close =
+        create_btn_cb(ui->weather.forecast_popup.popup, 50, 50,
+                      LV_ALIGN_TOP_RIGHT, -5, -5,
+                      btn_weather_close_forecast_popup_event_handler, ui);
+    lv_obj_set_style_bg_img_src(ui->weather.forecast_popup.btn_close,
+                                LV_SYMBOL_HOME, 0);
 
-	lv_obj_t *lbl_temp = lv_label_create(ui->weather.history_popup.popup);
-	lv_label_set_text(lbl_temp, "°C");
-	lv_obj_set_style_text_color(lbl_temp, lv_palette_main(LV_PALETTE_RED), 0);
-	lv_obj_set_style_text_font(lbl_temp, &lv_font_montserrat_32, 0);
-	lv_obj_align_to(lbl_temp, chart, LV_ALIGN_OUT_LEFT_TOP, -10, -35);
+    // --- 3 колонки для 3 дней ---
+    const char *day_names[FORECAST_DAYS] = {"Heute", "Morgen", "+2 Tage"};
+    int16_t col_width  = (popup_width - 40) / FORECAST_DAYS;
+    int16_t col_y_start = 70;
+    int16_t row_h = 55; // высота строки
 
-	// Лейбл "%" справа от графика — синий
-	lv_obj_t *lbl_hum = lv_label_create(ui->weather.history_popup.popup);
-	lv_label_set_text(lbl_hum, "%");
-	lv_obj_set_style_text_color(lbl_hum, lv_palette_main(LV_PALETTE_BLUE), 0);
-	lv_obj_set_style_text_font(lbl_hum, &lv_font_montserrat_32, 0);
-	lv_obj_align_to(lbl_hum, chart, LV_ALIGN_OUT_RIGHT_TOP, 15, -35);
+    for (int i = 0; i < FORECAST_DAYS; i++) {
+        int16_t col_x = -popup_width / 2 + 20 + i * col_width + col_width / 2;
 
-	// Сетка
-	uint8_t hor_lines = 8;
-	lv_chart_set_div_line_count(chart, hor_lines, 12);
+        // --- Разделитель между колонками ---
+        if (i > 0) {
+            lv_obj_t *sep = lv_obj_create(ui->weather.forecast_popup.popup);
+            lv_obj_remove_style_all(sep);
+            lv_obj_set_size(sep, 1, popup_height - 80);
+            lv_obj_set_style_bg_color(sep, lv_color_hex(0x444444), 0);
+            lv_obj_set_style_bg_opa(sep, LV_OPA_COVER, 0);
+            lv_obj_align(sep, LV_ALIGN_TOP_MID,
+             -popup_width / 2 + 20 + i * col_width, col_y_start - 10);
+        }
 
-	// Диапазоны осей
-	int16_t temperatur_range_min = -5;
-	int16_t temperatur_range_max = 30;
-	uint8_t humidity_range_min = 20;
-	uint8_t humidity_range_max = 90;
-	// Ось Y левая  — температура: 10..35 °C (×10 → 100..350)
-	lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, temperatur_range_min,
-					   temperatur_range_max);
-	// Ось Y правая — влажность: 20..80 %
-	lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, humidity_range_min,
-					   humidity_range_max);
+        // --- День ---
+        ui->weather.forecast_popup.day_label[i] =
+            create_label(ui->weather.forecast_popup.popup,
+                         day_names[i], LV_ALIGN_TOP_MID,
+                         col_x, col_y_start);
+        lv_obj_add_style(ui->weather.forecast_popup.day_label[i],
+                         &ui->font.small, 0);
 
-	// Засечки осей
-	lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5,
-						   3,			 // major/minor tick length
-						   hor_lines, 1, // 8 делений, каждая подписана
-						   true, 50);
-	lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 3, hor_lines, 1,
-						   true, 40);
+        // --- Погодный код ---
+        ui->weather.forecast_popup.wcode_label[i] =
+            create_label(ui->weather.forecast_popup.popup,
+                         "-", LV_ALIGN_TOP_MID,
+                         col_x, col_y_start + row_h);
+        lv_obj_add_style(ui->weather.forecast_popup.wcode_label[i],
+                         &ui->font.title, 0);
 
-	// --- Серия температуры (левая ось, красная) ---
-	lv_chart_series_t *ser_temp = lv_chart_add_series(
-		chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
+        // --- Температура ---
+        ui->weather.forecast_popup.temp_label[i] =
+            create_label(ui->weather.forecast_popup.popup,
+                         "-", LV_ALIGN_TOP_MID,
+                         col_x, col_y_start + row_h * 2);
+        lv_obj_add_style(ui->weather.forecast_popup.temp_label[i],
+                         &ui->font.small, 0);
 
-	// --- Серия влажности (правая ось, синяя) ---
-	lv_chart_series_t *ser_hum = lv_chart_add_series(
-		chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_SECONDARY_Y);
-	// После создания серий — убрать точки совсем, оставить только линию
-	lv_obj_set_style_size(chart, 0, LV_PART_INDICATOR); // точки = 0px
+        // --- Влажность ---
+        ui->weather.forecast_popup.humidity_label[i] =
+            create_label(ui->weather.forecast_popup.popup,
+                         "-", LV_ALIGN_TOP_MID,
+                         col_x, col_y_start + row_h * 3);
+        lv_obj_add_style(ui->weather.forecast_popup.humidity_label[i],
+                         &ui->font.title, 0);
 
-	// Толщина линии тонче
-	lv_obj_set_style_line_width(chart, 3, LV_PART_ITEMS);
+        // --- Восход ---
+        ui->weather.forecast_popup.sunrise_label[i] =
+            create_label(ui->weather.forecast_popup.popup,
+                         "-", LV_ALIGN_TOP_MID,
+                         col_x, col_y_start + row_h * 4);
+        lv_obj_add_style(ui->weather.forecast_popup.sunrise_label[i],
+                         &ui->font.title, 0);
 
-	// --- Заполняем серии из кольцевого буфера ---
-	uint16_t n = ui->weather.history_popup.history.count;
+        // --- Закат ---
+        ui->weather.forecast_popup.sunset_label[i] =
+            create_label(ui->weather.forecast_popup.popup,
+                         "-", LV_ALIGN_TOP_MID,
+                         col_x, col_y_start + row_h * 5);
+        lv_obj_add_style(ui->weather.forecast_popup.sunset_label[i],
+                         &ui->font.title, 0);
 
-	if (n == 0) {
-		// Буфер пустой — заполняем LV_CHART_POINT_NONE (пунктир не рисуется)
-		for (uint16_t i = 0; i < SENSOR_HISTORY_POINTS; i++) {
-			lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
-			lv_chart_set_value_by_id(chart, ser_hum, i, LV_CHART_POINT_NONE);
-		}
-	} else {
-		// Сначала заполняем пустые слоты в начале (если буфер ещё не полный)
-		uint16_t empty_slots = SENSOR_HISTORY_POINTS - n;
-		for (uint16_t i = 0; i < empty_slots; i++) {
-			lv_chart_set_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
-			lv_chart_set_value_by_id(chart, ser_hum, i, LV_CHART_POINT_NONE);
-		}
-		// Затем реальные данные из буфера (старые → новые)
-		for (uint16_t i = 0; i < n; i++) {
-			int16_t temp_x10;
-			uint8_t hum;
-			weather_history_get(&ui->weather.history_popup.history, i,
-								&temp_x10, &hum);
-			int16_t current_temperaure = temp_x10;
-			if (current_temperaure < temperatur_range_min * 10) {
-				current_temperaure = temperatur_range_min * 10;
-			}
-			if (current_temperaure > temperatur_range_max * 10) {
-				current_temperaure = temperatur_range_max * 10;
-			}
+        // --- Заполняем данными если они есть ---
+        if (forecast_data.valid) {
+            forecast_day_t *d = &forecast_data.day[i];
+            char buf[32];
 
-			uint8_t current_humidity = hum;
-			if (current_humidity < humidity_range_min) {
-				current_humidity = humidity_range_min;
-			}
-			if (current_humidity > humidity_range_max) {
-				current_humidity = humidity_range_max;
-			}
+            // температура
+            snprintf(buf, sizeof(buf), "%d / %d °C",
+                     d->temp_min, d->temp_max);
+            lv_label_set_text(ui->weather.forecast_popup.temp_label[i], buf);
 
-			lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i,
-									 current_temperaure / 10);
-			lv_chart_set_value_by_id(chart, ser_hum, empty_slots + i,
-									 current_humidity);
-		}
-	}
+            // погода
+            lv_label_set_text(ui->weather.forecast_popup.wcode_label[i],
+                              weathercode_to_text(d->weathercode));
 
-	lv_chart_refresh(chart);
-	ui->weather.history_popup.chart = chart;
+            // влажность
+            snprintf(buf, sizeof(buf), "%d %%", d->humidity_max);
+            lv_label_set_text(ui->weather.forecast_popup.humidity_label[i], buf);
+
+            // восход — unix time → HH:MM
+            time_t sr = (time_t)d->sunrise;
+            struct tm *sr_tm = localtime(&sr);
+            snprintf(buf, sizeof(buf), LV_SYMBOL_UP " %02d:%02d",
+                     sr_tm->tm_hour, sr_tm->tm_min);
+            lv_label_set_text(ui->weather.forecast_popup.sunrise_label[i], buf);
+
+            // закат
+            time_t ss = (time_t)d->sunset;
+            struct tm *ss_tm = localtime(&ss);
+            snprintf(buf, sizeof(buf), LV_SYMBOL_DOWN " %02d:%02d",
+                     ss_tm->tm_hour, ss_tm->tm_min);
+            lv_label_set_text(ui->weather.forecast_popup.sunset_label[i], buf);
+        }
+    }
 }
 
 static void block_bot_left_open_popup_event_handler(lv_event_t *e) {
 	ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-	if (!ui)
-		return;
+    if (!ui) return;
 
-	// [FIX] Guard от двойного открытия
-	if (ui->weather.history_popup.popup != NULL &&
-		lv_obj_is_valid(ui->weather.history_popup.popup))
-		return;
+    if (ui->weather.forecast_popup.popup != NULL &&
+        lv_obj_is_valid(ui->weather.forecast_popup.popup))
+        return;
 
-	hide_all_blocks(ui);
-	ui_create_weather_history_popup(ui);
+    hide_all_blocks(ui);
+    ui_create_weather_forecast_popup(ui);
 }
 /////////////////////////////////////////////////temperature inside events
 static void block_top_left_open_popup_event_handler(lv_event_t *e) {
@@ -837,18 +811,15 @@ static void btn_sensor_close_history_popup_event_handler(lv_event_t *e) {
 	show_all_blocks(ui);
 }
 
-static void btn_weather_close_history_popup_event_handler(lv_event_t *e) {
-	ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-	if (!ui)
-		return;
+static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
 
-	lv_obj_del(ui->weather.history_popup.popup);
+    lv_obj_del(ui->weather.forecast_popup.popup);
+    ui->weather.forecast_popup.popup    = NULL;
+    ui->weather.forecast_popup.btn_close = NULL;
 
-	ui->weather.history_popup.popup = NULL;
-	ui->weather.history_popup.btn_close = NULL;
-	ui->weather.history_popup.chart = NULL;
-
-	show_all_blocks(ui);
+    show_all_blocks(ui);
 }
 
 /////////////////////////////////////////////////temperature inside events
@@ -1322,6 +1293,13 @@ static void ta_wifi_event_cb(lv_event_t *e) {
 			}
 
 		wifi_connect(ssid, pass);
+		// Показываем что идёт подключение
+if (lv_obj_is_valid(ui->wifi.ssid_label))
+    lv_label_set_text(ui->wifi.ssid_label, "verbinde...");
+
+// Запускаем таймер проверки
+lv_timer_t *t = lv_timer_create(wifi_check_timer_cb, 500, ui);
+lv_timer_set_repeat_count(t, 10); // максимум 10 попыток
 
 		set_visible(kb, false);
 		set_visible(ui->wifi.ta_ssid, false);
@@ -2179,7 +2157,6 @@ void update_block_bot_left(ui_main_menu_t *ui) {
 		print_value("%.f %%", get_weather_humidity(),
 					ui->weather.humidity_label);
 		print_value("%.1f m/s", get_weather_wind(), ui->weather.wind_label);
-		weather_record_values(ui);
 	}
 }
 
@@ -2208,6 +2185,29 @@ void update_block_bot_right(ui_main_menu_t *ui) {
 		draw_weather(ui);
 		cnt_weather = 2;
 	}
+}
+
+// Таймер который проверяет статус каждые 500мс, максимум 10 раз (5 секунд)
+static void wifi_check_timer_cb(lv_timer_t *timer) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)timer->user_data;
+    static uint8_t attempts = 0;
+
+    attempts++;
+
+    if (get_wifi_status() == WIFI_CONNECTED) {
+        if (lv_obj_is_valid(ui->wifi.ssid_label))
+            lv_label_set_text(ui->wifi.ssid_label, LV_SYMBOL_OK " verbunden");
+        attempts = 0;
+        lv_timer_del(timer);
+        return;
+    }
+
+    if (attempts >= 10) {
+        if (lv_obj_is_valid(ui->wifi.ssid_label))
+            lv_label_set_text(ui->wifi.ssid_label, LV_SYMBOL_CLOSE " Fehler");
+        attempts = 0;
+        lv_timer_del(timer);
+    }
 }
 
 void co2_meter_anim_cb(lv_timer_t *timer) {
@@ -2274,15 +2274,6 @@ static void sensor_record_values(ui_main_menu_t *ui) {
 	if (cnt_sensor_history >= SENSOR_RECORD_INTERVAL) {
 		sensor_history_push(&ui->sensor.popup.history);
 		cnt_sensor_history = 0;
-	}
-}
-
-static void weather_record_values(ui_main_menu_t *ui) {
-	static uint16_t cnt_weather_history = 0;
-	cnt_weather_history++;
-	if (cnt_weather_history >= SENSOR_RECORD_INTERVAL) {
-		weather_history_push(&ui->weather.history_popup.history);
-		cnt_weather_history = 0;
 	}
 }
 

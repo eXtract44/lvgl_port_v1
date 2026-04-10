@@ -59,9 +59,15 @@ typedef struct {
 typedef struct {
   lv_obj_t *popup;
   lv_obj_t *btn_close;
-  lv_obj_t *chart;
-  sensor_history_t history;
-} ui_weather_history_popup_t;
+  // chart убран — прогноз текстом
+  // day labels
+  lv_obj_t *day_label[FORECAST_DAYS];      // "Heute" / "Morgen" / "Übermorgen"
+  lv_obj_t *wcode_label[FORECAST_DAYS];    // "Schauer"
+  lv_obj_t *temp_label[FORECAST_DAYS];     // "7°C / 15°C"
+  lv_obj_t *humidity_label[FORECAST_DAYS]; // "85 %"
+  lv_obj_t *sunrise_label[FORECAST_DAYS];  // "06:45"
+  lv_obj_t *sunset_label[FORECAST_DAYS];   // "20:12"
+} ui_weather_forecast_popup_t;
 
 typedef struct {
   lv_obj_t *popup;
@@ -72,7 +78,7 @@ typedef struct {
 
 typedef struct {
   ui_weather_settings_popup_t settings_popup;
-  ui_weather_history_popup_t history_popup;
+  ui_weather_forecast_popup_t forecast_popup;
   lv_obj_t *screen;
   lv_obj_t *icon_temperature;
   lv_obj_t *icon_humidity;
@@ -318,7 +324,7 @@ static lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 static void anim_sun_moon_orbit(void *var, int32_t angle);
 
 static void sensor_record_values(ui_main_menu_t *ui);
-static void weather_record_values(ui_main_menu_t *ui);
-static void btn_weather_close_history_popup_event_handler(lv_event_t *e);
+static void wifi_check_timer_cb(lv_timer_t *timer);
+static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e);
 
 #endif /* INC_LVGL_MENU_H_ */

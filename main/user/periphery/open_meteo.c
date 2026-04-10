@@ -12,47 +12,73 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "open_meteo.h"
-#include "user/periphery/periphery.h"
 #include "user/menu/lvgl_menu.h"
+#include "user/periphery/periphery.h"
 #include <stdint.h>
 
 static const char *TAG = "WEATHER_APP";
+forecast_data_t forecast_data;
 
 extern ui_main_menu_t ui;
 
 const city_t cities_de[CITY_COUNT] = {
-    {"Berlin", 52.5200, 13.4050},       {"Hamburg", 53.5511, 9.9937},
-    {"Munich", 48.1351, 11.5820},       {"Cologne", 50.9375, 6.9603},
-    {"Frankfurt", 50.1109, 8.6821},     {"Stuttgart", 48.7758, 9.1829},
-    {"Duesseldorf", 51.2277, 6.7735},   {"Leipzig", 51.3397, 12.3731},
-    {"Dortmund", 51.5136, 7.4653},   
-	
-	{"Dortmund-Wabmel", 51.5136, 7.4653},
-	
-	
-	
-	
-	
-	
-	
-	   {"Essen", 51.4556, 7.0116},
-    {"Bremen", 53.0793, 8.8017},        {"Dresden", 51.0504, 13.7373},
-    {"Hannover", 52.3759, 9.7320},      {"Nuremberg", 49.4521, 11.0767},
-    {"Duisburg", 51.4344, 6.7623},      {"Bochum", 51.4818, 7.2162},
-    {"Wuppertal", 51.2562, 7.1508},     {"Bielefeld", 52.0302, 8.5325},
-    {"Bonn", 50.7374, 7.0982},          {"Muenster", 51.9607, 7.6261},
-    {"Karlsruhe", 49.0069, 8.4037},     {"Mannheim", 49.4875, 8.4660},
-    {"Augsburg", 48.3705, 10.8978},     {"Wiesbaden", 50.0782, 8.2398},
-    {"Gelsenkirchen", 51.5177, 7.0857}, {"Moenchengladbach", 51.1805, 6.4428},
-    {"Braunschweig", 52.2689, 10.5268}, {"Chemnitz", 50.8278, 12.9214},
-    {"Kiel", 54.3233, 10.1228},         {"Aachen", 50.7753, 6.0839},
-    {"Halle", 51.4828, 11.9699},        {"Magdeburg", 52.1205, 11.6276},
-    {"Freiburg", 47.9990, 7.8421},      {"Krefeld", 51.3388, 6.5853},
-    {"Luebeck", 53.8655, 10.6866},      {"Oberhausen", 51.4963, 6.8638},
-    {"Erfurt", 50.9848, 11.0299},       {"Mainz", 49.9929, 8.2473},
-    {"Rostock", 54.0924, 12.0991},      {"Kassel", 51.3127, 9.4797}};
+    // Крупные города
+    {"Berlin", 52.5200, 13.4050},
+    {"Hamburg", 53.5511, 9.9937},
+    {"Munich", 48.1351, 11.5820},
+    {"Cologne", 50.9375, 6.9603},
+    {"Frankfurt", 50.1109, 8.6821},
+    {"Stuttgart", 48.7758, 9.1829},
+    {"Duesseldorf", 51.2277, 6.7735},
+    {"Leipzig", 51.3397, 12.3731},
+    {"Essen", 51.4556, 7.0116},
+    {"Bremen", 53.0793, 8.8017},
+    {"Dresden", 51.0504, 13.7373},
+    {"Hannover", 52.3759, 9.7320},
+    {"Nuremberg", 49.4521, 11.0767},
+    {"Duisburg", 51.4344, 6.7623},
+    {"Bochum", 51.4818, 7.2162},
+    {"Wuppertal", 51.2562, 7.1508},
+    {"Bielefeld", 52.0302, 8.5325},
+    {"Bonn", 50.7374, 7.0982},
+    {"Muenster", 51.9607, 7.6261},
+    {"Karlsruhe", 49.0069, 8.4037},
+    {"Mannheim", 49.4875, 8.4660},
+    {"Augsburg", 48.3705, 10.8978},
+    {"Wiesbaden", 50.0782, 8.2398},
+    {"Gelsenkirchen", 51.5177, 7.0857},
+    {"Moenchengladbach", 51.1805, 6.4428},
+    {"Braunschweig", 52.2689, 10.5268},
+    {"Chemnitz", 50.8278, 12.9214},
+    {"Kiel", 54.3233, 10.1228},
+    {"Aachen", 50.7753, 6.0839},
+    {"Halle", 51.4828, 11.9699},
+    {"Magdeburg", 52.1205, 11.6276},
+    {"Freiburg", 47.9990, 7.8421},
+    {"Krefeld", 51.3388, 6.5853},
+    {"Luebeck", 53.8655, 10.6866},
+    {"Oberhausen", 51.4963, 6.8638},
+    {"Erfurt", 50.9848, 11.0299},
+    {"Mainz", 49.9929, 8.2473},
+    {"Rostock", 54.0924, 12.0991},
+    {"Kassel", 51.3127, 9.4797},
 
-char url[256];
+    // Дортмунд — районы
+    {"DO-Mitte", 51.5136, 7.4653},
+    {"DO-Eving", 51.5541, 7.4602},
+    {"DO-Scharnhorst", 51.5573, 7.5200},
+    {"DO-Brackel", 51.5100, 7.5500},
+    {"DO-Aplerbeck", 51.4833, 7.5500},
+    {"DO-Hoerde", 51.4833, 7.5000},
+    {"DO-Hombruch", 51.4833, 7.4333},
+    {"DO-Luetgendortmund", 51.5167, 7.3833},
+    {"DO-Huckarde", 51.5500, 7.3833},
+    {"DO-Mengede", 51.5667, 7.3833},
+    {"DO-Innenstadt-W", 51.5136, 7.4500},
+    {"DO-Innenstadt-O", 51.5136, 7.4800},
+};
+
+char url[512];
 
 typedef struct {
   uint8_t *buffer;
@@ -102,20 +128,16 @@ void build_weather_url(int city_index) {
   }
 
   snprintf(url, sizeof(url),
-
            "https://api.open-meteo.com/v1/forecast?"
            "latitude=%.4f&longitude=%.4f&"
            "current=temperature_2m,relative_humidity_2m,"
            "cloud_cover,wind_speed_10m,rain,snowfall,is_day&"
-           "models=icon_d2&"
+           "daily=temperature_2m_max,temperature_2m_min,"
+           "relative_humidity_2m_max,weathercode,sunrise,sunset&"
+           "models=icon_eu&"
+           "forecast_days=3&"
            "timeformat=unixtime&timezone=auto",
            cities_de[city_index].lat, cities_de[city_index].lon);
-
-  // ESP_LOGI("WEATHER","lat=%f lon=%f",
-  // cities_de[city_index].lat,
-  // cities_de[city_index].lon);
-
-  // fetch_weather();
 }
 
 void fetch_weather(void) {
@@ -186,7 +208,62 @@ void fetch_weather(void) {
           item = cJSON_GetObjectItem(current, "is_day");
           if (cJSON_IsNumber(item))
             current_weather_data.is_day = item->valueint;
-#if DEBUG_INET
+// --- daily forecast ---
+          cJSON *daily = cJSON_GetObjectItem(json, "daily");
+          if (daily) {
+            cJSON *temp_max_arr =
+                cJSON_GetObjectItem(daily, "temperature_2m_max");
+            cJSON *temp_min_arr =
+                cJSON_GetObjectItem(daily, "temperature_2m_min");
+            cJSON *hum_max_arr =
+                cJSON_GetObjectItem(daily, "relative_humidity_2m_max");
+            cJSON *wcode_arr = cJSON_GetObjectItem(daily, "weathercode");
+            cJSON *sunrise_arr = cJSON_GetObjectItem(daily, "sunrise");
+            cJSON *sunset_arr = cJSON_GetObjectItem(daily, "sunset");
+
+            for (int i = 0; i < FORECAST_DAYS; i++) {
+              cJSON *item;
+
+              item = cJSON_GetArrayItem(temp_max_arr, i);
+              if (cJSON_IsNumber(item))
+                forecast_data.day[i].temp_max = (int8_t)item->valuedouble;
+
+              item = cJSON_GetArrayItem(temp_min_arr, i);
+              if (cJSON_IsNumber(item))
+                forecast_data.day[i].temp_min = (int8_t)item->valuedouble;
+
+              item = cJSON_GetArrayItem(hum_max_arr, i);
+              if (cJSON_IsNumber(item))
+                forecast_data.day[i].humidity_max = (uint8_t)item->valueint;
+
+              item = cJSON_GetArrayItem(wcode_arr, i);
+              if (cJSON_IsNumber(item))
+                forecast_data.day[i].weathercode = (uint8_t)item->valueint;
+
+              item = cJSON_GetArrayItem(sunrise_arr, i);
+              if (cJSON_IsNumber(item))
+                forecast_data.day[i].sunrise = (uint32_t)item->valuedouble;
+
+              item = cJSON_GetArrayItem(sunset_arr, i);
+              if (cJSON_IsNumber(item))
+                forecast_data.day[i].sunset = (uint32_t)item->valuedouble;
+            }
+          }
+           forecast_data.valid = true;
+
+             
+      #if DEBUG_INET       
+             ESP_LOGI(TAG, "Forecast day0: max=%d min=%d wcode=%d", 
+         forecast_data.day[0].temp_max, forecast_data.day[0].temp_min, 
+         forecast_data.day[0].weathercode);
+ESP_LOGI(TAG, "Forecast day1: max=%d min=%d wcode=%d",
+         forecast_data.day[1].temp_max, forecast_data.day[1].temp_min,
+         forecast_data.day[1].weathercode);
+ESP_LOGI(TAG, "Forecast day2: max=%d min=%d wcode=%d",
+         forecast_data.day[2].temp_max, forecast_data.day[2].temp_min,
+         forecast_data.day[2].weathercode);
+
+
           ESP_LOGI(TAG,
                    "Weather updated: Temp=%.1f C Humidity=%d%% Clouds=%d%% "
                    "Wind=%.1f m/s",
@@ -218,4 +295,18 @@ void fetch_weather(void) {
     ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
   }
   esp_http_client_cleanup(client);
+}
+
+const char* weathercode_to_text(uint8_t code) {
+    if (code == 0)              return "Klar";
+    if (code <= 2)              return "Leicht bewoelkt";
+    if (code == 3)              return "Bewoelkt";
+    if (code <= 49)             return "Nebel";
+    if (code <= 55)             return "Nieseln";
+    if (code <= 65)             return "Regen";
+    if (code <= 75)             return "Schnee";
+    if (code <= 82)             return "Schauer";
+    if (code <= 86)             return "Schneeschauer";
+    if (code <= 99)             return "Gewitter";
+    return "Unbekannt";
 }
