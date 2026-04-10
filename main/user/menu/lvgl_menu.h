@@ -31,8 +31,8 @@
 #define MY_TEMPERATURE_SYMBOL "\xEF\x8B\x89"
 #define MY_CLOUD_SYMBOL "\xEF\x83\x82"
 
-#define SENSOR_HISTORY_POINTS 72 // 6 часов × 12 точек/час
-#define SENSOR_RECORD_INTERVAL 3600 // тиков (секунд) между записями
+#define SENSOR_HISTORY_POINTS 144 // 12 часов × 12 точек/час
+#define SENSOR_RECORD_INTERVAL 300 //300 тиков (секунд) между записями
 
 // Кольцевой буфер для истории датчиков
 typedef struct {
