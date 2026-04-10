@@ -4,11 +4,16 @@
 #include <string.h>
 #include "wifi.h"
 
+#include "time_user.h"
+
+//#include "user/periphery/time_user.h"
+
 //uint8_t wifi_ssid[32] = "WiFi"; /**< SSID of target AP. */
 //uint8_t wifi_password[64] = "Lokomotive132";
 
 // #define WIFI_SSID "WiFi"
 //#define WIFI_PASS "Lokomotive132"
+
 
 wifi_ap_record_t ap_info;
 static const char *TAG = "WIFI";
@@ -29,6 +34,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 
     ESP_LOGI(TAG, "WiFi connected");
     ESP_LOGI(TAG, "IP: " IPSTR, IP2STR(&event->ip_info.ip));
+	//user_sntp_stop();
+	//user_initialize_sntp();
     xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
   }
 }
@@ -75,8 +82,6 @@ void wifi_init_sta(void) {
 //
 //  };
   
-
-
   esp_wifi_set_mode(WIFI_MODE_STA);
  // esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
   esp_wifi_start();

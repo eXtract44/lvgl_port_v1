@@ -73,7 +73,7 @@ nvs_user_init();
 
     // 3. Инициализация NTP
    if(sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET) {
-        initialize_sntp();
+        user_initialize_sntp();
     }
      start_ntp_time_task();
 #endif

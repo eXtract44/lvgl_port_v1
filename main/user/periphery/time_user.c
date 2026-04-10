@@ -1,11 +1,12 @@
 #include "time_user.h"
 #include <time.h>
+#include "esp_sntp.h"
 
 static const char *TAG = "NTP_TIME";
 struct tm timeinfo_user;
 
 // Инициализация SNTP (NTP клиент)
-void initialize_sntp(void)
+void user_initialize_sntp(void)
 {
 	if(sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET) {
      esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
@@ -21,6 +22,10 @@ void initialize_sntp(void)
     ESP_LOGI(TAG, "SNTP already initialized");
 }
 ESP_LOGI(TAG, "SNTP already initialized");
+}
+
+void user_sntp_stop(){
+	esp_sntp_stop();
 }
 
 // Получение локального времени с учётом часового пояса

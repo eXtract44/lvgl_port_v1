@@ -14,7 +14,8 @@
 #include "freertos/task.h"
 
 void start_ntp_time_task(void);
-void initialize_sntp(void);
+void user_initialize_sntp(void);
+void user_sntp_stop(void);
 
 
 #endif /* MAIN_USER_PERIPHERY_TIME_USER_H_ */

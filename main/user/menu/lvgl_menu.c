@@ -1,6 +1,7 @@
 
 #include "user/menu/lvgl_menu.h"
 #include "esp_heap_caps.h"
+#include "esp_log_timestamp.h"
 #include "font/lv_symbol_def.h"
 #include "lvgl_port.h"
 #include "lvgl_user_config.h"
@@ -201,6 +202,9 @@ void print_wday(uint8_t wday, ui_main_menu_t *ui) {
 		break;
 	case 6:
 		lv_label_set_text(parent, "samstag");
+		break;
+	case 10:
+		lv_label_set_text(parent, "Kein WLAN");
 		break;
 	default:
 		lv_label_set_text(parent, "wochentag");
@@ -661,16 +665,18 @@ static void weather_history_get(const sensor_history_t *h, uint16_t idx,
 static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
 
 	// --- Фон popup ---
-	ui->weather.history_popup.popup =
-		create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
-						  POPUP_WINDOW_ALIGN, 0, 0);
+	int16_t popup_width = LVGL_PORT_H_RES - 10;
+	int16_t popup_height = LVGL_PORT_V_RES - 10;
+	ui->weather.history_popup.popup = create_background(
+		ui->screen, popup_width, popup_height, POPUP_WINDOW_ALIGN, 0, 0);
 	lv_obj_set_scrollbar_mode(ui->weather.history_popup.popup,
 							  LV_SCROLLBAR_MODE_OFF);
 	lv_obj_add_style(ui->weather.history_popup.popup, &ui->style.main, 0);
 
 	// --- Заголовок ---
-	create_text("Temp./Feucht.(6std)", ui->weather.history_popup.popup,
-				STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 5, ui);
+	create_text("Temperatur / Feuchtigkeit (12 std)",
+				ui->weather.history_popup.popup, STYLE_TEXT_SMALL,
+				LV_ALIGN_TOP_MID, 0, 5, ui);
 
 	// --- Кнопка закрытия ---
 	ui->weather.history_popup.btn_close = create_btn_cb(
@@ -680,10 +686,12 @@ static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
 								LV_SYMBOL_HOME, 0);
 
 	// --- График ---
+	int16_t chart_width = popup_width - 160;
+	int16_t chart_height = popup_height - 125;
 	// Размер: почти весь popup, отступы под оси
 	lv_obj_t *chart = lv_chart_create(ui->weather.history_popup.popup);
-	lv_obj_set_size(chart, POPUP_WINDOW_WIDTH - 130, POPUP_WINDOW_HEIGHT - 150);
-	lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -10);
+	lv_obj_set_size(chart, chart_width, chart_height);
+	lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, 10);
 	lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
 	lv_chart_set_point_count(chart, SENSOR_HISTORY_POINTS);
 
@@ -701,21 +709,28 @@ static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
 	lv_obj_align_to(lbl_hum, chart, LV_ALIGN_OUT_RIGHT_TOP, 15, -35);
 
 	// Сетка
-	lv_chart_set_div_line_count(chart, 6, 6);
+	uint8_t hor_lines = 8;
+	lv_chart_set_div_line_count(chart, hor_lines, 12);
 
 	// Диапазоны осей
+	int16_t temperatur_range_min = -5;
+	int16_t temperatur_range_max = 30;
+	uint8_t humidity_range_min = 20;
+	uint8_t humidity_range_max = 90;
 	// Ось Y левая  — температура: 10..35 °C (×10 → 100..350)
-	lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, -10, 35);
+	lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, temperatur_range_min,
+					   temperatur_range_max);
 	// Ось Y правая — влажность: 20..80 %
-	lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, 10, 99);
+	lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, humidity_range_min,
+					   humidity_range_max);
 
 	// Засечки осей
 	lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5,
-						   3,	 // major/minor tick length
-						   6, 1, // 6 делений, каждая подписана
+						   3,			 // major/minor tick length
+						   hor_lines, 1, // 8 делений, каждая подписана
 						   true, 50);
-	lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 3, 6, 1, true,
-						   40);
+	lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 3, hor_lines, 1,
+						   true, 40);
 
 	// --- Серия температуры (левая ось, красная) ---
 	lv_chart_series_t *ser_temp = lv_chart_add_series(
@@ -724,6 +739,11 @@ static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
 	// --- Серия влажности (правая ось, синяя) ---
 	lv_chart_series_t *ser_hum = lv_chart_add_series(
 		chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_SECONDARY_Y);
+		// После создания серий — убрать точки совсем, оставить только линию
+			lv_obj_set_style_size(chart, 0, LV_PART_INDICATOR); // точки = 0px
+
+			// Толщина линии тонче
+			lv_obj_set_style_line_width(chart, 3, LV_PART_ITEMS);
 
 	// --- Заполняем серии из кольцевого буфера ---
 	uint16_t n = ui->weather.history_popup.history.count;
@@ -745,11 +765,27 @@ static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
 		for (uint16_t i = 0; i < n; i++) {
 			int16_t temp_x10;
 			uint8_t hum;
-			weather_history_get(&ui->weather.history_popup.history, i,
-								&temp_x10, &hum);
+			weather_history_get(&ui->weather.history_popup.history, i, &temp_x10, &hum);
+			int16_t current_temperaure = temp_x10;
+			if (current_temperaure < temperatur_range_min * 10) {
+				current_temperaure = temperatur_range_min * 10;
+			}
+			if (current_temperaure > temperatur_range_max * 10) {
+				current_temperaure = temperatur_range_max * 10;
+			}
+
+			uint8_t current_humidity = hum;
+			if (current_humidity < humidity_range_min) {
+				current_humidity = humidity_range_min;
+			}
+			if (current_humidity > humidity_range_max) {
+				current_humidity = humidity_range_max;
+			}
+
 			lv_chart_set_value_by_id(chart, ser_temp, empty_slots + i,
-									 temp_x10 / 10);
-			lv_chart_set_value_by_id(chart, ser_hum, empty_slots + i, hum);
+									 current_temperaure / 10);
+			lv_chart_set_value_by_id(chart, ser_hum, empty_slots + i,
+									 current_humidity);
 		}
 	}
 
@@ -915,11 +951,11 @@ static void ui_create_sensor_history_popup(ui_main_menu_t *ui) {
 			uint8_t hum;
 			sensor_history_get(&ui->sensor.popup.history, i, &temp_x10, &hum);
 			int16_t current_temperaure = temp_x10;
-			if (current_temperaure < temperatur_range_min*10) {
-				current_temperaure = temperatur_range_min*10;
+			if (current_temperaure < temperatur_range_min * 10) {
+				current_temperaure = temperatur_range_min * 10;
 			}
-			if (current_temperaure > temperatur_range_max*10) {
-				current_temperaure = temperatur_range_max*10;
+			if (current_temperaure > temperatur_range_max * 10) {
+				current_temperaure = temperatur_range_max * 10;
 			}
 
 			uint8_t current_humidity = hum;
@@ -1273,7 +1309,11 @@ static void ta_wifi_event_cb(lv_event_t *e) {
 
 		const char *ssid = lv_textarea_get_text(ui->wifi.ta_ssid);
 		const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
-
+		
+		if (lv_obj_is_valid(ui->wifi.ssid_label)){
+			lv_label_set_text(ui->wifi.ssid_label, (char *)ssid);
+		}
+		
 		wifi_connect(ssid, pass);
 
 		set_visible(kb, false);
@@ -1871,91 +1911,116 @@ void snow_set_intensity(uint8_t visible_count, ui_main_menu_t *ui) {
 }
 
 void draw_weather_sun_moon(ui_main_menu_t *ui) {
+	static uint8_t prev = 255;
 #if SIMULATE_ANIM_SUN
 	set_visible(ui->animation.image.sun_48_48, true);
 	set_visible(ui->animation.image.moon_42_42, false);
 #else
-
-	uint8_t is_day = get_is_day();
-	static uint8_t prev = 255;
-
-	if (is_day == prev)
-		return;
-
-	if (get_is_day()) {
-		set_visible(ui->animation.image.sun_48_48, true);
-		set_visible(ui->animation.image.moon_42_42, false);
-	} else {
+	if (get_wifi_status() == WIFI_DISCONNECTED) {
 		set_visible(ui->animation.image.sun_48_48, false);
-		set_visible(ui->animation.image.moon_42_42, true);
+		set_visible(ui->animation.image.moon_42_42, false);
+		prev = 255;
+	} else {
+
+		uint8_t is_day = get_is_day();
+		
+
+		if (is_day == prev)
+			return;
+
+		if (get_is_day()) {
+			set_visible(ui->animation.image.sun_48_48, true);
+			set_visible(ui->animation.image.moon_42_42, false);
+		} else {
+			set_visible(ui->animation.image.sun_48_48, false);
+			set_visible(ui->animation.image.moon_42_42, true);
+		}
+		prev = is_day;
 	}
-	prev = is_day;
+
 #endif
 }
 
 void draw_weather_clouds(ui_main_menu_t *ui) {
+	static uint8_t prev = 255;
 #if SIMULATE_ANIM_CLOUD
 	set_visible(ui->animation.image.cloud.big_110_50, true);
 	set_visible(ui->animation.image.cloud.mid_90_45, true);
 	set_visible(ui->animation.image.cloud.small_70_35, true);
 	set_visible(ui->animation.image.cloud.thin_80_30, true);
 #else
-	uint8_t current_clouds = get_weather_clouds();
-	static uint8_t prev = 0;
-
-	if (current_clouds == prev)
-		return;
-	if (current_clouds < 15) {
+	if (get_wifi_status() == WIFI_DISCONNECTED) {
 		set_visible(ui->animation.image.cloud.thin_80_30, false);
 		set_visible(ui->animation.image.cloud.small_70_35, false);
 		set_visible(ui->animation.image.cloud.mid_90_45, false);
 		set_visible(ui->animation.image.cloud.big_110_50, false);
-	} else if (current_clouds > 15 && current_clouds < 25) {
-		set_visible(ui->animation.image.cloud.thin_80_30, true);
-		set_visible(ui->animation.image.cloud.small_70_35, false);
-		set_visible(ui->animation.image.cloud.mid_90_45, false);
-		set_visible(ui->animation.image.cloud.big_110_50, false);
-	} else if (current_clouds > 25 && current_clouds < 50) {
-		set_visible(ui->animation.image.cloud.thin_80_30, true);
-		set_visible(ui->animation.image.cloud.small_70_35, true);
-		set_visible(ui->animation.image.cloud.mid_90_45, false);
-		set_visible(ui->animation.image.cloud.big_110_50, false);
-	} else if (current_clouds > 50 && current_clouds < 75) {
-		set_visible(ui->animation.image.cloud.thin_80_30, true);
-		set_visible(ui->animation.image.cloud.small_70_35, true);
-		set_visible(ui->animation.image.cloud.mid_90_45, true);
-		set_visible(ui->animation.image.cloud.big_110_50, false);
-	} else if (current_clouds > 75) {
-		set_visible(ui->animation.image.cloud.thin_80_30, true);
-		set_visible(ui->animation.image.cloud.small_70_35, true);
-		set_visible(ui->animation.image.cloud.mid_90_45, true);
-		set_visible(ui->animation.image.cloud.big_110_50, true);
+		prev = 255;
+	} else {
+		uint8_t current_clouds = get_weather_clouds();
+		
+		if (current_clouds == prev)
+			return;
+		if (current_clouds < 15) {
+			set_visible(ui->animation.image.cloud.thin_80_30, false);
+			set_visible(ui->animation.image.cloud.small_70_35, false);
+			set_visible(ui->animation.image.cloud.mid_90_45, false);
+			set_visible(ui->animation.image.cloud.big_110_50, false);
+		} else if (current_clouds > 15 && current_clouds < 25) {
+			set_visible(ui->animation.image.cloud.thin_80_30, true);
+			set_visible(ui->animation.image.cloud.small_70_35, false);
+			set_visible(ui->animation.image.cloud.mid_90_45, false);
+			set_visible(ui->animation.image.cloud.big_110_50, false);
+		} else if (current_clouds > 25 && current_clouds < 50) {
+			set_visible(ui->animation.image.cloud.thin_80_30, true);
+			set_visible(ui->animation.image.cloud.small_70_35, true);
+			set_visible(ui->animation.image.cloud.mid_90_45, false);
+			set_visible(ui->animation.image.cloud.big_110_50, false);
+		} else if (current_clouds > 50 && current_clouds < 75) {
+			set_visible(ui->animation.image.cloud.thin_80_30, true);
+			set_visible(ui->animation.image.cloud.small_70_35, true);
+			set_visible(ui->animation.image.cloud.mid_90_45, true);
+			set_visible(ui->animation.image.cloud.big_110_50, false);
+		} else if (current_clouds > 75) {
+			set_visible(ui->animation.image.cloud.thin_80_30, true);
+			set_visible(ui->animation.image.cloud.small_70_35, true);
+			set_visible(ui->animation.image.cloud.mid_90_45, true);
+			set_visible(ui->animation.image.cloud.big_110_50, true);
+		}
+		prev = current_clouds;
 	}
-	prev = current_clouds;
 
 #endif
 }
 
 void draw_weather_wind(ui_main_menu_t *ui) {
+	static uint8_t prev = 255;
 #if SIMULATE_ANIM_WIND
 	set_visible(ui->animation.wind.slow, true);
 	set_visible(ui->animation.wind.med, true);
 	set_visible(ui->animation.wind.fast, true);
 #else
-	uint8_t current_wind = get_weather_wind();
-	static uint8_t prev = 255;
+	if (get_wifi_status() == WIFI_DISCONNECTED) {
+		set_visible(ui->animation.wind.slow, false);
+		set_visible(ui->animation.wind.med, false);
+		set_visible(ui->animation.wind.fast, false);
+		prev = 255;
+	} else {
+		uint8_t current_wind = get_weather_wind();
+		
 
-	if (current_wind == prev)
-		return;
+		if (current_wind == prev)
+			return;
 
-	// < 2  м/с — всё выключено
-	// 2..9  — только slow
-	// 10..19 — slow + med
-	// 20+   — все три
-	set_visible(ui->animation.wind.slow, current_wind >= 2);
-	set_visible(ui->animation.wind.med, current_wind >= 10);
-	set_visible(ui->animation.wind.fast, current_wind >= 20);
-	prev = current_wind;
+		// < 2  м/с — всё выключено
+		// 2..9  — только slow
+		// 10..19 — slow + med
+		// 20+   — все три
+		set_visible(ui->animation.wind.slow, current_wind >= 2);
+		set_visible(ui->animation.wind.med, current_wind >= 10);
+		set_visible(ui->animation.wind.fast, current_wind >= 20);
+		prev = current_wind;
+	}
+
 #endif
 }
 
@@ -1963,11 +2028,16 @@ void draw_weather_rain(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_RAIN
 	rain_set_intensity(10);
 #else
+if (get_wifi_status() == WIFI_DISCONNECTED) {
+	rain_set_intensity(0, ui);
+} else {
 	uint8_t current_rain = get_weather_rain();
-	if (current_rain > BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS) {
-		current_rain = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS;
+		if (current_rain > BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS) {
+			current_rain = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS;
+		}
+		rain_set_intensity(current_rain, ui);
 	}
-	rain_set_intensity(current_rain, ui);
+	
 #endif
 }
 
@@ -1975,6 +2045,9 @@ void draw_weather_snow(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_SNOW
 	snow_set_intensity(10);
 #else
+if (get_wifi_status() == WIFI_DISCONNECTED) {
+	snow_set_intensity(0, ui);
+} else {
 	uint8_t current_snow = get_weather_snow();
 	current_snow =
 		current_snow * BLOCK_BOT_RIGHT_MULT_FACTOR_WEATHER_ANIM_SNOWS;
@@ -1982,6 +2055,7 @@ void draw_weather_snow(ui_main_menu_t *ui) {
 		current_snow = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS;
 	}
 	snow_set_intensity(current_snow, ui);
+	}
 #endif
 }
 
@@ -2064,18 +2138,30 @@ void update_block_top_middle(ui_main_menu_t *ui) {
 }
 
 void update_block_top_right(ui_main_menu_t *ui) {
-	print_mday(get_time_mday(), get_time_month(), ui);
-	print_wday(get_time_wday(), ui);
-	print_time(get_time_hour(), get_time_minute(), ui);
+	if (get_wifi_status() == WIFI_DISCONNECTED) {
+		print_mday(0, 0, ui);
+		print_wday(10, ui);
+		print_time(0, 0, ui);
+	} else {
+		print_mday(get_time_mday(), get_time_month(), ui);
+		print_wday(get_time_wday(), ui);
+		print_time(get_time_hour(), get_time_minute(), ui);
+	}
 }
 
 void update_block_bot_left(ui_main_menu_t *ui) {
-	print_value("%.1f °C", get_weather_temperature(),
-				ui->weather.temperature_label);
-	print_value("%.f %%", get_weather_humidity(), ui->weather.humidity_label);
-
-	print_value("%.1f m/s", get_weather_wind(), ui->weather.wind_label);
-	weather_record_values(ui);
+	if (get_wifi_status() == WIFI_DISCONNECTED) {
+		lv_label_set_text(ui->weather.temperature_label, " ");
+		lv_label_set_text(ui->weather.humidity_label, " ");
+		lv_label_set_text(ui->weather.wind_label, " ");
+	} else {
+		print_value("%.1f °C", get_weather_temperature(),
+					ui->weather.temperature_label);
+		print_value("%.f %%", get_weather_humidity(),
+					ui->weather.humidity_label);
+		print_value("%.1f m/s", get_weather_wind(), ui->weather.wind_label);
+		weather_record_values(ui);
+	}
 }
 
 void update_block_bot_middle(ui_main_menu_t *ui) {
