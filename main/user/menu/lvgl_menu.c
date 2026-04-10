@@ -25,6 +25,8 @@ ui_main_menu_t ui = {0};
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
 extern wifi_ap_record_t ap_info;
+extern sht31_data_t sht31_data;
+extern sgp30_data_t sgp30_data;
 
 int standby_touched = 0; // callback for extern touch driver
 
@@ -182,28 +184,28 @@ void print_wday(uint8_t wday, ui_main_menu_t *ui) {
 	}
 
 	switch (wday) {
-	case 0:
+	case WDAY_SONNTAG:
 		lv_label_set_text(parent, "sonntag");
 		break;
-	case 1:
+	case WDAY_MONTAG:
 		lv_label_set_text(parent, "montag");
 		break;
-	case 2:
+	case WDAY_DIENSTAG:
 		lv_label_set_text(parent, "dienstag");
 		break;
-	case 3:
+	case WDAY_MITTWOCH:
 		lv_label_set_text(parent, "mittwoch");
 		break;
-	case 4:
+	case WDAY_DONNERSTAG:
 		lv_label_set_text(parent, "donnerstag");
 		break;
-	case 5:
+	case WDAY_FREITAG:
 		lv_label_set_text(parent, "freitag");
 		break;
-	case 6:
+	case WDAY_SAMSTAG:
 		lv_label_set_text(parent, "samstag");
 		break;
-	case 10:
+	case WDAY_KEIN_WLAN:
 		lv_label_set_text(parent, "Kein WLAN");
 		break;
 	default:
@@ -739,11 +741,11 @@ static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
 	// --- Серия влажности (правая ось, синяя) ---
 	lv_chart_series_t *ser_hum = lv_chart_add_series(
 		chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_SECONDARY_Y);
-		// После создания серий — убрать точки совсем, оставить только линию
-			lv_obj_set_style_size(chart, 0, LV_PART_INDICATOR); // точки = 0px
+	// После создания серий — убрать точки совсем, оставить только линию
+	lv_obj_set_style_size(chart, 0, LV_PART_INDICATOR); // точки = 0px
 
-			// Толщина линии тонче
-			lv_obj_set_style_line_width(chart, 3, LV_PART_ITEMS);
+	// Толщина линии тонче
+	lv_obj_set_style_line_width(chart, 3, LV_PART_ITEMS);
 
 	// --- Заполняем серии из кольцевого буфера ---
 	uint16_t n = ui->weather.history_popup.history.count;
@@ -765,7 +767,8 @@ static void ui_create_weather_history_popup(ui_main_menu_t *ui) {
 		for (uint16_t i = 0; i < n; i++) {
 			int16_t temp_x10;
 			uint8_t hum;
-			weather_history_get(&ui->weather.history_popup.history, i, &temp_x10, &hum);
+			weather_history_get(&ui->weather.history_popup.history, i,
+								&temp_x10, &hum);
 			int16_t current_temperaure = temp_x10;
 			if (current_temperaure < temperatur_range_min * 10) {
 				current_temperaure = temperatur_range_min * 10;
@@ -1309,11 +1312,15 @@ static void ta_wifi_event_cb(lv_event_t *e) {
 
 		const char *ssid = lv_textarea_get_text(ui->wifi.ta_ssid);
 		const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
-		
-		if (lv_obj_is_valid(ui->wifi.ssid_label)){
+
+		if (lv_obj_is_valid(ui->wifi.ssid_label)) {
 			lv_label_set_text(ui->wifi.ssid_label, (char *)ssid);
 		}
 		
+		if (strlen(ssid) < 4) {
+			return;
+			}
+
 		wifi_connect(ssid, pass);
 
 		set_visible(kb, false);
@@ -1605,15 +1612,15 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
 	lv_obj_add_event_cb(ui->wifi.keyboard, ta_wifi_event_cb, LV_EVENT_ALL, ui);
 
 	ui->wifi.ta_ssid = lv_textarea_create(ui->wifi.popup);
-	lv_obj_align(ui->wifi.ta_ssid, LV_ALIGN_TOP_MID, 0, 35);
+	lv_obj_align(ui->wifi.ta_ssid, LV_ALIGN_TOP_MID, 0, 75);
 	lv_textarea_set_placeholder_text(ui->wifi.ta_ssid, "WiFi Name");
-	lv_obj_set_size(ui->wifi.ta_ssid, 600, 120);
+	lv_obj_set_size(ui->wifi.ta_ssid, 550, 70);
 
 	ui->wifi.ta_pass = lv_textarea_create(ui->wifi.popup);
-	lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 35);
+	lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 75);
 	// [FIX] Было "WiFi SSID" — опечатка в placeholder для pass
 	lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "WiFi Passwort");
-	lv_obj_set_size(ui->wifi.ta_pass, 600, 120);
+	lv_obj_set_size(ui->wifi.ta_pass, 550, 70);
 
 	set_visible(ui->wifi.ta_ssid, false);
 	set_visible(ui->wifi.ta_pass, false);
@@ -1923,7 +1930,6 @@ void draw_weather_sun_moon(ui_main_menu_t *ui) {
 	} else {
 
 		uint8_t is_day = get_is_day();
-		
 
 		if (is_day == prev)
 			return;
@@ -1957,7 +1963,7 @@ void draw_weather_clouds(ui_main_menu_t *ui) {
 		prev = 255;
 	} else {
 		uint8_t current_clouds = get_weather_clouds();
-		
+
 		if (current_clouds == prev)
 			return;
 		if (current_clouds < 15) {
@@ -2006,7 +2012,6 @@ void draw_weather_wind(ui_main_menu_t *ui) {
 		prev = 255;
 	} else {
 		uint8_t current_wind = get_weather_wind();
-		
 
 		if (current_wind == prev)
 			return;
@@ -2028,16 +2033,16 @@ void draw_weather_rain(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_RAIN
 	rain_set_intensity(10);
 #else
-if (get_wifi_status() == WIFI_DISCONNECTED) {
-	rain_set_intensity(0, ui);
-} else {
-	uint8_t current_rain = get_weather_rain();
+	if (get_wifi_status() == WIFI_DISCONNECTED) {
+		rain_set_intensity(0, ui);
+	} else {
+		uint8_t current_rain = get_weather_rain();
 		if (current_rain > BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS) {
 			current_rain = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS;
 		}
 		rain_set_intensity(current_rain, ui);
 	}
-	
+
 #endif
 }
 
@@ -2045,16 +2050,16 @@ void draw_weather_snow(ui_main_menu_t *ui) {
 #if SIMULATE_ANIM_SNOW
 	snow_set_intensity(10);
 #else
-if (get_wifi_status() == WIFI_DISCONNECTED) {
-	snow_set_intensity(0, ui);
-} else {
-	uint8_t current_snow = get_weather_snow();
-	current_snow =
-		current_snow * BLOCK_BOT_RIGHT_MULT_FACTOR_WEATHER_ANIM_SNOWS;
-	if (current_snow > BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS) {
-		current_snow = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS;
-	}
-	snow_set_intensity(current_snow, ui);
+	if (get_wifi_status() == WIFI_DISCONNECTED) {
+		snow_set_intensity(0, ui);
+	} else {
+		uint8_t current_snow = get_weather_snow();
+		current_snow =
+			current_snow * BLOCK_BOT_RIGHT_MULT_FACTOR_WEATHER_ANIM_SNOWS;
+		if (current_snow > BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS) {
+			current_snow = BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS;
+		}
+		snow_set_intensity(current_snow, ui);
 	}
 #endif
 }
@@ -2123,24 +2128,38 @@ void show_all_blocks(ui_main_menu_t *ui) {
 }
 
 void update_block_top_left(ui_main_menu_t *ui) {
-	print_value("%.1f °C", get_temperature_sht31(),
-				ui->sensor.temperature_label);
-	print_value("%.f %%", get_humidity_sht31(), ui->sensor.humidity_label);
-	print_value("%.f", get_tvoc_sgp30(), ui->sensor.tvoc_label);
-	sensor_record_values(ui);
+	if (sht31_data.life == SHT31_STATE_OK) {
+		print_value("%.1f °C", get_temperature_sht31(),
+					ui->sensor.temperature_label);
+		print_value("%.f %%", get_humidity_sht31(), ui->sensor.humidity_label);
+		sensor_record_values(ui);
+	} else {
+		lv_label_set_text(ui->sensor.temperature_label, "K.S");
+		lv_label_set_text(ui->sensor.humidity_label, "K.S");
+	}
+
+	if (sgp30_data.state == SGP30_STATE_OK) {
+		print_value("%.f", get_tvoc_sgp30(), ui->sensor.tvoc_label);
+	} else {
+		lv_label_set_text(ui->sensor.tvoc_label, "K.S");
+	}
 }
 
 void update_block_top_middle(ui_main_menu_t *ui) {
-	uint16_t raw = get_co2_sgp30();
-	ui->co2.co2_target = raw;
-	// Лейбл показываем реальное значение (или display — на вкус)
-	print_value("%.f", raw, ui->co2.co2_label);
+	if (sgp30_data.state == SGP30_STATE_OK) {
+		uint16_t raw = get_co2_sgp30();
+		ui->co2.co2_target = raw;
+		// Лейбл показываем реальное значение (или display — на вкус)
+		print_value("%.f", raw, ui->co2.co2_label);
+	} else {
+		lv_label_set_text(ui->co2.co2_label, "KS");
+	}
 }
 
 void update_block_top_right(ui_main_menu_t *ui) {
 	if (get_wifi_status() == WIFI_DISCONNECTED) {
 		print_mday(0, 0, ui);
-		print_wday(10, ui);
+		print_wday(WDAY_KEIN_WLAN, ui);
 		print_time(0, 0, ui);
 	} else {
 		print_mday(get_time_mday(), get_time_month(), ui);

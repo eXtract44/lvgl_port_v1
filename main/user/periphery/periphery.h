@@ -33,19 +33,21 @@ typedef enum {
     SHT31_STATE_TRIGGERED,
 } sht31_state_t;
  
+
+typedef enum {
+	SHT31_STATE_FAIL,
+	SHT31_STATE_OK,
+} sht31_life_t;
+
 typedef struct {
     float    temperature;
     uint8_t  humidity;
     sht31_state_t state;
+	sht31_life_t life;
     int64_t  trigger_time;
 } sht31_data_t;
  
-static sht31_data_t sht31_data = {
-    .temperature  = 0,
-    .humidity     = 0,
-    .state        = SHT31_STATE_IDLE,
-    .trigger_time = 0,
-};
+
 
 void    sht31_init(void);
 void    sht31_read(void);
@@ -57,10 +59,18 @@ uint8_t get_humidity_sht31(void);
 #define	SGP30_ADDR_WRITE	SGP30_ADDR      
 #define	SGP30_ADDR_READ		SGP30_ADDR   
 
+typedef enum {
+	SGP30_STATE_FAIL,
+	SGP30_STATE_OK,
+} sgp30_state_t;
+
 typedef struct sgp30_data_st {
     uint16_t co2;
     uint16_t tvoc;
+	sgp30_state_t state;
 }sgp30_data_t;
+
+
 
 typedef enum sgp30_cmd_en {
     INIT_AIR_QUALITY = 0x2003,

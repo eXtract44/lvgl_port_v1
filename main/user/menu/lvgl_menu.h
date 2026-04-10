@@ -230,6 +230,17 @@ enum namesOfStyles {
   STYLE_SYMBOLS,
 };
 
+enum namesOfwDay {
+WDAY_SONNTAG = 0,
+WDAY_MONTAG,
+WDAY_DIENSTAG,
+WDAY_MITTWOCH,
+WDAY_DONNERSTAG,
+WDAY_FREITAG,
+WDAY_SAMSTAG,
+WDAY_KEIN_WLAN,
+};
+
 typedef struct {
   lv_obj_t *obj;
   int16_t base_x;

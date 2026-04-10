@@ -21,145 +21,179 @@ extern wifi_ap_record_t ap_info;
 extern uint8_t wifi_ssid[];
 extern uint8_t wifi_password[];
 
+sgp30_data_t sgp30_data = {0};
+
+sht31_data_t sht31_data = {
+    .temperature  = 0,
+    .humidity     = 0,
+    .state        = SHT31_STATE_IDLE,
+    .trigger_time = 0,
+};
+
 #define SIMULATE_SHT31_VALUES 0
 #define SIMULATE_SGP30_VALUES 0
 #define SIMULATE_INET_VALUES 0
 
 static bool sht31_check_crc(uint8_t *data, uint8_t len, uint8_t crc_byte) {
-    uint8_t crc = 0xFF;
-    for (uint8_t i = 0; i < len; i++) {
-        crc ^= data[i];
-        for (uint8_t b = 0; b < 8; b++) {
-            crc = (crc & 0x80) ? (crc << 1) ^ 0x31 : (crc << 1);
-        }
-    }
-    return crc == crc_byte;
+	uint8_t crc = 0xFF;
+	for (uint8_t i = 0; i < len; i++) {
+		crc ^= data[i];
+		for (uint8_t b = 0; b < 8; b++) {
+			crc = (crc & 0x80) ? (crc << 1) ^ 0x31 : (crc << 1);
+		}
+	}
+	return crc == crc_byte;
 }
- 
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 void sht31_init(void) {
-    vTaskDelay(pdMS_TO_TICKS(50)); // power-on stabilisation
- 
-    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
- 
-    uint8_t soft_reset[2] = {SHT31_CMD_SOFTRESET_MSB, SHT31_CMD_SOFTRESET_LSB};
-    esp_err_t ret = i2c_master_write_to_device(
-        I2C_MASTER_NUM, SHT31_ADDRESS,
-        soft_reset, 2,
-        pdMS_TO_TICKS(100));
- 
-    xSemaphoreGive(i2c_bus_mutex);
- 
-    if (ret != ESP_OK) {
-        ESP_LOGE("SHT31", "Soft reset failed: %s", esp_err_to_name(ret));
-        return;
-    }
- 
-    vTaskDelay(pdMS_TO_TICKS(2)); // reset takes ~1.5 ms per datasheet
-    ESP_LOGI("SHT31", "__Init__ done");
+	vTaskDelay(pdMS_TO_TICKS(50)); // power-on stabilisation
+
+	xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+
+	uint8_t soft_reset[2] = {SHT31_CMD_SOFTRESET_MSB, SHT31_CMD_SOFTRESET_LSB};
+	esp_err_t ret = i2c_master_write_to_device(
+		I2C_MASTER_NUM, SHT31_ADDRESS, soft_reset, 2, pdMS_TO_TICKS(100));
+
+	xSemaphoreGive(i2c_bus_mutex);
+
+	if (ret != ESP_OK) {
+		ESP_LOGE("SHT31", "Soft reset failed: %s", esp_err_to_name(ret));
+		sht31_data.state = SHT31_STATE_FAIL;
+		return;
+	}
+
+	vTaskDelay(pdMS_TO_TICKS(2)); // reset takes ~1.5 ms per datasheet
+	ESP_LOGI("SHT31", "__Init__ done");
+	sht31_data.state = SHT31_STATE_OK;
 }
- 
 // ---------------------------------------------------------------------------
 // Non-blocking read  (call periodically from your task)
 // ---------------------------------------------------------------------------
 void sht31_read(void) {
 #if SIMULATE_SHT31_VALUES
-    // --- simulation block (mirrors AHT10 simulation) ---
-    static uint8_t upper_humi = 0;
-    static uint8_t sim_humi   = 30;
-    if (upper_humi) { if (--sim_humi < 30) upper_humi = 0; }
-    else            { if (++sim_humi > 92) upper_humi = 1; }
-    sht31_data.humidity = sim_humi;
- 
-    static uint8_t upper_temp   = 0;
-    static float   sim_temp     = 12.0f;
-    if (upper_temp) { sim_temp -= 0.1f; if (sim_temp < 12.0f) upper_temp = 0; }
-    else            { sim_temp += 0.1f; if (sim_temp > 28.0f) upper_temp = 1; }
-    sht31_data.temperature = sim_temp;
- 
+	// --- simulation block (mirrors AHT10 simulation) ---
+	static uint8_t upper_humi = 0;
+	static uint8_t sim_humi = 30;
+	if (upper_humi) {
+		if (--sim_humi < 30)
+			upper_humi = 0;
+	} else {
+		if (++sim_humi > 92)
+			upper_humi = 1;
+	}
+	sht31_data.humidity = sim_humi;
+
+	static uint8_t upper_temp = 0;
+	static float sim_temp = 12.0f;
+	if (upper_temp) {
+		sim_temp -= 0.1f;
+		if (sim_temp < 12.0f)
+			upper_temp = 0;
+	} else {
+		sim_temp += 0.1f;
+		if (sim_temp > 28.0f)
+			upper_temp = 1;
+	}
+	sht31_data.temperature = sim_temp;
+
 #else
-    // --- real sensor ---
- 
-    if (sht31_data.state == SHT31_STATE_IDLE) {
-        // Send measurement trigger command (2 bytes)
-        uint8_t meas_cmd[2] = {SHT31_CMD_MEAS_MSB, SHT31_CMD_MEAS_LSB};
- 
-        xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
-        esp_err_t ret = i2c_master_write_to_device(
-            I2C_MASTER_NUM, SHT31_ADDRESS,
-            meas_cmd, 2,
-            pdMS_TO_TICKS(100));
-        xSemaphoreGive(i2c_bus_mutex);
- 
-        if (ret != ESP_OK) {
-            ESP_LOGE("SHT31", "Trigger failed: %s", esp_err_to_name(ret));
-            return;
-        }
- 
-        sht31_data.trigger_time = esp_timer_get_time();
-        sht31_data.state        = SHT31_STATE_TRIGGERED;
-        return;
-    }
- 
-    if (sht31_data.state == SHT31_STATE_TRIGGERED) {
-        // Wait at least 15 ms for High-Repeatability measurement
-        if ((esp_timer_get_time() - sht31_data.trigger_time) < SHT31_MEAS_DELAY_US) {
-            return;
-        }
- 
-        // Read 6 bytes: [Temp MSB][Temp LSB][Temp CRC][Hum MSB][Hum LSB][Hum CRC]
-        uint8_t rx[6];
-        xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
-        esp_err_t ret = i2c_master_read_from_device(
-            I2C_MASTER_NUM, SHT31_ADDRESS,
-            rx, 6,
-            pdMS_TO_TICKS(100));
-        xSemaphoreGive(i2c_bus_mutex);
- 
-        sht31_data.state = SHT31_STATE_IDLE; // reset regardless of outcome
- 
-        if (ret != ESP_OK) {
-            ESP_LOGE("SHT31", "Read failed: %s", esp_err_to_name(ret));
-            return;
-        }
- 
-        // CRC check for temperature
-        if (!sht31_check_crc(&rx[0], 2, rx[2])) {
-            ESP_LOGE("SHT31", "Temperature CRC mismatch");
-            return;
-        }
- 
-        // CRC check for humidity
-        if (!sht31_check_crc(&rx[3], 2, rx[5])) {
-            ESP_LOGE("SHT31", "Humidity CRC mismatch");
-            return;
-        }
- 
-        // Convert temperature: T = -45 + 175 * raw / 65535
-        uint16_t raw_temp = ((uint16_t)rx[0] << 8) | rx[1];
-        sht31_data.temperature = -45.0f + 175.0f * (float)raw_temp / 65535.0f;
- 
-        // Convert humidity: RH = 100 * raw / 65535
-        uint16_t raw_hum  = ((uint16_t)rx[3] << 8) | rx[4];
-        sht31_data.humidity = (uint8_t)(100.0f * (float)raw_hum / 65535.0f);
- 
-//        ESP_LOGI("SHT31", "__Temp__: %.1f C, Humidity: %d%%",
-//                 sht31_data.temperature, sht31_data.humidity);
-    }
+	// --- real sensor ---
+	static uint16_t try_to_read_cnt = 0;
+	const uint16_t number_of_try = 20;
+	if (sht31_data.state == SHT31_STATE_IDLE) {
+		// Send measurement trigger command (2 bytes)
+		uint8_t meas_cmd[2] = {SHT31_CMD_MEAS_MSB, SHT31_CMD_MEAS_LSB};
+
+		xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+		esp_err_t ret = i2c_master_write_to_device(
+			I2C_MASTER_NUM, SHT31_ADDRESS, meas_cmd, 2, pdMS_TO_TICKS(100));
+		xSemaphoreGive(i2c_bus_mutex);
+
+		if (ret != ESP_OK) {
+			ESP_LOGE("SHT31", "Trigger failed: %s", esp_err_to_name(ret));
+			return;
+		}
+
+		sht31_data.trigger_time = esp_timer_get_time();
+		sht31_data.state = SHT31_STATE_TRIGGERED;
+		return;
+	}
+
+	if (sht31_data.state == SHT31_STATE_TRIGGERED) {
+		// Wait at least 15 ms for High-Repeatability measurement
+		if ((esp_timer_get_time() - sht31_data.trigger_time) <
+			SHT31_MEAS_DELAY_US) {
+			return;
+		}
+
+		// Read 6 bytes: [Temp MSB][Temp LSB][Temp CRC][Hum MSB][Hum LSB][Hum
+		// CRC]
+		uint8_t rx[6];
+		xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+		esp_err_t ret = i2c_master_read_from_device(
+			I2C_MASTER_NUM, SHT31_ADDRESS, rx, 6, pdMS_TO_TICKS(100));
+		xSemaphoreGive(i2c_bus_mutex);
+
+		sht31_data.state = SHT31_STATE_IDLE; // reset regardless of outcome
+
+		if (ret != ESP_OK) {
+			ESP_LOGE("SHT31", "Read failed: %s", esp_err_to_name(ret));
+			try_to_read_cnt++;
+			return;
+		}
+
+		// CRC check for temperature
+		if (!sht31_check_crc(&rx[0], 2, rx[2])) {
+			ESP_LOGE("SHT31", "Temperature CRC mismatch");
+			try_to_read_cnt++;
+			return;
+		}
+
+		// CRC check for humidity
+		if (!sht31_check_crc(&rx[3], 2, rx[5])) {
+			ESP_LOGE("SHT31", "Humidity CRC mismatch");
+			try_to_read_cnt++;
+			return;
+		}
+
+		// Convert temperature: T = -45 + 175 * raw / 65535
+		uint16_t raw_temp = ((uint16_t)rx[0] << 8) | rx[1];
+		sht31_data.temperature = -45.0f + 175.0f * (float)raw_temp / 65535.0f;
+
+		// Convert humidity: RH = 100 * raw / 65535
+		uint16_t raw_hum = ((uint16_t)rx[3] << 8) | rx[4];
+		sht31_data.humidity = (uint8_t)(100.0f * (float)raw_hum / 65535.0f);
+
+		//        ESP_LOGI("SHT31", "__Temp__: %.1f C, Humidity: %d%%",
+		//                 sht31_data.temperature, sht31_data.humidity);
+		if (try_to_read_cnt > number_of_try) {
+			try_to_read_cnt = number_of_try + 1;
+			sht31_data.life = SHT31_STATE_FAIL;
+		}
+		try_to_read_cnt = 0;
+		sht31_data.life = SHT31_STATE_OK;
+	}
 #endif
 }
- 
+
 // ---------------------------------------------------------------------------
 // Getters
 // ---------------------------------------------------------------------------
-float   get_temperature_sht31(void) { return sht31_data.temperature; }
-uint8_t get_humidity_sht31(void)    { return sht31_data.humidity;    }
+float get_temperature_sht31(void) { 
+	float ret = sht31_data.temperature;
+	if(ret < -40) ret = -40;
+	if(ret > 125) ret = 125;
+	return ret; 
 
-
-
-sgp30_data_t sgp30_data;
+}
+uint8_t get_humidity_sht31(void) {
+	uint8_t ret = sht31_data.humidity;
+		if(ret > 100) ret = 100;
+		return ret; 
+  }
 
 static uint8_t sgp30_send_cmd(sgp30_cmd_t cmd) {
 	uint8_t cmd_buffer[2];
@@ -214,19 +248,19 @@ static uint8_t CheckCrc8(uint8_t *const message, uint8_t initial_value) {
 
 int sgp30_read(void) {
 #if SIMULATE_SGP30_VALUES
-static uint8_t upper_co2 = 0;
-static uint16_t temp_co2 = 30;
-if (upper_co2) {
-	temp_co2-=13;
-	if (temp_co2 < 400) {
-		upper_co2 = 0;
+	static uint8_t upper_co2 = 0;
+	static uint16_t temp_co2 = 30;
+	if (upper_co2) {
+		temp_co2 -= 13;
+		if (temp_co2 < 400) {
+			upper_co2 = 0;
+		}
+	} else {
+		temp_co2 += 13;
+		if (temp_co2 > 2400) {
+			upper_co2 = 1;
+		}
 	}
-} else {
-	temp_co2+=13;
-	if (temp_co2 > 2400) {
-		upper_co2 = 1;
-	}
-}
 
 	static uint16_t temp = 400;
 	temp += 10;
@@ -235,6 +269,9 @@ if (upper_co2) {
 	sgp30_data.co2 = temp;
 	sgp30_data.tvoc = temp - 111;
 #else
+	static uint16_t try_to_read_cnt = 0;
+	const uint16_t number_of_try = 20;
+
 	int status;
 	uint8_t recv_buffer[6] = {0};
 
@@ -243,6 +280,8 @@ if (upper_co2) {
 	status = sgp30_start();
 	if (status != 0) {
 		ESP_LOGE("SGP30", "Start failed");
+		try_to_read_cnt++;
+		sgp30_data.state = SGP30_STATE_FAIL;
 		xSemaphoreGive(i2c_bus_mutex);
 		return -1;
 	}
@@ -257,6 +296,7 @@ if (upper_co2) {
 
 	if (status != 0) {
 		ESP_LOGE("SGP30", "Read failed");
+		try_to_read_cnt++;
 		return -1;
 	}
 
@@ -269,17 +309,28 @@ if (upper_co2) {
 
 	sgp30_data.co2 = recv_buffer[0] << 8 | recv_buffer[1];
 	sgp30_data.tvoc = recv_buffer[3] << 8 | recv_buffer[4];
+	if (try_to_read_cnt > number_of_try) {
+		try_to_read_cnt = number_of_try + 1;
+		sgp30_data.state = SGP30_STATE_FAIL;
+	}
+	try_to_read_cnt = 0;
+	sgp30_data.state = SGP30_STATE_OK;
 #endif
 	return 0;
 }
 
-uint16_t get_co2_sgp30() { return sgp30_data.co2; }
+uint16_t get_co2_sgp30() { 
+	uint16_t ret = sgp30_data.co2;
+	if(ret < 400) ret = 400;	
+	return ret;
+ }
 
-uint16_t get_tvoc_sgp30() { return sgp30_data.tvoc; }
+uint16_t get_tvoc_sgp30() {
+	 return sgp30_data.tvoc;
+  }
 
 void read_sensors() {
 	sgp30_read();
-	
 	sht31_read();
 }
 
