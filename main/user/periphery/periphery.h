@@ -57,7 +57,7 @@ uint8_t get_humidity_sht31(void);
 #define CRC8_POLYNOMIAL 0x31
 #define SGP30_ADDR          0x58
 #define	SGP30_ADDR_WRITE	SGP30_ADDR      
-#define	SGP30_ADDR_READ		SGP30_ADDR   
+#define	SGP30_ADDR_READ		SGP30_ADDR 
 
 typedef enum {
 	SGP30_STATE_FAIL,
@@ -103,6 +103,7 @@ typedef struct {
 } current_weather_t;
 
 void sht31_init();
+void sgp30_set_humidity_compensation(float temperature_c, float relative_humidity_pct);
 
 uint8_t get_wifi_status();
 const char* get_wifi_ssid();

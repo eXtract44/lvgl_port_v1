@@ -13,6 +13,7 @@
 #include "time_user.h"
 #include "user/menu/lvgl_user_config.h"
 #include "waveshare_rgb_lcd_port.h"
+#include <math.h>
 #include <stdint.h>
 
 current_weather_t current_weather_data = {0};
@@ -246,6 +247,45 @@ static uint8_t CheckCrc8(uint8_t *const message, uint8_t initial_value) {
 	return remainder;
 }
 
+/**
+ * Вычисляет абсолютную влажность (г/м³) и отправляет её в SGP30.
+ * @param temperature_c       — температура от SHT31, °C
+ * @param relative_humidity_pct — относительная влажность от SHT31, %RH (0–100)
+ */
+void sgp30_set_humidity_compensation(float temperature_c, float relative_humidity_pct) {
+    // Формула Magnus: абсолютная влажность в г/м³
+    // AH = 216.7 * (RH/100 * 6.112 * exp(17.62*T/(243.12+T))) / (273.15 + T)
+    float exp_arg = (17.62f * temperature_c) / (243.12f + temperature_c);
+    float abs_humidity = 216.7f *
+        ((relative_humidity_pct / 100.0f) * 6.112f * expf(exp_arg))
+        / (273.15f + temperature_c);
+
+    // Клампим в допустимый диапазон SGP30 [0, 255.996]
+    if (abs_humidity < 0.0f)   abs_humidity = 0.0f;
+    if (abs_humidity > 255.9f) abs_humidity = 255.9f;
+
+    // Конвертируем в fixed-point 8.8
+    uint8_t ah_int  = (uint8_t)abs_humidity;                        // целая часть
+    uint8_t ah_frac = (uint8_t)((abs_humidity - ah_int) * 256.0f);  // дробная часть
+
+    // CRC считается над двумя байтами данных
+    uint8_t payload[2] = {ah_int, ah_frac};
+    uint8_t crc = CheckCrc8(payload, 0xFF);
+
+    // Пакет: команда (2 байта) + данные (2 байта) + CRC (1 байт)
+    uint8_t buf[5] = {
+        0x20, 0x61,   // SET_HUMIDITY
+        ah_int,
+        ah_frac,
+        crc
+    };
+
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    i2c_master_write_to_device(I2C_MASTER_NUM, SGP30_ADDR_WRITE, buf, 5,
+                               pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
+    xSemaphoreGive(i2c_bus_mutex);
+}
+
 int sgp30_read(void) {
 #if SIMULATE_SGP30_VALUES
 	static uint8_t upper_co2 = 0;
@@ -319,9 +359,38 @@ int sgp30_read(void) {
 	return 0;
 }
 
+uint16_t sgp30_smooth_co2(uint16_t raw) {
+    // --- конфигурация ---
+    static const uint8_t WINDOW_SIZE = 20;   // секунд (при опросе 1/с)
+    static const uint16_t CLAMP_MIN  = 400;  // ppm, минимум CO2
+    static const uint16_t CLAMP_MAX  = 9999; // ppm, максимум SGP30
+
+    // --- состояние ---
+    static uint16_t buf[20];      // должно совпадать с WINDOW_SIZE
+    static uint8_t  head    = 0;
+    static uint32_t sum     = 0;
+    static uint8_t  count   = 0;  // сколько реально заполнено
+
+    // клампим входное значение
+    if (raw < CLAMP_MIN) raw = CLAMP_MIN;
+    if (raw > CLAMP_MAX) raw = CLAMP_MAX;
+
+    // вычитаем вытесняемый элемент (когда буфер уже полон)
+    if (count == WINDOW_SIZE) {
+        sum -= buf[head];
+    } else {
+        count++;
+    }
+
+    buf[head] = raw;
+    sum += raw;
+    head = (head + 1) % WINDOW_SIZE;
+
+    return (uint16_t)(sum / count);
+}
+
 uint16_t get_co2_sgp30() { 
-	uint16_t ret = sgp30_data.co2;
-	if(ret < 400) ret = 400;	
+	uint16_t ret = sgp30_smooth_co2(sgp30_data.co2);	
 	return ret;
  }
 
@@ -330,8 +399,9 @@ uint16_t get_tvoc_sgp30() {
   }
 
 void read_sensors() {
-	sgp30_read();
 	sht31_read();
+	sgp30_set_humidity_compensation(sht31_data.temperature, (float)sht31_data.humidity);
+	sgp30_read();
 }
 
 uint8_t get_wifi_status() {
