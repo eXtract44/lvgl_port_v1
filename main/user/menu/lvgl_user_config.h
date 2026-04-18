@@ -56,23 +56,54 @@
 #define BLOCK_TOP_LEFT_Y_START_TITLE -15
 #define BLOCK_TOP_LEFT_ALIGN_TITLE LV_ALIGN_TOP_MID
 
-#define BLOCK_TOP_LEFT_WIDTH_SYMBOLS 35
-#define BLOCK_TOP_LEFT_HEIGHT_SYMBOLS 35
+#define BLOCK_TOP_LEFT_WIDTH_SYMBOLS 28
+#define BLOCK_TOP_LEFT_HEIGHT_SYMBOLS 28
 #define BLOCK_TOP_LEFT_X_START_SYMBOLS -5
-#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET 15
-#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 35
-#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_2                                       \
-  BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 + BLOCK_TOP_LEFT_HEIGHT_SYMBOLS +           \
-      BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET
-#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_3                                       \
-  BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 + (BLOCK_TOP_LEFT_HEIGHT_SYMBOLS +          \
-                                      BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET) * \
-                                         2
+#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET 10
+#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 30
+// строка 2 — влажность (иконка слева, рядом с температурой)
+#define BLOCK_TOP_LEFT_X_START_SYMBOLS_2_RIGHT 115  // правая иконка в строке 1
+#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_2 BLOCK_TOP_LEFT_Y_START_SYMBOLS_1
+
+// строка 3 — точка росы
+#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_3                                        \
+  BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 + BLOCK_TOP_LEFT_HEIGHT_SYMBOLS +            \
+      BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET + 10
+
+// строка 4 — TVOC
+#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_4                                        \
+  BLOCK_TOP_LEFT_Y_START_SYMBOLS_3 + BLOCK_TOP_LEFT_HEIGHT_SYMBOLS +            \
+      BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET + 10
+
 #define BLOCK_TOP_LEFT_ALIGN_SYMBOLS LV_ALIGN_TOP_LEFT
 
-#define BLOCK_TOP_LEFT_X_START_VALUES                                          \
-  BLOCK_TOP_LEFT_X_START_SYMBOLS + BLOCK_TOP_LEFT_WIDTH_SYMBOLS +              \
-      BLOCK_TOP_LEFT_WIDTH_SYMBOLS / 2
+// X позиции значений
+#define BLOCK_TOP_LEFT_X_START_VALUES   20   // левый столбец значений
+#define BLOCK_TOP_LEFT_X_START_VALUES_R 135  // правый столбец (влажность)
+
+// Y позиции значений
+#define BLOCK_TOP_LEFT_Y_START_VALUE_1  BLOCK_TOP_LEFT_Y_START_SYMBOLS_1
+#define BLOCK_TOP_LEFT_Y_START_VALUE_2  BLOCK_TOP_LEFT_Y_START_SYMBOLS_2
+#define BLOCK_TOP_LEFT_Y_START_VALUE_3  BLOCK_TOP_LEFT_Y_START_SYMBOLS_3
+#define BLOCK_TOP_LEFT_Y_START_VALUE_4  BLOCK_TOP_LEFT_Y_START_SYMBOLS_4
+#define BLOCK_TOP_LEFT_ALIGN_VALUES LV_ALIGN_TOP_LEFT
+
+// X позиция правого индикатора (конденсат / кружки)
+#define BLOCK_TOP_LEFT_X_START_INDICATOR_R 130
+
+
+//#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_2                                       \
+//  BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 + BLOCK_TOP_LEFT_HEIGHT_SYMBOLS +           \
+//      BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET
+//#define BLOCK_TOP_LEFT_Y_START_SYMBOLS_3                                       \
+//  BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 + (BLOCK_TOP_LEFT_HEIGHT_SYMBOLS +          \
+//                                      BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET) * \
+//                                         2
+#define BLOCK_TOP_LEFT_ALIGN_SYMBOLS LV_ALIGN_TOP_LEFT
+
+//#define BLOCK_TOP_LEFT_X_START_VALUES                                          \
+//  BLOCK_TOP_LEFT_X_START_SYMBOLS + BLOCK_TOP_LEFT_WIDTH_SYMBOLS +              \
+//      BLOCK_TOP_LEFT_WIDTH_SYMBOLS / 2
 
 #define BLOCK_TOP_LEFT_Y_START_VALUE_1 BLOCK_TOP_LEFT_Y_START_SYMBOLS_1
 #define BLOCK_TOP_LEFT_Y_START_VALUE_2 BLOCK_TOP_LEFT_Y_START_SYMBOLS_2

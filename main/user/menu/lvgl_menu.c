@@ -952,92 +952,143 @@ static void ui_create_sensor_history_popup(ui_main_menu_t *ui) {
 }
 
 static void create_block_top_left(ui_main_menu_t *ui) {
-	/*STYLES*/
+	lv_obj_t *bg = create_background(
+      ui->screen, BLOCK_TOP_LEFT_WIDTH, BLOCK_TOP_LEFT_HEIGHT,
+      BLOCK_TOP_LEFT_ALIGN_BACKGROUND, BLOCK_TOP_LEFT_X_START,
+      BLOCK_TOP_LEFT_Y_START);
+  if (!bg) return;
+  ui->sensor.screen = bg;
+  lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
+  lv_obj_set_scrollbar_mode(ui->sensor.screen, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_event_cb(ui->sensor.screen,
+                      block_top_left_open_popup_event_handler,
+                      LV_EVENT_CLICKED, ui);
 
-	/*BLOCK TOP LEFT*/
-	lv_obj_t *bg =
+  // --- заголовок ---
+  create_text("innen", ui->sensor.screen, STYLE_TEXT_TITLE,
+              BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE, ui);
 
-		create_background(ui->screen, BLOCK_TOP_LEFT_WIDTH,
-						  BLOCK_TOP_LEFT_HEIGHT,
-						  BLOCK_TOP_LEFT_ALIGN_BACKGROUND,
-						  BLOCK_TOP_LEFT_X_START, BLOCK_TOP_LEFT_Y_START);
-	if (!bg)
-		return;
-	ui->sensor.screen = bg;
+  // ═══════════════════════════════════════════
+  // СТРОКА 1 — температура (лево) + влажность (право)
+  // ═══════════════════════════════════════════
 
-	lv_obj_add_style(ui->sensor.screen, &ui->style.top_left, 0);
-	lv_obj_set_scrollbar_mode(ui->sensor.screen, LV_SCROLLBAR_MODE_OFF);
+  // иконка температуры
+  lv_obj_t *icon = create_icon(
+      ui->sensor.screen,
+      BLOCK_TOP_LEFT_WIDTH_SYMBOLS, BLOCK_TOP_LEFT_HEIGHT_SYMBOLS,
+      BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
+      BLOCK_TOP_LEFT_X_START_SYMBOLS,
+      BLOCK_TOP_LEFT_Y_START_SYMBOLS_1,
+      MY_TEMPERATURE_SYMBOL, ui);
+  if (!icon) return;
+  ui->sensor.icon_temperature = icon;
 
-	lv_obj_add_event_cb(ui->sensor.screen,
-						block_top_left_open_popup_event_handler,
-						LV_EVENT_CLICKED, ui);
+  // значение температуры
+  lv_obj_t *value = create_label(
+      ui->sensor.screen, "0°C",
+      BLOCK_TOP_LEFT_ALIGN_VALUES,
+      BLOCK_TOP_LEFT_X_START_VALUES,
+      BLOCK_TOP_LEFT_Y_START_VALUE_1);
+  if (!value) return;
+  lv_obj_set_style_text_font(value, &lv_font_montserrat_24, 0);
+  lv_obj_add_style(value, &ui->font.small, 0);
+  ui->sensor.temperature_label = value;
 
-	create_text("innen", ui->sensor.screen, STYLE_TEXT_TITLE,
-				BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE,
-				ui);
+  // иконка влажности (правая колонка строки 1)
+  icon = create_icon(
+      ui->sensor.screen,
+      BLOCK_TOP_LEFT_WIDTH_SYMBOLS, BLOCK_TOP_LEFT_HEIGHT_SYMBOLS,
+      BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
+      BLOCK_TOP_LEFT_X_START_SYMBOLS_2_RIGHT,
+      BLOCK_TOP_LEFT_Y_START_SYMBOLS_2,
+      MY_HUMIDITY_SYMBOL, ui);
+  if (!icon) return;
+  ui->sensor.icon_humidity = icon;
 
-	lv_obj_t *icon = create_icon(
-		ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-		BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-		BLOCK_TOP_LEFT_X_START_SYMBOLS, BLOCK_TOP_LEFT_Y_START_SYMBOLS_1,
-		MY_TEMPERATURE_SYMBOL, ui);
-	if (!icon) {
-		return;
-	}
+  // значение влажности
+  value = create_label(
+      ui->sensor.screen, "0%",
+      BLOCK_TOP_LEFT_ALIGN_VALUES,
+      BLOCK_TOP_LEFT_X_START_VALUES_R,
+      BLOCK_TOP_LEFT_Y_START_VALUE_2);
+  if (!value) return;
+  lv_obj_set_style_text_font(value, &lv_font_montserrat_24, 0);
+  lv_obj_add_style(value, &ui->font.small, 0);
+  ui->sensor.humidity_label = value;
 
-	ui->sensor.icon_temperature = icon;
+  // ═══════════════════════════════════════════
+  // СТРОКА 2 — точка росы + индикатор конденсата
+  // ═══════════════════════════════════════════
 
-	icon =
-		create_icon(ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-					BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-					BLOCK_TOP_LEFT_X_START_SYMBOLS,
-					BLOCK_TOP_LEFT_Y_START_SYMBOLS_2, MY_HUMIDITY_SYMBOL, ui);
-	if (!icon) {
-		return;
-	}
+  // иконка снежинки
+  icon = create_icon(
+      ui->sensor.screen,
+      BLOCK_TOP_LEFT_WIDTH_SYMBOLS, BLOCK_TOP_LEFT_HEIGHT_SYMBOLS,
+      BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
+      BLOCK_TOP_LEFT_X_START_SYMBOLS,
+      BLOCK_TOP_LEFT_Y_START_SYMBOLS_3,
+      MY_SNOWFLAKE_SYMBOL, ui);
+  if (!icon) return;
 
-	ui->sensor.icon_humidity = icon;
+  // значение точки росы
+  value = create_label(
+      ui->sensor.screen, "0°C",
+      BLOCK_TOP_LEFT_ALIGN_VALUES,
+      BLOCK_TOP_LEFT_X_START_VALUES,
+      BLOCK_TOP_LEFT_Y_START_VALUE_3);
+  if (!value) return;
+  lv_obj_set_style_text_font(value, &lv_font_montserrat_24, 0);
+  lv_obj_add_style(value, &ui->font.small, 0);
+  ui->sensor.dew_point_label = value;
 
-	icon =
-		create_icon(ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-					BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-					BLOCK_TOP_LEFT_X_START_SYMBOLS,
-					BLOCK_TOP_LEFT_Y_START_SYMBOLS_3, MY_TVOC_SYMBOL, ui);
-	if (!icon) {
-		return;
-	}
+  // индикатор конденсата (правая часть строки 2)
+  // показывает запас до конденсата: "OK" / "!" / "!!"
+  value = create_label(
+      ui->sensor.screen, "OK",
+      BLOCK_TOP_LEFT_ALIGN_VALUES,
+      BLOCK_TOP_LEFT_X_START_INDICATOR_R,
+      BLOCK_TOP_LEFT_Y_START_VALUE_3);
+  if (!value) return;
+  lv_obj_set_style_text_font(value, &lv_font_montserrat_24, 0);
+  lv_obj_add_style(value, &ui->font.small, 0);
+  ui->sensor.dew_point_bar = value;
 
-	ui->sensor.icon_tvoc = icon;
+  // ═══════════════════════════════════════════
+  // СТРОКА 3 — TVOC + кружки качества воздуха
+  // ═══════════════════════════════════════════
 
-	lv_obj_t *value = create_label(
-		ui->sensor.screen, "0 c*", BLOCK_TOP_LEFT_ALIGN_VALUES,
-		BLOCK_TOP_LEFT_X_START_VALUES, BLOCK_TOP_LEFT_Y_START_VALUE_1);
-	if (!value) {
-		return;
-	}
+  // иконка TVOC
+  icon = create_icon(
+      ui->sensor.screen,
+      BLOCK_TOP_LEFT_WIDTH_SYMBOLS, BLOCK_TOP_LEFT_HEIGHT_SYMBOLS,
+      BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
+      BLOCK_TOP_LEFT_X_START_SYMBOLS,
+      BLOCK_TOP_LEFT_Y_START_SYMBOLS_4,
+      MY_TVOC_SYMBOL, ui);
+  if (!icon) return;
+  ui->sensor.icon_tvoc = icon;
 
-	lv_obj_add_style(value, &ui->font.small, 0);
-	ui->sensor.temperature_label = value;
+  // значение TVOC
+  value = create_label(
+      ui->sensor.screen, "0",
+      BLOCK_TOP_LEFT_ALIGN_VALUES,
+      BLOCK_TOP_LEFT_X_START_VALUES,
+      BLOCK_TOP_LEFT_Y_START_VALUE_4);
+  if (!value) return;
+  lv_obj_set_style_text_font(value, &lv_font_montserrat_24, 0);
+  lv_obj_add_style(value, &ui->font.small, 0);
+  ui->sensor.tvoc_label = value;
 
-	value = create_label(ui->sensor.screen, "0 %*", BLOCK_TOP_LEFT_ALIGN_VALUES,
-						 BLOCK_TOP_LEFT_X_START_VALUES,
-						 BLOCK_TOP_LEFT_Y_START_VALUE_2);
-	if (!value) {
-		return;
-	}
-	lv_obj_add_style(value, &ui->font.small, 0);
-	ui->sensor.humidity_label = value;
-
-	value = create_label(ui->sensor.screen, "0", BLOCK_TOP_LEFT_ALIGN_VALUES,
-						 BLOCK_TOP_LEFT_X_START_VALUES,
-						 BLOCK_TOP_LEFT_Y_START_VALUE_3);
-	if (!value) {
-		return;
-	}
-	lv_obj_add_style(value, &ui->font.small, 0);
-	ui->sensor.tvoc_label = value;
-
-	/*BLOCK TOP LEFT*/
+  // кружки качества воздуха ●●●○○
+  value = create_label(
+      ui->sensor.screen, "\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8b\xe2\x97\x8b",
+      BLOCK_TOP_LEFT_ALIGN_VALUES,
+      BLOCK_TOP_LEFT_X_START_INDICATOR_R,
+      BLOCK_TOP_LEFT_Y_START_VALUE_4);
+  if (!value) return;
+  lv_obj_set_style_text_font(value, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_color(value, lv_palette_main(LV_PALETTE_GREEN), 0);
+  ui->sensor.tvoc_dots_label = value;
 }
 
 static void create_block_top_middle(ui_main_menu_t *ui) {
@@ -2105,22 +2156,193 @@ void show_all_blocks(ui_main_menu_t *ui) {
 	// set_visible(ui->standby.bar, true);
 }
 
-void update_block_top_left(ui_main_menu_t *ui) {
-	if (sht31_data.life == SHT31_STATE_OK) {
-		print_value("%.1f °C", get_temperature_sht31(),
-					ui->sensor.temperature_label);
-		print_value("%.f %%", get_humidity_sht31(), ui->sensor.humidity_label);
-		sensor_record_values(ui);
-	} else {
-		lv_label_set_text(ui->sensor.temperature_label, "K.S");
-		lv_label_set_text(ui->sensor.humidity_label, "K.S");
-	}
+static float calc_dew_point(float temp, float humidity) {
+    if (humidity < 1.0f)  humidity = 1.0f;   // защита от log(0)
+    if (humidity > 100.0f) humidity = 100.0f;
+    const float a = 17.27f;
+    const float b = 237.7f;
+    float alpha = ((a * temp) / (b + temp)) + logf(humidity / 100.0f);
+    return (b * alpha) / (a - alpha);
+}
 
-	if (sgp30_data.state == SGP30_STATE_OK) {
-		print_value("%.f", get_tvoc_sgp30(), ui->sensor.tvoc_label);
-	} else {
-		lv_label_set_text(ui->sensor.tvoc_label, "K.S");
-	}
+// ─── вспомогательная функция — кружки TVOC ──────────────
+// возвращает строку типа "●●●○○" и устанавливает цвет
+static void update_tvoc_dots(lv_obj_t *label, uint16_t tvoc) {
+    // ●  = \xe2\x97\x8f  (filled circle)
+    // ○  = \xe2\x97\x8b  (empty circle)
+    typedef struct { uint16_t threshold; const char *dots; lv_color_t color; } tvoc_level_t;
+
+    static const tvoc_level_t levels[] = {
+        {  150, "\xe2\x97\x8f\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b", {0} }, // ●○○○○ зелёный
+        {  300, "\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b", {0} }, // ●●○○○ жёлто-зелёный
+        {  500, "\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8b\xe2\x97\x8b", {0} }, // ●●●○○ жёлтый
+        {  750, "\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8b", {0} }, // ●●●●○ оранжевый
+        {65535, "\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8f\xe2\x97\x8f", {0} }, // ●●●●● красный
+    };
+
+    // цвета задаём отдельно — инициализатор lv_color не работает в static
+    lv_color_t colors[5];
+    colors[0] = lv_palette_main(LV_PALETTE_GREEN);
+    colors[1] = lv_color_hex(0x8BC34A);  // светло-зелёный
+    colors[2] = lv_palette_main(LV_PALETTE_YELLOW);
+    colors[3] = lv_palette_main(LV_PALETTE_ORANGE);
+    colors[4] = lv_palette_main(LV_PALETTE_RED);
+
+    for (uint8_t i = 0; i < 5; i++) {
+        if (tvoc <= levels[i].threshold) {
+            lv_label_set_text(label, levels[i].dots);
+            lv_obj_set_style_text_color(label, colors[i], 0);
+            return;
+        }
+    }
+}
+
+// ─── вспомогательная функция — индикатор конденсата ─────
+static void update_dew_point_bar(lv_obj_t *label, float dew_point,
+                                  float outdoor_temp, bool outdoor_valid) {
+    if (!outdoor_valid) {
+        // нет данных с улицы — показываем только точку росы без оценки
+        lv_label_set_text(label, "- -");
+        lv_obj_set_style_text_color(label, lv_palette_main(LV_PALETTE_GREY), 0);
+        return;
+    }
+
+    float margin = outdoor_temp - dew_point; // запас до конденсата
+
+    if (margin <= 0.0f) {
+        // конденсат уже идёт
+        lv_label_set_text(label, LV_SYMBOL_WARNING);
+        lv_obj_set_style_text_color(label, lv_palette_main(LV_PALETTE_RED), 0);
+    } else if (margin < 2.0f) {
+        // опасно близко
+        lv_label_set_text(label, "! 2°");
+        lv_obj_set_style_text_color(label, lv_palette_main(LV_PALETTE_ORANGE), 0);
+    } else if (margin < 5.0f) {
+        // внимание
+        lv_label_set_text(label, LV_SYMBOL_OK);
+        lv_obj_set_style_text_color(label, lv_palette_main(LV_PALETTE_YELLOW), 0);
+    } else {
+        // всё хорошо
+        lv_label_set_text(label, LV_SYMBOL_OK);
+        lv_obj_set_style_text_color(label, lv_palette_main(LV_PALETTE_GREEN), 0);
+    }
+}
+
+void update_block_top_left(ui_main_menu_t *ui) {
+	bool sht31_ok  = (sht31_data.life == SHT31_STATE_OK);
+    bool sgp30_ok  = (sgp30_data.state == SGP30_STATE_OK);
+    bool wifi_ok   = (get_wifi_status() == WIFI_CONNECTED);
+
+    // ── температура ──────────────────────────────────────
+    if (sht31_ok) {
+        float temp = get_temperature_sht31();
+        // доп. защита — физически разумные значения
+        if (temp > -40.0f && temp < 85.0f) {
+            print_value("%.1f°C", temp, ui->sensor.temperature_label);
+            lv_obj_set_style_text_color(ui->sensor.temperature_label,
+                                        lv_color_hex(0xE6EDF3), 0);
+        } else {
+            lv_label_set_text(ui->sensor.temperature_label, "Err");
+            lv_obj_set_style_text_color(ui->sensor.temperature_label,
+                                        lv_palette_main(LV_PALETTE_ORANGE), 0);
+        }
+    } else {
+        lv_label_set_text(ui->sensor.temperature_label, "K.S");
+        lv_obj_set_style_text_color(ui->sensor.temperature_label,
+                                    lv_palette_main(LV_PALETTE_GREY), 0);
+    }
+
+    // ── влажность ─────────────────────────────────────────
+    if (sht31_ok) {
+        float hum = get_humidity_sht31();
+        if (hum >= 0.0f && hum <= 100.0f) {
+            print_value("%.0f%%", hum, ui->sensor.humidity_label);
+            lv_obj_set_style_text_color(ui->sensor.humidity_label,
+                                        lv_color_hex(0xE6EDF3), 0);
+        } else {
+            lv_label_set_text(ui->sensor.humidity_label, "Err");
+            lv_obj_set_style_text_color(ui->sensor.humidity_label,
+                                        lv_palette_main(LV_PALETTE_ORANGE), 0);
+        }
+    } else {
+        lv_label_set_text(ui->sensor.humidity_label, "K.S");
+        lv_obj_set_style_text_color(ui->sensor.humidity_label,
+                                    lv_palette_main(LV_PALETTE_GREY), 0);
+    }
+
+    // ── точка росы + индикатор конденсата ─────────────────
+    if (sht31_ok) {
+        float temp = get_temperature_sht31();
+        float hum  = get_humidity_sht31();
+
+        if (temp > -40.0f && temp < 85.0f &&
+            hum  >= 1.0f  && hum  <= 100.0f) {
+
+            float dp = calc_dew_point(temp, hum);
+            print_value("%.1f°C", dp, ui->sensor.dew_point_label);
+            lv_obj_set_style_text_color(ui->sensor.dew_point_label,
+                                        lv_color_hex(0xE6EDF3), 0);
+
+            // для индикатора конденсата нужна уличная температура
+            bool outdoor_valid = wifi_ok;
+            float outdoor_temp = 0.0f;
+            if (outdoor_valid) {
+                outdoor_temp = get_weather_temperature();
+                // проверяем что уличные данные тоже разумны
+                if (outdoor_temp < -60.0f || outdoor_temp > 60.0f) {
+                    outdoor_valid = false;
+                }
+            }
+
+            update_dew_point_bar(ui->sensor.dew_point_bar,
+                                  dp, outdoor_temp, outdoor_valid);
+        } else {
+            lv_label_set_text(ui->sensor.dew_point_label, "Err");
+            lv_label_set_text(ui->sensor.dew_point_bar,   "- -");
+            lv_obj_set_style_text_color(ui->sensor.dew_point_label,
+                                        lv_palette_main(LV_PALETTE_ORANGE), 0);
+            lv_obj_set_style_text_color(ui->sensor.dew_point_bar,
+                                        lv_palette_main(LV_PALETTE_GREY), 0);
+        }
+    } else {
+        lv_label_set_text(ui->sensor.dew_point_label, "K.S");
+        lv_label_set_text(ui->sensor.dew_point_bar,   "- -");
+        lv_obj_set_style_text_color(ui->sensor.dew_point_label,
+                                    lv_palette_main(LV_PALETTE_GREY), 0);
+        lv_obj_set_style_text_color(ui->sensor.dew_point_bar,
+                                    lv_palette_main(LV_PALETTE_GREY), 0);
+    }
+
+    // ── TVOC + кружки ─────────────────────────────────────
+    if (sgp30_ok) {
+        uint16_t tvoc = (uint16_t)get_tvoc_sgp30();
+        // SGP30 первые ~15 сек после старта выдаёт 0 — игнорируем
+        if (tvoc == 0) {
+            lv_label_set_text(ui->sensor.tvoc_label,      "...");
+            lv_label_set_text(ui->sensor.tvoc_dots_label,
+                "\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b");
+            lv_obj_set_style_text_color(ui->sensor.tvoc_dots_label,
+                                        lv_palette_main(LV_PALETTE_GREY), 0);
+        } else {
+            print_value("%.0f", (float)tvoc, ui->sensor.tvoc_label);
+            lv_obj_set_style_text_color(ui->sensor.tvoc_label,
+                                        lv_color_hex(0xE6EDF3), 0);
+            update_tvoc_dots(ui->sensor.tvoc_dots_label, tvoc);
+        }
+    } else {
+        lv_label_set_text(ui->sensor.tvoc_label,      "K.S");
+        lv_label_set_text(ui->sensor.tvoc_dots_label,
+            "\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b\xe2\x97\x8b");
+        lv_obj_set_style_text_color(ui->sensor.tvoc_label,
+                                    lv_palette_main(LV_PALETTE_GREY), 0);
+        lv_obj_set_style_text_color(ui->sensor.tvoc_dots_label,
+                                    lv_palette_main(LV_PALETTE_GREY), 0);
+    }
+
+    // ── запись истории (только если данные валидны) ───────
+    if (sht31_ok) {
+        sensor_record_values(ui);
+    }
 }
 
 void update_block_top_middle(ui_main_menu_t *ui) {
