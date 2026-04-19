@@ -31,6 +31,8 @@
 #define MY_TEMPERATURE_SYMBOL "\xEF\x8B\x89"
 #define MY_CLOUD_SYMBOL "\xEF\x83\x82"
 #define MY_SNOWFLAKE_SYMBOL  "\xEF\x86\x84"  // ❄ точка росы
+#define MY_SNOWFLAKE_SYMBOL   "\xEF\x86\x84"  // ❄ точка росы
+#define MY_FEELS_LIKE_SYMBOL  "\xEF\x8B\x89"  // термометр (тот же что температура)
 
 #define SENSOR_HISTORY_POINTS 144 // 12 часов × 12 точек/час
 #define SENSOR_RECORD_INTERVAL 300 //300 тиков (секунд) между записями
@@ -180,14 +182,18 @@ typedef struct {
   lv_obj_t *screen;
   lv_obj_t *icon_temperature;
   lv_obj_t *icon_humidity;
+  lv_obj_t *icon_feels_like;
+  lv_obj_t *icon_dew_point;
   lv_obj_t *icon_tvoc;
   lv_obj_t *icon_wind;
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
   lv_obj_t *tvoc_label;
-    lv_obj_t *dew_point_label;     // точка росы °C
-  lv_obj_t *dew_point_bar;       // текстовый индикатор конденсата
   lv_obj_t *tvoc_dots_label;     // ●●●○○
+  lv_obj_t *feels_like_label;
+  lv_obj_t *dew_point_label;     // точка росы °C
+  lv_obj_t *dew_point_bar;       // текстовый индикатор конденсата
+  
 } ui_sensor_t;
 
 typedef struct {
