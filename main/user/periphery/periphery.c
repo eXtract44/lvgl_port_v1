@@ -16,7 +16,7 @@
 #include <math.h>
 #include <stdint.h>
 
-current_weather_t current_weather_data = {0};
+
 extern struct tm timeinfo_user;
 extern wifi_ap_record_t ap_info;
 extern uint8_t wifi_ssid[];
@@ -389,13 +389,44 @@ uint16_t sgp30_smooth_co2(uint16_t raw) {
     return (uint16_t)(sum / count);
 }
 
+uint16_t sgp30_smooth_tvoc(uint16_t raw) {
+    // --- конфигурация ---
+    static const uint8_t WINDOW_SIZE = 20;   // секунд (при опросе 1/с)
+    static const uint16_t CLAMP_MIN  = 0;  // ppm, минимум CO2
+    static const uint16_t CLAMP_MAX  = 9999; // ppm, максимум SGP30
+
+    // --- состояние ---
+    static uint16_t buf[20];      // должно совпадать с WINDOW_SIZE
+    static uint8_t  head    = 0;
+    static uint32_t sum     = 0;
+    static uint8_t  count   = 0;  // сколько реально заполнено
+
+    // клампим входное значение
+    if (raw < CLAMP_MIN) raw = CLAMP_MIN;
+    if (raw > CLAMP_MAX) raw = CLAMP_MAX;
+
+    // вычитаем вытесняемый элемент (когда буфер уже полон)
+    if (count == WINDOW_SIZE) {
+        sum -= buf[head];
+    } else {
+        count++;
+    }
+
+    buf[head] = raw;
+    sum += raw;
+    head = (head + 1) % WINDOW_SIZE;
+
+    return (uint16_t)(sum / count);
+}
+
 uint16_t get_co2_sgp30() { 
 	uint16_t ret = sgp30_smooth_co2(sgp30_data.co2);	
 	return ret;
  }
 
 uint16_t get_tvoc_sgp30() {
-	 return sgp30_data.tvoc;
+	uint16_t ret = sgp30_smooth_tvoc(sgp30_data.tvoc);
+	 return ret;
   }
 
 void read_sensors() {
@@ -509,82 +540,4 @@ uint8_t get_time_wday() {
 	return current_wday;
 }
 
-float get_weather_temperature() {
-	static float current_temperature_outside = 0;
-#if SIMULATE_INET_VALUES
-	current_temperature_outside += 0.05;
-	if (current_temperature_outside > 35) {
-		current_temperature_outside = -20.0;
-	}
-#else
-	current_temperature_outside = current_weather_data.temperature_2m;
-#endif
-	return current_temperature_outside;
-}
 
-uint8_t get_weather_humidity() {
-	static uint8_t current_humidity_outside = 0;
-#if SIMULATE_INET_VALUES
-	current_humidity_outside++;
-	if (current_humidity_outside > 99) {
-		current_humidity_outside = 0;
-	}
-#else
-	current_humidity_outside = current_weather_data.relative_humidity_2m;
-#endif
-	return current_humidity_outside;
-}
-
-uint8_t get_weather_wind() {
-	static uint8_t current_wind_outside = 0;
-#if SIMULATE_INET_VALUES
-	current_wind_outside += 1;
-	if (current_wind_outside > 50) {
-		current_wind_outside = 0;
-	}
-#else
-	current_wind_outside = current_weather_data.wind_speed_10m;
-#endif
-	return current_wind_outside;
-}
-
-uint8_t get_weather_clouds() {
-	static uint8_t current_clouds = 0;
-#if SIMULATE_INET_VALUES
-	current_clouds += 1;
-	if (current_clouds > 100) {
-		current_clouds = 0;
-	}
-#else
-	current_clouds = current_weather_data.cloud_cover;
-#endif
-	return current_clouds;
-}
-
-uint8_t get_weather_rain() {
-	static uint8_t current_rain = 0;
-#if SIMULATE_INET_VALUES
-	current_rain += 1;
-	if (current_rain > 5) {
-		current_rain = 0;
-	}
-#else
-	current_rain = current_weather_data.rain;
-#endif
-	return current_rain;
-}
-
-uint8_t get_weather_snow() {
-	static uint8_t current_snow = 0;
-#if SIMULATE_INET_VALUES
-	current_snow += 1;
-	if (current_snow > 5) {
-		current_snow = 0;
-	}
-#else
-	current_snow = current_weather_data.snow;
-#endif
-	return current_snow;
-}
-
-uint8_t get_is_day() { return current_weather_data.is_day; }

@@ -26,16 +26,21 @@
    (out_min))
 
 #define MY_HUMIDITY_SYMBOL "\xEF\x81\x83"
-#define MY_WIND_SYMBOL "\xEF\x80\xA4"
+#define MY_WIND_SYMBOL "\xEF\x9C\xAE"
 #define MY_TVOC_SYMBOL "\xEF\x86\x8C"
 #define MY_TEMPERATURE_SYMBOL "\xEF\x8B\x89"
 #define MY_CLOUD_SYMBOL "\xEF\x83\x82"
-#define MY_SNOWFLAKE_SYMBOL  "\xEF\x86\x84"  // ❄ точка росы
-#define MY_SNOWFLAKE_SYMBOL   "\xEF\x86\x84"  // ❄ точка росы
+#define MY_SNOWFLAKE_SYMBOL  "\xEF\x8B\x9C"  //  ❄ точка росы 
 #define MY_FEELS_LIKE_SYMBOL  "\xEF\x8B\x89"  // термометр (тот же что температура)
+#define MY_SUN_SYMBOL        "\xEF\x86\x85"  // 
+#define MY_CLOUD_RAIN_SYMBOL "\xEF\x9C\xBD"  // 
+#define MY_PRESSURE_SYMBOL   "\xEF\x8F\xBD"  //                         
+
 
 #define SENSOR_HISTORY_POINTS 144 // 12 часов × 12 точек/час
 #define SENSOR_RECORD_INTERVAL 300 //300 тиков (секунд) между записями
+
+
 
 // Кольцевой буфер для истории датчиков
 typedef struct {
@@ -44,6 +49,14 @@ typedef struct {
   uint16_t head;  // индекс следующей записи
   uint16_t count; // сколько точек уже заполнено (0..72)
 } sensor_history_t;
+
+typedef struct {
+    float temperature;
+    float humidity;
+    float feels_like;
+    float pressure;
+    bool  valid;       // false до первого заполнения
+} weather_snapshot_t;
 
 typedef struct {
   lv_obj_t *popup;
@@ -80,15 +93,29 @@ typedef struct {
 } ui_sensor_history_popup_t;
 
 typedef struct {
-  ui_weather_settings_popup_t settings_popup;
+    ui_weather_settings_popup_t settings_popup;
   ui_weather_forecast_popup_t forecast_popup;
   lv_obj_t *screen;
+  // иконки
   lv_obj_t *icon_temperature;
   lv_obj_t *icon_humidity;
+  lv_obj_t *icon_feels_like;
+  lv_obj_t *icon_uv;
+  lv_obj_t *icon_rain;
+  lv_obj_t *icon_rain_prob;
   lv_obj_t *icon_wind;
+  lv_obj_t *icon_pressure;
+  // строка 1 — температура + влажность
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
+  // строка 2 — feels like + UV
+  lv_obj_t *feels_like_label;
+  lv_obj_t *uv_label;
+  // строка 3 — осадки + вероятность
+  lv_obj_t *rain_label;
+  // строка 4 — ветер + давление
   lv_obj_t *wind_label;
+  lv_obj_t *pressure_label;
 } ui_weather_t;
 
 typedef struct {
@@ -134,6 +161,7 @@ typedef struct {
   lv_obj_t *meter;
   lv_obj_t *co2_label;
   lv_meter_indicator_t *indicator;
+  lv_meter_indicator_t *needle_arc;  // ← динамический цветной arc
   lv_obj_t *chart;
   lv_obj_t *title;
   lv_chart_series_t *series_co2;
@@ -189,10 +217,9 @@ typedef struct {
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
   lv_obj_t *tvoc_label;
-  lv_obj_t *tvoc_dots_label;     // ●●●○○
+  lv_obj_t *tvoc_dots[5];
   lv_obj_t *feels_like_label;
   lv_obj_t *dew_point_label;     // точка росы °C
-  lv_obj_t *dew_point_bar;       // текстовый индикатор конденсата
   
 } ui_sensor_t;
 
@@ -205,6 +232,7 @@ typedef struct {
 
 typedef struct {
   lv_style_t small;
+  lv_style_t small_24;   // ← новый
   lv_style_t very_large;
   lv_style_t time;
   lv_style_t title;

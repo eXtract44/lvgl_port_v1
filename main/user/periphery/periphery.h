@@ -91,16 +91,7 @@ enum namesOfWiFiStatus{
 	WIFI_DISCONNECTED
 };
 
-typedef struct {
-  double temperature_2m;
-  int relative_humidity_2m;
-  double snow;
-  double rain;
-  int cloud_cover;
-  double wind_speed_10m;
-  int is_day;
 
-} current_weather_t;
 
 void sht31_init();
 void sgp30_set_humidity_compensation(float temperature_c, float relative_humidity_pct);
@@ -116,13 +107,4 @@ uint8_t get_time_hour();
 uint8_t get_time_minute();
 uint8_t get_time_wday();
 	
-float get_weather_temperature();
-uint8_t get_weather_humidity();
-uint8_t get_weather_wind();
-uint8_t get_weather_clouds();
-uint8_t get_weather_rain();
-uint8_t get_weather_snow();
-uint8_t get_is_day();
-
-
 #endif /* MAIN_PERIPHERY_H_ */

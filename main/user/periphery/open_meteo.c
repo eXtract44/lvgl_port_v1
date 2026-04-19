@@ -18,6 +18,7 @@
 
 static const char *TAG = "WEATHER_APP";
 forecast_data_t forecast_data;
+current_weather_t current_weather_data = {0};
 
 extern ui_main_menu_t ui;
 
@@ -131,7 +132,9 @@ void build_weather_url(int city_index) {
            "https://api.open-meteo.com/v1/forecast?"
            "latitude=%.4f&longitude=%.4f&"
            "current=temperature_2m,relative_humidity_2m,"
-           "cloud_cover,wind_speed_10m,rain,snowfall,is_day&"
+           "cloud_cover,wind_speed_10m,rain,snowfall,is_day,"
+           "apparent_temperature,uv_index,"
+           "precipitation_probability,surface_pressure&"
            "daily=temperature_2m_max,temperature_2m_min,"
            "relative_humidity_2m_max,weathercode,sunrise,sunset&"
            "models=icon_eu&"
@@ -208,7 +211,25 @@ void fetch_weather(void) {
           item = cJSON_GetObjectItem(current, "is_day");
           if (cJSON_IsNumber(item))
             current_weather_data.is_day = item->valueint;
-// --- daily forecast ---
+          // --- новое ---
+          item = cJSON_GetObjectItem(current, "apparent_temperature");
+          current_weather_data.apparent_temperature =
+              cJSON_IsNumber(item) ? item->valuedouble
+                                   : current_weather_data.temperature_2m;
+
+          item = cJSON_GetObjectItem(current, "uv_index");
+          current_weather_data.uv_index =
+              cJSON_IsNumber(item) ? item->valuedouble : 0.0;
+
+          item = cJSON_GetObjectItem(current, "precipitation_probability");
+          current_weather_data.precipitation_probability =
+              cJSON_IsNumber(item) ? item->valuedouble : 0.0;
+
+          item = cJSON_GetObjectItem(current, "surface_pressure");
+          current_weather_data.surface_pressure =
+              cJSON_IsNumber(item) ? item->valuedouble : 1013.0;
+
+          // --- daily forecast ---
           cJSON *daily = cJSON_GetObjectItem(json, "daily");
           if (daily) {
             cJSON *temp_max_arr =
@@ -249,20 +270,18 @@ void fetch_weather(void) {
                 forecast_data.day[i].sunset = (uint32_t)item->valuedouble;
             }
           }
-           forecast_data.valid = true;
+          forecast_data.valid = true;
 
-             
-      #if DEBUG_INET       
-             ESP_LOGI(TAG, "Forecast day0: max=%d min=%d wcode=%d", 
-         forecast_data.day[0].temp_max, forecast_data.day[0].temp_min, 
-         forecast_data.day[0].weathercode);
-ESP_LOGI(TAG, "Forecast day1: max=%d min=%d wcode=%d",
-         forecast_data.day[1].temp_max, forecast_data.day[1].temp_min,
-         forecast_data.day[1].weathercode);
-ESP_LOGI(TAG, "Forecast day2: max=%d min=%d wcode=%d",
-         forecast_data.day[2].temp_max, forecast_data.day[2].temp_min,
-         forecast_data.day[2].weathercode);
-
+#if DEBUG_INET
+          ESP_LOGI(TAG, "Forecast day0: max=%d min=%d wcode=%d",
+                   forecast_data.day[0].temp_max, forecast_data.day[0].temp_min,
+                   forecast_data.day[0].weathercode);
+          ESP_LOGI(TAG, "Forecast day1: max=%d min=%d wcode=%d",
+                   forecast_data.day[1].temp_max, forecast_data.day[1].temp_min,
+                   forecast_data.day[1].weathercode);
+          ESP_LOGI(TAG, "Forecast day2: max=%d min=%d wcode=%d",
+                   forecast_data.day[2].temp_max, forecast_data.day[2].temp_min,
+                   forecast_data.day[2].weathercode);
 
           ESP_LOGI(TAG,
                    "Weather updated: Temp=%.1f C Humidity=%d%% Clouds=%d%% "
@@ -297,16 +316,118 @@ ESP_LOGI(TAG, "Forecast day2: max=%d min=%d wcode=%d",
   esp_http_client_cleanup(client);
 }
 
-const char* weathercode_to_text(uint8_t code) {
-    if (code == 0)              return "Klar";
-    if (code <= 2)              return "Leicht bewoelkt";
-    if (code == 3)              return "Bewoelkt";
-    if (code <= 49)             return "Nebel";
-    if (code <= 55)             return "Nieseln";
-    if (code <= 65)             return "Regen";
-    if (code <= 75)             return "Schnee";
-    if (code <= 82)             return "Schauer";
-    if (code <= 86)             return "Schneeschauer";
-    if (code <= 99)             return "Gewitter";
-    return "Unbekannt";
+const char *weathercode_to_text(uint8_t code) {
+  if (code == 0)
+    return "Klar";
+  if (code <= 2)
+    return "Leicht bewoelkt";
+  if (code == 3)
+    return "Bewoelkt";
+  if (code <= 49)
+    return "Nebel";
+  if (code <= 55)
+    return "Nieseln";
+  if (code <= 65)
+    return "Regen";
+  if (code <= 75)
+    return "Schnee";
+  if (code <= 82)
+    return "Schauer";
+  if (code <= 86)
+    return "Schneeschauer";
+  if (code <= 99)
+    return "Gewitter";
+  return "Unbekannt";
 }
+
+float get_weather_temperature() {
+	static float current_temperature_outside = 0;
+#if SIMULATE_INET_VALUES
+	current_temperature_outside += 0.05;
+	if (current_temperature_outside > 35) {
+		current_temperature_outside = -20.0;
+	}
+#else
+	current_temperature_outside = current_weather_data.temperature_2m;
+#endif
+	return current_temperature_outside;
+}
+
+uint8_t get_weather_humidity() {
+	static uint8_t current_humidity_outside = 0;
+#if SIMULATE_INET_VALUES
+	current_humidity_outside++;
+	if (current_humidity_outside > 99) {
+		current_humidity_outside = 0;
+	}
+#else
+	current_humidity_outside = current_weather_data.relative_humidity_2m;
+#endif
+	return current_humidity_outside;
+}
+
+uint8_t get_weather_wind() {
+	static uint8_t current_wind_outside = 0;
+#if SIMULATE_INET_VALUES
+	current_wind_outside += 1;
+	if (current_wind_outside > 50) {
+		current_wind_outside = 0;
+	}
+#else
+	current_wind_outside = current_weather_data.wind_speed_10m;
+#endif
+	return current_wind_outside;
+}
+
+uint8_t get_weather_clouds() {
+	static uint8_t current_clouds = 0;
+#if SIMULATE_INET_VALUES
+	current_clouds += 1;
+	if (current_clouds > 100) {
+		current_clouds = 0;
+	}
+#else
+	current_clouds = current_weather_data.cloud_cover;
+#endif
+	return current_clouds;
+}
+
+float get_weather_rain() {
+	static float current_rain = 0;
+#if SIMULATE_INET_VALUES
+	current_rain += 1;
+	if (current_rain > 5) {
+		current_rain = 0;
+	}
+#else
+	current_rain = current_weather_data.rain;
+#endif
+	return current_rain;
+}
+
+float get_weather_snow() {
+	static float current_snow = 0;
+#if SIMULATE_INET_VALUES
+	current_snow += 1;
+	if (current_snow > 5) {
+		current_snow = 0;
+	}
+#else
+	current_snow = current_weather_data.snow;
+#endif
+	return current_snow;
+}
+
+uint8_t get_is_day() { return current_weather_data.is_day; }
+
+double get_apparent_temperature(void) {
+    return current_weather_data.apparent_temperature; }
+
+double get_uv_index(void) {
+    return current_weather_data.uv_index; }
+
+double get_precipitation_probability(void) {
+    return current_weather_data.precipitation_probability; }
+
+double get_surface_pressure(void) {
+    return current_weather_data.surface_pressure; }

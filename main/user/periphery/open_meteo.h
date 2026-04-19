@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "user/periphery/periphery.h"
 
 typedef struct {
     int8_t   temp_max;      // °C
@@ -93,9 +94,38 @@ typedef enum {
     float lon;
 } city_t;
 
+typedef struct {
+  double temperature_2m;
+  int relative_humidity_2m;
+  double snow;
+  double rain;
+  int cloud_cover;
+  double wind_speed_10m;
+  int is_day;
+    // --- новое ---
+  double apparent_temperature;    // ощущаемая температура снаружи
+  double uv_index;                // УФ индекс
+  double precipitation_probability; // вероятность осадков %
+  double surface_pressure;        // давление гПа
+
+} current_weather_t;
+
 void fetch_weather(void);
 void build_weather_url(int city_index);
 const char* weathercode_to_text(uint8_t code);
+
+float get_weather_temperature();
+uint8_t get_weather_humidity();
+uint8_t get_weather_wind();
+uint8_t get_weather_clouds();
+float get_weather_rain();
+float get_weather_snow();
+uint8_t get_is_day();
+
+double get_apparent_temperature(void);
+double get_uv_index(void) ;
+double get_precipitation_probability(void) ;
+double get_surface_pressure(void);
 
 
 
