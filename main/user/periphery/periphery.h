@@ -102,6 +102,7 @@ const char* get_wifi_pass();
 int16_t get_wifi_rssi();
 
 uint8_t get_time_mday();
+uint16_t get_time_year();
 uint8_t get_time_month();
 uint8_t get_time_hour();
 uint8_t get_time_minute();

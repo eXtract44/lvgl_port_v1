@@ -76,10 +76,10 @@ static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
   switch (theme) {
   case STYLE_TEXT_SMALL:
 
-    lv_obj_add_style(cont, &ui->font.small, 0);
+    lv_obj_add_style(cont, &ui->font.medium_32, 0);
     break;
   case STYLE_TEXT_TITLE:
-    lv_obj_add_style(cont, &ui->font.title, 0);
+    lv_obj_add_style(cont, &ui->font.very_small_20, 0);
     break;
   }
   lv_label_set_text(cont, text);
@@ -188,41 +188,25 @@ static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 }
 
 void print_wday(uint8_t wday, ui_main_menu_t *ui) {
-  lv_obj_t *parent = ui->time.wday_label;
-  if (parent == NULL) {
-    ESP_LOGE(TAG, "ERROR print_wday");
+  // При отсутствии WiFi прячем highlight
+  if (wday == WDAY_KEIN_WLAN) {
+    if (ui->time.wday_highlight)
+      lv_obj_add_flag(ui->time.wday_highlight, LV_OBJ_FLAG_HIDDEN);
     return;
   }
-
-  switch (wday) {
-  case WDAY_SONNTAG:
-    lv_label_set_text(parent, "sonntag");
-    break;
-  case WDAY_MONTAG:
-    lv_label_set_text(parent, "montag");
-    break;
-  case WDAY_DIENSTAG:
-    lv_label_set_text(parent, "dienstag");
-    break;
-  case WDAY_MITTWOCH:
-    lv_label_set_text(parent, "mittwoch");
-    break;
-  case WDAY_DONNERSTAG:
-    lv_label_set_text(parent, "donnerstag");
-    break;
-  case WDAY_FREITAG:
-    lv_label_set_text(parent, "freitag");
-    break;
-  case WDAY_SAMSTAG:
-    lv_label_set_text(parent, "samstag");
-    break;
-  case WDAY_KEIN_WLAN:
-    lv_label_set_text(parent, "Kein WLAN");
-    break;
-  default:
-    lv_label_set_text(parent, "wochentag");
-    break;
+  if (wday >= 7) {
+    ESP_LOGE(TAG, "ERROR print_wday: invalid wday=%d", wday);
+    return;
   }
+  if (ui->time.wday_labels[wday] == NULL || ui->time.wday_highlight == NULL) {
+    ESP_LOGE(TAG, "ERROR print_wday: null ptr");
+    return;
+  }
+  // показываем highlight и перемещаем к текущему дню
+  static const uint8_t wday_to_idx[7] = {6, 0, 1, 2, 3, 4, 5}; // So→6, Mo→0
+  lv_obj_clear_flag(ui->time.wday_highlight, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_align_to(ui->time.wday_highlight, ui->time.wday_labels[wday_to_idx[wday]],
+                  LV_ALIGN_CENTER, 0, 0);
 }
 
 void print_time(uint8_t time_hour, uint8_t time_minute, ui_main_menu_t *ui) {
@@ -270,6 +254,85 @@ void print_mday(uint8_t date_day, uint8_t date_month, ui_main_menu_t *ui) {
   lv_label_set_text(parent, ui->string_buffer);
 }
 
+// Алгоритм Гаусса — возвращает день и месяц Пасхи для заданного года
+static void get_easter(uint16_t year, uint8_t *out_day, uint8_t *out_month) {
+  int a = year % 19;
+  int b = year % 4;
+  int c = year % 7;
+  int k = year / 100;
+  int p = (13 + 8 * k) / 25;
+  int q = k / 4;
+  int M = (15 - p + k - q) % 30;
+  int N = (4 + k - q) % 7;
+  int d = (19 * a + M) % 30;
+  int e = (2 * b + 4 * c + 6 * d + N) % 7;
+  int day   = 22 + d + e;
+  int month = 3;
+  if (day > 31) {
+    day  -= 31;
+    month = 4;
+    // исключения алгоритма
+    if (day == 26) day = 19;
+    if (day == 25 && d == 28 && e == 6 && a > 10) day = 18;
+  }
+  *out_day   = (uint8_t)day;
+  *out_month = (uint8_t)month;
+}
+
+// Возвращает название федерального праздника Германии или NULL
+static const char *get_german_holiday(uint8_t day, uint8_t month, uint16_t year) {
+  // Фиксированные праздники
+ if (day == 1  && month == 1)  return "Neujahr";       // 7  ✓
+if (day == 1  && month == 5)  return "Tag d. Arbeit"; // 13 ✗ — "Maifeiertag"? (12 ✓)
+if (day == 3  && month == 10) return "Tag d. Einheit";// 14 ✗ — "Dt. Einheit"? (11 ✓)
+if (day == 25 && month == 12) return "1. Weihnacht";  // 11 ✓
+if (day == 26 && month == 12) return "2. Weihnacht";  // 11 ✓
+
+  // Праздники относительно Пасхи
+  uint8_t e_day, e_month;
+  get_easter(year, &e_day, &e_month);
+
+  // Для расчёта смещений переводим Пасху в день года
+  // Используем простой сдвиг через дату: вычитаем/прибавляем дни
+  // Проще: сравниваем день+месяц с Пасхой ± смещение
+  // Функция: easter_offset → проверяем совпадение
+  // Считаем день года для Пасхи и для проверяемой даты
+  static const uint8_t days_in_month[13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};
+  uint16_t easter_doy = e_day;
+  for (int m = 1; m < e_month; m++) easter_doy += days_in_month[m];
+
+  uint16_t check_doy = day;
+  for (int m = 1; m < month; m++) check_doy += days_in_month[m];
+
+  int16_t diff = (int16_t)check_doy - (int16_t)easter_doy;
+
+if (diff == -2) return "Karfreitag";    // 10 ✓
+if (diff ==  0) return "Ostersonntag";  // 12 ✓
+if (diff ==  1) return "Ostermontag";   // 11 ✓
+if (diff == 39) return "Himmelfahrt";   // 11 ✓
+if (diff == 49) return "Pfingstsonntag";// 14 ✗ — "Pfingstso."?  (10 ✓)
+if (diff == 50) return "Pfingstmontag"; // 13 ✗ — "Pfingstmo."?  (10 ✓)
+if (diff == 60) return "Fronleichnam";  // 12 ✓
+
+  return NULL;
+}
+
+void print_holiday(uint8_t day, uint8_t month, uint16_t year,
+                   ui_main_menu_t *ui) {
+  if (ui->time.holiday_label == NULL) {
+    ESP_LOGE(TAG, "ERROR print_holiday: null ptr");
+    return;
+  }
+  const char *holiday = get_german_holiday(day, month, year);
+  if (holiday == NULL) {
+    lv_obj_add_flag(ui->time.holiday_label, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_label_set_text_fmt(ui->time.holiday_label,
+                          MY_BELL_SYMBOL " %s", holiday);
+    lv_obj_clear_flag(ui->time.holiday_label, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+                     
 static lv_obj_t *create_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                              lv_align_t align, lv_coord_t x_ofs,
                              lv_coord_t y_ofs, const char *symbol,
@@ -691,21 +754,21 @@ static void ui_create_weather_forecast_popup(ui_main_menu_t *ui) {
     ui->weather.forecast_popup.day_label[i] =
         create_label(ui->weather.forecast_popup.popup, day_names[i],
                      LV_ALIGN_TOP_MID, col_x, col_y_start);
-    lv_obj_add_style(ui->weather.forecast_popup.day_label[i], &ui->font.small,
+    lv_obj_add_style(ui->weather.forecast_popup.day_label[i], &ui->font.medium_32,
                      0);
 
     // --- Погодный код ---
     ui->weather.forecast_popup.wcode_label[i] =
         create_label(ui->weather.forecast_popup.popup, "-", LV_ALIGN_TOP_MID,
                      col_x, col_y_start + row_h);
-    lv_obj_add_style(ui->weather.forecast_popup.wcode_label[i], &ui->font.title,
+    lv_obj_add_style(ui->weather.forecast_popup.wcode_label[i], &ui->font.very_small_20,
                      0);
 
     // --- Температура ---
     ui->weather.forecast_popup.temp_label[i] =
         create_label(ui->weather.forecast_popup.popup, "-", LV_ALIGN_TOP_MID,
                      col_x, col_y_start + row_h * 2);
-    lv_obj_add_style(ui->weather.forecast_popup.temp_label[i], &ui->font.small,
+    lv_obj_add_style(ui->weather.forecast_popup.temp_label[i], &ui->font.medium_32,
                      0);
 
     // --- Влажность ---
@@ -713,21 +776,21 @@ static void ui_create_weather_forecast_popup(ui_main_menu_t *ui) {
         create_label(ui->weather.forecast_popup.popup, "-", LV_ALIGN_TOP_MID,
                      col_x, col_y_start + row_h * 3);
     lv_obj_add_style(ui->weather.forecast_popup.humidity_label[i],
-                     &ui->font.title, 0);
+                     &ui->font.very_small_20, 0);
 
     // --- Восход ---
     ui->weather.forecast_popup.sunrise_label[i] =
         create_label(ui->weather.forecast_popup.popup, "-", LV_ALIGN_TOP_MID,
                      col_x, col_y_start + row_h * 4);
     lv_obj_add_style(ui->weather.forecast_popup.sunrise_label[i],
-                     &ui->font.title, 0);
+                     &ui->font.very_small_20, 0);
 
     // --- Закат ---
     ui->weather.forecast_popup.sunset_label[i] =
         create_label(ui->weather.forecast_popup.popup, "-", LV_ALIGN_TOP_MID,
                      col_x, col_y_start + row_h * 5);
     lv_obj_add_style(ui->weather.forecast_popup.sunset_label[i],
-                     &ui->font.title, 0);
+                     &ui->font.very_small_20, 0);
 
     // --- Заполняем данными если они есть ---
     if (forecast_data.valid) {
@@ -1103,7 +1166,7 @@ static void create_block_top_middle(ui_main_menu_t *ui) {
   if (!value)
     return;
   ui->co2.co2_label = value;
-  lv_obj_add_style(ui->co2.co2_label, &ui->font.very_large, 0);
+  lv_obj_add_style(ui->co2.co2_label, &ui->font.large_48, 0);
   /*BLOCK TOP MID*/
 }
 
@@ -1120,36 +1183,65 @@ static void create_block_top_right(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->time.screen, &ui->style.top_right, 0);
   lv_obj_set_scrollbar_mode(ui->time.screen, LV_SCROLLBAR_MODE_OFF);
 
-  //  create_text("time", ui->time.screen, STYLE_TEXT_TITLE,
-  //              BLOCK_TOP_RIGHT_ALIGN_TITLE, 0,
-  //              BLOCK_TOP_RIGHT_Y_START_TITLE, ui);
-
-  lv_obj_t *time = create_label(
+  // --- время HH:MM ---
+  lv_obj_t *lbl = create_label(
       ui->time.screen, "00:00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
       BLOCK_TOP_RIGHT_X_START_VALUES, BLOCK_TOP_RIGHT_Y_START_VALUE_1);
-
-  if (!time) {
+  if (!lbl)
     return;
-  }
-
-  ui->time.hour_minute_label = time;
+  ui->time.hour_minute_label = lbl;
   lv_obj_add_style(ui->time.hour_minute_label, &ui->font.time, 0);
 
-  time = create_label(ui->time.screen, "00.00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
-                      BLOCK_TOP_RIGHT_X_START_VALUES_2,
-                      BLOCK_TOP_RIGHT_Y_START_VALUE_2);
-  if (!time)
+  // --- дата DD.MM ---
+  lbl = create_label(ui->time.screen, "00.00", BLOCK_TOP_RIGHT_ALIGN_VALUES,
+                     BLOCK_TOP_RIGHT_X_START_VALUES_2,
+                     BLOCK_TOP_RIGHT_Y_START_VALUE_2);
+  if (!lbl)
     return;
-
-  ui->time.mday_month_label = time;
+  ui->time.mday_month_label = lbl;
   lv_obj_add_style(ui->time.mday_month_label, &ui->font.time, 0);
-  time = create_label(ui->time.screen, "laden...", LV_ALIGN_BOTTOM_MID,
-                      BLOCK_TOP_RIGHT_X_START_VALUE_3,
-                      BLOCK_TOP_RIGHT_Y_START_VALUE_3);
-  if (!time)
+
+  // --- колонка дней недели (Mo Di Mi Do Fr Sa So) ---
+  static const char *wday_names[7] = { "Mo", "Di", "Mi", "Do", "Fr", "Sa","So"};
+
+  for (int i = 0; i < 7; i++) {
+    lv_coord_t y = BLOCK_TOP_RIGHT_WDAY_COL_Y_START +
+                   i * (BLOCK_TOP_RIGHT_WDAY_COL_ITEM_HEIGHT +
+                        BLOCK_TOP_RIGHT_WDAY_COL_ITEM_GAP);
+    lbl = create_label(ui->time.screen, wday_names[i],
+                       BLOCK_TOP_RIGHT_WDAY_COL_ALIGN,
+                       BLOCK_TOP_RIGHT_WDAY_COL_X_START, y);
+    if (!lbl)
+      return;
+    lv_obj_add_style(lbl, &ui->font.small_24, 0);
+    lv_obj_set_width(lbl, BLOCK_TOP_RIGHT_WDAY_COL_WIDTH);
+    lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+    ui->time.wday_labels[i] = lbl;
+  }
+
+  // --- highlight прямоугольник за текущим днём ---
+  lv_obj_t *hl = lv_obj_create(ui->time.screen);
+  lv_obj_remove_style_all(hl);
+  lv_obj_set_size(hl, BLOCK_TOP_RIGHT_WDAY_HIGHLIGHT_WIDTH,
+                  BLOCK_TOP_RIGHT_WDAY_HIGHLIGHT_HEIGHT);
+  lv_obj_set_style_radius(hl, BLOCK_TOP_RIGHT_WDAY_HIGHLIGHT_RADIUS, 0);
+  lv_obj_set_style_border_width(hl, 2, 0);
+  lv_obj_set_style_border_color(hl, lv_color_hex(0x5E4E90), 0);
+  lv_obj_set_style_bg_opa(hl, LV_OPA_TRANSP, 0);
+  // начальная позиция — So (индекс 0), уточнится в первом вызове print_wday
+  lv_obj_align_to(hl, ui->time.wday_labels[0], LV_ALIGN_CENTER, 0, 0);
+  ui->time.wday_highlight = hl;
+
+  // --- строка праздника внизу ---
+  lbl = create_label(ui->time.screen, "", BLOCK_TOP_RIGHT_HOLIDAY_ALIGN,
+                     -28, BLOCK_TOP_RIGHT_HOLIDAY_Y_START);
+  if (!lbl)
     return;
-  ui->time.wday_label = time;
-  lv_obj_add_style(ui->time.wday_label, &ui->font.small, 0);
+  lv_obj_add_style(lbl, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN); // скрыт пока нет праздника
+  ui->time.holiday_label = lbl;
+
   /*BLOCK TOP RIGHT*/
 }
 
@@ -1494,7 +1586,7 @@ static void btn_weather_open_popup_event_handler(lv_event_t *e) {
                       ui->weather.settings_popup
                           .cities_de[ui->weather.settings_popup.saved_city]
                           .name);
-    lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.small, 0);
+    lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32, 0);
   }
 }
 static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
@@ -1690,13 +1782,13 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
 
   ui->wifi.ssid_label =
       create_label(ui->wifi.popup, "WiFiName", LV_ALIGN_TOP_LEFT, 220, 90);
-  lv_obj_add_style(ui->wifi.ssid_label, &ui->font.small, 0);
+  lv_obj_add_style(ui->wifi.ssid_label, &ui->font.medium_32, 0);
   ui->wifi.pass_label =
       create_label(ui->wifi.popup, "*********", LV_ALIGN_TOP_LEFT, 220, 180);
-  lv_obj_add_style(ui->wifi.pass_label, &ui->font.small, 0);
+  lv_obj_add_style(ui->wifi.pass_label, &ui->font.medium_32, 0);
   ui->wifi.rssi_label =
       create_label(ui->wifi.popup, "WiFiRSSI", LV_ALIGN_TOP_LEFT, 220, 270);
-  lv_obj_add_style(ui->wifi.rssi_label, &ui->font.small, 0);
+  lv_obj_add_style(ui->wifi.rssi_label, &ui->font.medium_32, 0);
   ui->wifi.keyboard = lv_keyboard_create(ui->wifi.popup);
   // [FIX] Было &ui (адрес локального параметра функции — UB после возврата!)
   // Теперь ui — указатель на глобальную структуру, всегда валиден
@@ -1731,11 +1823,12 @@ void ui_apply_theme(ui_main_menu_t *ui) {
   lv_obj_report_style_change(&ui->style.bot_left);
   lv_obj_report_style_change(&ui->style.top_right);
   lv_obj_report_style_change(&ui->style.bot_right);
-  lv_obj_report_style_change(&ui->font.small);
+  
+  lv_obj_report_style_change(&ui->font.very_small_20);
   lv_obj_report_style_change(&ui->font.small_24);
-  lv_obj_report_style_change(&ui->font.very_large);
+  lv_obj_report_style_change(&ui->font.medium_32);
+  lv_obj_report_style_change(&ui->font.large_48);
   lv_obj_report_style_change(&ui->font.nav_btn);
-  lv_obj_report_style_change(&ui->font.title);
   lv_obj_report_style_change(&ui->font.time);
   lv_obj_report_style_change(&ui->font.icon);
 }
@@ -2394,14 +2487,16 @@ void update_block_top_middle(ui_main_menu_t *ui) {
 }
 
 void update_block_top_right(ui_main_menu_t *ui) {
-  if (get_wifi_status() == WIFI_DISCONNECTED) {
+if (get_wifi_status() == WIFI_DISCONNECTED) {
     print_mday(0, 0, ui);
     print_wday(WDAY_KEIN_WLAN, ui);
     print_time(0, 0, ui);
+    lv_obj_add_flag(ui->time.holiday_label, LV_OBJ_FLAG_HIDDEN);
   } else {
     print_mday(get_time_mday(), get_time_month(), ui);
     print_wday(get_time_wday(), ui);
     print_time(get_time_hour(), get_time_minute(), ui);
+    print_holiday(get_time_mday(), get_time_month(), get_time_year(), ui);
   }
 }
 
@@ -2650,17 +2745,17 @@ static void timer_200(lv_timer_t *timer) {
 }
 
 static void init_fonts(ui_main_menu_t *ui) {
-  lv_style_init(&ui->font.title);
-  lv_style_set_text_font(&ui->font.title, &lv_font_montserrat_20);
+  lv_style_init(&ui->font.very_small_20);
+  lv_style_set_text_font(&ui->font.very_small_20, &lv_font_montserrat_20);
 
   lv_style_init(&ui->font.small_24);
   lv_style_set_text_font(&ui->font.small_24, &lv_font_montserrat_24);
 
-  lv_style_init(&ui->font.small);
-  lv_style_set_text_font(&ui->font.small, &lv_font_montserrat_32);
+  lv_style_init(&ui->font.medium_32);
+  lv_style_set_text_font(&ui->font.medium_32, &lv_font_montserrat_32);
 
-  lv_style_init(&ui->font.very_large);
-  lv_style_set_text_font(&ui->font.very_large, &lv_font_montserrat_48);
+  lv_style_init(&ui->font.large_48);
+  lv_style_set_text_font(&ui->font.large_48, &lv_font_montserrat_48);
 
   lv_style_init(&ui->font.time);
   lv_style_set_text_font(&ui->font.time, &my_time_font);
@@ -2727,11 +2822,11 @@ static void apply_theme_dark(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.meter_co2, 1);
 
   // Шрифты
-  lv_style_set_text_color(&ui->font.small, lv_color_hex(0xE6EDF3));
+  lv_style_set_text_color(&ui->font.medium_32, lv_color_hex(0xE6EDF3));
   lv_style_set_text_color(&ui->font.small_24, lv_color_hex(0xE6EDF3));
-  lv_style_set_text_color(&ui->font.very_large, lv_color_hex(0xE6EDF3));
+  lv_style_set_text_color(&ui->font.large_48, lv_color_hex(0xE6EDF3));
   lv_style_set_text_color(&ui->font.time, lv_color_hex(0xE6EDF3));
-  lv_style_set_text_color(&ui->font.title, lv_color_hex(0xE6EDF3));
+  lv_style_set_text_color(&ui->font.very_small_20, lv_color_hex(0xE6EDF3));
   lv_style_set_text_color(&ui->font.icon, lv_color_hex(0x60A5FA));
   lv_style_set_text_color(&ui->font.nav_btn, lv_color_hex(0x60A5FA));
 }
@@ -2785,11 +2880,12 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.meter_co2, 1);
 
   // Шрифты — только text_color, font не трогаем
-  lv_style_set_text_color(&ui->font.small, lv_color_hex(0x1A1A2A));
+   lv_style_set_text_color(&ui->font.very_small_20, lv_color_hex(0x1A1A2A));
+  lv_style_set_text_color(&ui->font.medium_32, lv_color_hex(0x1A1A2A));
   lv_style_set_text_color(&ui->font.small_24, lv_color_hex(0x1A1A2A));
-  lv_style_set_text_color(&ui->font.very_large, lv_color_hex(0x1A1A2A));
+  lv_style_set_text_color(&ui->font.large_48, lv_color_hex(0x1A1A2A));
   lv_style_set_text_color(&ui->font.time, lv_color_hex(0x1A1A2A));
-  lv_style_set_text_color(&ui->font.title, lv_color_hex(0x1A1A2A));
+ 
   lv_style_set_text_color(&ui->font.icon, lv_color_hex(0x4A80B8));
   lv_style_set_text_color(&ui->font.nav_btn, lv_color_hex(0x4A80B8));
 }

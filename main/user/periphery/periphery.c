@@ -31,9 +31,7 @@ sht31_data_t sht31_data = {
     .trigger_time = 0,
 };
 
-#define SIMULATE_SHT31_VALUES 0
-#define SIMULATE_SGP30_VALUES 0
-#define SIMULATE_INET_VALUES 0
+
 
 static bool sht31_check_crc(uint8_t *data, uint8_t len, uint8_t crc_byte) {
 	uint8_t crc = 0xFF;
@@ -477,7 +475,7 @@ int16_t get_wifi_rssi() {
 
 uint8_t get_time_mday() {
 	static uint8_t current_mday = 1;
-#if SIMULATE_INET_VALUES
+#if SIMULATE_TIME_VALUES
 	current_mday++;
 	if (current_mday > 31) {
 		current_mday = 1;
@@ -488,9 +486,23 @@ uint8_t get_time_mday() {
 	return current_mday;
 }
 
+
+uint16_t get_time_year() {
+	static uint16_t current_year = 1;
+#if SIMULATE_TIME_VALUES
+	current_year++;
+	if (current_year > 2050) {
+		current_year = 1;
+	}
+#else
+	current_year = timeinfo_user.tm_year + 1900;
+#endif
+	return current_year;
+}
+
 uint8_t get_time_month() {
 	static uint8_t current_monts = 1;
-#if SIMULATE_INET_VALUES
+#if SIMULATE_TIME_VALUES
 	current_monts++;
 	if (current_monts > 12) {
 		current_monts = 1;
@@ -503,7 +515,7 @@ uint8_t get_time_month() {
 
 uint8_t get_time_hour() {
 	static uint8_t current_hour = 0;
-#if SIMULATE_INET_VALUES
+#if SIMULATE_TIME_VALUES
 	current_hour++;
 	if (current_hour > 23) {
 		current_hour = 0;
@@ -516,7 +528,7 @@ uint8_t get_time_hour() {
 
 uint8_t get_time_minute() {
 	static uint8_t current_minute = 0;
-#if SIMULATE_INET_VALUES
+#if SIMULATE_TIME_VALUES
 	current_minute++;
 	if (current_minute > 59) {
 		current_minute = 0;
@@ -529,7 +541,7 @@ uint8_t get_time_minute() {
 
 uint8_t get_time_wday() {
 	static uint8_t current_wday = 8;
-#if SIMULATE_INET_VALUES
+#if SIMULATE_TIME_VALUES
 	current_wday++;
 	if (current_wday > 6) {
 		current_wday = 0;

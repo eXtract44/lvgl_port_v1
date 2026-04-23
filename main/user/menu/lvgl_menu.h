@@ -34,7 +34,8 @@
 #define MY_FEELS_LIKE_SYMBOL  "\xEF\x8B\x89"  // термометр (тот же что температура)
 #define MY_SUN_SYMBOL        "\xEF\x86\x85"  // 
 #define MY_CLOUD_RAIN_SYMBOL "\xEF\x9C\xBD"  // 
-#define MY_PRESSURE_SYMBOL   "\xEF\x8F\xBD"  //                         
+#define MY_PRESSURE_SYMBOL   "\xEF\x8F\xBD"  //        
+#define MY_BELL_SYMBOL       "\xEF\x83\xB3"  // 🔔 праздник                 
 
 
 #define SENSOR_HISTORY_POINTS 144 // 12 часов × 12 точек/час
@@ -227,17 +228,22 @@ typedef struct {
   lv_obj_t *screen;
   lv_obj_t *hour_minute_label;
   lv_obj_t *mday_month_label;
-  lv_obj_t *wday_label;
+   // wday_label убран — заменён колонкой Mo–So
+  lv_obj_t *wday_labels[7];      // Mo Di Mi Do Fr Sa So
+  lv_obj_t *wday_highlight;      // скруглённый прямоугольник за текущим днём
+  lv_obj_t *holiday_label;       // MY_BELL_SYMBOL + название праздника
 } ui_time_t;
 
 typedef struct {
-  lv_style_t small;
-  lv_style_t small_24;   // ← новый
-  lv_style_t very_large;
-  lv_style_t time;
-  lv_style_t title;
-  lv_style_t icon;
-  lv_style_t nav_btn;
+lv_style_t very_small_20;
+lv_style_t small_24;   // ← новый
+lv_style_t medium_32;  
+lv_style_t large_48;
+lv_style_t time;
+ 
+lv_style_t icon;
+lv_style_t nav_btn;
+
 } font_style_t;
 
 typedef struct {
@@ -364,5 +370,6 @@ static void anim_sun_moon_orbit(void *var, int32_t angle);
 static void sensor_record_values(ui_main_menu_t *ui);
 static void wifi_check_timer_cb(lv_timer_t *timer);
 static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e);
+void print_holiday(uint8_t day, uint8_t month, uint16_t year, ui_main_menu_t *ui);
 
 #endif /* INC_LVGL_MENU_H_ */

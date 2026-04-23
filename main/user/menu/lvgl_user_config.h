@@ -36,6 +36,11 @@
 #define SIMULATE_ANIM_RAIN 0
 #define SIMULATE_ANIM_SNOW 0
 
+#define SIMULATE_SHT31_VALUES 0
+#define SIMULATE_SGP30_VALUES 0
+#define SIMULATE_INET_VALUES 0
+#define SIMULATE_TIME_VALUES 0
+
 #define UPDATE_WEATHER_SEC 60
 
 #define MAX_VALUE_CO2 2400
@@ -159,15 +164,33 @@
 #define BLOCK_TOP_RIGHT_Y_START_TITLE -15
 #define BLOCK_TOP_RIGHT_ALIGN_TITLE LV_ALIGN_TOP_MID
 
-#define BLOCK_TOP_RIGHT_X_START_VALUES 25
+#define BLOCK_TOP_RIGHT_X_START_VALUES 0
 #define BLOCK_TOP_RIGHT_X_START_VALUES_2 BLOCK_TOP_RIGHT_X_START_VALUES + 5
 #define BLOCK_TOP_RIGHT_X_START_VALUE_3 0
 
-#define BLOCK_TOP_RIGHT_Y_START_VALUE_1 10
-#define BLOCK_TOP_RIGHT_Y_START_VALUE_2 80
+#define BLOCK_TOP_RIGHT_Y_START_VALUE_1 0
+#define BLOCK_TOP_RIGHT_Y_START_VALUE_2 BLOCK_TOP_RIGHT_Y_START_VALUE_1+70
 #define BLOCK_TOP_RIGHT_Y_START_VALUE_3  0
 
 #define BLOCK_TOP_RIGHT_ALIGN_VALUES LV_ALIGN_TOP_LEFT
+
+// колонка дней недели
+#define BLOCK_TOP_RIGHT_WDAY_COL_X_START       8   // отступ от правого края блока
+#define BLOCK_TOP_RIGHT_WDAY_COL_Y_START        -10   // отступ сверху
+#define BLOCK_TOP_RIGHT_WDAY_COL_WIDTH         38   // ширина колонки
+#define BLOCK_TOP_RIGHT_WDAY_COL_ITEM_HEIGHT   28   // высота одного элемента (small_24)
+#define BLOCK_TOP_RIGHT_WDAY_COL_ITEM_GAP       2   // зазор между элементами
+
+// highlight прямоугольник
+#define BLOCK_TOP_RIGHT_WDAY_HIGHLIGHT_WIDTH   42   // немного уже колонки
+#define BLOCK_TOP_RIGHT_WDAY_HIGHLIGHT_HEIGHT  28   // немного ниже item
+#define BLOCK_TOP_RIGHT_WDAY_HIGHLIGHT_RADIUS   5   // скругление углов
+#define BLOCK_TOP_RIGHT_WDAY_COL_ALIGN        LV_ALIGN_TOP_RIGHT
+
+// праздник внизу
+
+#define BLOCK_TOP_RIGHT_HOLIDAY_ALIGN         LV_ALIGN_BOTTOM_MID
+#define BLOCK_TOP_RIGHT_HOLIDAY_Y_START       -8   // отступ от нижнего края
 /////////////////////////////////////////////////////////////////////////BLOCK_BOT_MID
 /// CO2 History Notifications
 #define BLOCK_BOT_MID_WIDTH_CO2_CHART 250
