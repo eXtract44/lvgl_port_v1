@@ -27,7 +27,7 @@ ui_main_menu_t ui = {0};
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
 extern wifi_ap_record_t ap_info;
-extern sht31_data_t sht31_data;
+extern sht41_data_t sht41_data;
 extern sgp30_data_t sgp30_data;
 extern forecast_data_t forecast_data;
 
@@ -684,10 +684,10 @@ lv_obj_t *create_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
 void sensor_history_push(sensor_history_t *h) {
   // Записываем температуру с одним знаком после запятой (×10)
   // get_temperature_aht10() возвращает float — умножаем и округляем
-  float t = get_temperature_sht31();
+  float t = get_temperature_sht41();
   h->temperature[h->head] =
       (int16_t)(t >= 0 ? (t * 10.0f + 0.5f) : (t * 10.0f - 0.5f));
-  h->humidity[h->head] = get_humidity_sht31();
+  h->humidity[h->head] = get_humidity_sht41();
 
   h->head = (h->head + 1) % SENSOR_HISTORY_POINTS;
 
@@ -717,7 +717,7 @@ static void ui_create_weather_forecast_popup(ui_main_menu_t *ui) {
       ui->screen, popup_width, popup_height, POPUP_WINDOW_ALIGN, 0, 0);
   lv_obj_set_scrollbar_mode(ui->weather.forecast_popup.popup,
                             LV_SCROLLBAR_MODE_OFF);
-  lv_obj_add_style(ui->weather.forecast_popup.popup, &ui->style.main, 0);
+  lv_obj_add_style(ui->weather.forecast_popup.popup, &ui->style.popup, 0);
 
   // --- Заголовок ---
   create_text("Wettervorhersage (3 Tage)", ui->weather.forecast_popup.popup,
@@ -886,7 +886,7 @@ static void ui_create_sensor_history_popup(ui_main_menu_t *ui) {
 
   ui->sensor.popup.popup = create_background(
       ui->screen, popup_width, popup_height, POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_add_style(ui->sensor.popup.popup, &ui->style.main, 0);
+  lv_obj_add_style(ui->sensor.popup.popup, &ui->style.popup, 0);
   lv_obj_set_scrollbar_mode(ui->sensor.popup.popup, LV_SCROLLBAR_MODE_OFF);
   // --- Заголовок ---
   create_text("Temperatur / Feuchtigkeit (12 std)", ui->sensor.popup.popup,
@@ -1696,7 +1696,7 @@ static void ui_create_weather_settings_popup(ui_main_menu_t *ui) {
   ui->weather.settings_popup.popup =
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_add_style(ui->weather.settings_popup.popup, &ui->style.main, 0);
+  lv_obj_add_style(ui->weather.settings_popup.popup, &ui->style.popup, 0);
 
   ui->weather.settings_popup.btn_close =
       create_btn_cb(ui->weather.settings_popup.popup, 50, 50, LV_ALIGN_TOP_LEFT,
@@ -1752,7 +1752,7 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
   lv_obj_set_scrollbar_mode(ui->wifi.popup, LV_SCROLLBAR_MODE_OFF);
-  lv_obj_add_style(ui->wifi.popup, &ui->style.main, 0);
+  lv_obj_add_style(ui->wifi.popup, &ui->style.popup, 0);
 
   create_text("WIFI Einstellungen", ui->wifi.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
@@ -1819,6 +1819,7 @@ void ui_apply_theme(ui_main_menu_t *ui) {
 
   // Говорим LVGL перерисовать все объекты
   lv_obj_report_style_change(&ui->style.main);
+  lv_obj_report_style_change(&ui->style.popup);
   lv_obj_report_style_change(&ui->style.top_left);
   lv_obj_report_style_change(&ui->style.bot_left);
   lv_obj_report_style_change(&ui->style.top_right);
@@ -1878,7 +1879,7 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
   lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
-  lv_obj_add_style(ui->settings.popup, &ui->style.main, 0);
+  lv_obj_add_style(ui->settings.popup, &ui->style.popup, 0);
 
   create_text("Einstellungen", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
@@ -2361,13 +2362,13 @@ static float calc_heat_index(float t, float rh) {
 }
 
 void update_block_top_left(ui_main_menu_t *ui) {
-  bool sht31_ok = (sht31_data.life == SHT31_STATE_OK);
+  bool sht41_ok = (sht41_data.life == SHT41_STATE_OK);
   bool sgp30_ok = (sgp30_data.state == SGP30_STATE_OK);
   bool wifi_ok = (get_wifi_status() == WIFI_CONNECTED);
 
   // ── температура ───────────────────────────────────────
-  if (sht31_ok) {
-    float temp = get_temperature_sht31();
+  if (sht41_ok) {
+    float temp = get_temperature_sht41();
     if (temp > -40.0f && temp < 85.0f) {
       print_value("%.1f°C", temp, ui->sensor.temperature_label);
     } else {
@@ -2378,8 +2379,8 @@ void update_block_top_left(ui_main_menu_t *ui) {
   }
 
   // ── влажность ─────────────────────────────────────────
-  if (sht31_ok) {
-    float hum = get_humidity_sht31();
+  if (sht41_ok) {
+    float hum = get_humidity_sht41();
     if (hum >= 0.0f && hum <= 100.0f) {
       print_value("%.0f%%", hum, ui->sensor.humidity_label);
     } else {
@@ -2390,9 +2391,9 @@ void update_block_top_left(ui_main_menu_t *ui) {
   }
 
   // ── feels like + точка росы ───────────────────────────
-  if (sht31_ok) {
-    float temp = get_temperature_sht31();
-    float hum = get_humidity_sht31();
+  if (sht41_ok) {
+    float temp = get_temperature_sht41();
+    float hum = get_humidity_sht41();
 
     if (temp > -40.0f && temp < 85.0f && hum >= 1.0f && hum <= 100.0f) {
 
@@ -2464,7 +2465,7 @@ void update_block_top_left(ui_main_menu_t *ui) {
   }
 
   // ── запись истории ────────────────────────────────────
-  if (sht31_ok) {
+  if (sht41_ok) {
     sensor_record_values(ui);
   }
 }
@@ -2782,6 +2783,11 @@ static void apply_theme_dark(ui_main_menu_t *ui) {
   lv_style_set_bg_grad_dir(&ui->style.main, LV_GRAD_DIR_VER);
   lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
+  lv_style_reset(&ui->style.popup);
+  lv_style_set_bg_color(&ui->style.popup, lv_color_hex(0x161C24)); // тёмный, без градиента
+  lv_style_set_bg_grad_dir(&ui->style.popup, LV_GRAD_DIR_NONE);
+  lv_style_set_bg_opa(&ui->style.popup, LV_OPA_COVER);
+
   lv_style_reset(&ui->style.top_left);
   lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0x1A2E22));
   lv_style_set_border_color(&ui->style.top_left, lv_color_hex(0x2EA843));
@@ -2840,6 +2846,11 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_bg_grad_dir(&ui->style.main, LV_GRAD_DIR_VER);
   lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
+  lv_style_reset(&ui->style.popup);
+  lv_style_set_bg_color(&ui->style.popup, lv_color_hex(0xE8EEF4)); // светлый, без градиента
+  lv_style_set_bg_grad_dir(&ui->style.popup, LV_GRAD_DIR_NONE);
+  lv_style_set_bg_opa(&ui->style.popup, LV_OPA_COVER);
+
   lv_style_reset(&ui->style.top_left);
   lv_style_set_bg_color(&ui->style.top_left, lv_color_hex(0xDCF5E7));
   lv_style_set_border_color(&ui->style.top_left, lv_color_hex(0x2EA843));
@@ -2892,6 +2903,7 @@ static void apply_theme_light(ui_main_menu_t *ui) {
 
 static void init_styles(ui_main_menu_t *ui) {
   lv_style_init(&ui->style.main);
+  lv_style_init(&ui->style.popup);
   lv_style_init(&ui->style.top_left);
   lv_style_init(&ui->style.bot_left);
   lv_style_init(&ui->style.top_right);

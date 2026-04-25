@@ -248,6 +248,7 @@ lv_style_t nav_btn;
 
 typedef struct {
   lv_style_t main;
+  lv_style_t popup;     // плоский фон для попапов, без градиента
   lv_style_t top_left;
   lv_style_t top_right;
   lv_style_t bot_left;

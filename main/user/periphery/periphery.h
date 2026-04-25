@@ -3,6 +3,8 @@
  *
  *  Created on: 07.02.2026
  *      Author: toose
+ *
+ *  SHT31 → SHT41 migration
  */
 
 #ifndef MAIN_PERIPHERY_H_
@@ -10,102 +12,105 @@
 
 #include <stdint.h>
 
-// SHT31 I2C address (ADDR pin low = 0x44, high = 0x45)
-#define SHT31_ADDRESS           0x44
- 
-// SHT31 commands (2 bytes each)
-#define SHT31_CMD_SOFTRESET_MSB 0x30
-#define SHT31_CMD_SOFTRESET_LSB 0xA2
- 
-// Single-shot measurement: High Repeatability, Clock Stretching Disabled
-#define SHT31_CMD_MEAS_MSB      0x24
-#define SHT31_CMD_MEAS_LSB      0x00
- 
-// Status register read
-#define SHT31_CMD_STATUS_MSB    0xF3
-#define SHT31_CMD_STATUS_LSB    0x2D
- 
-// Measurement ready time: High repeatability requires ~15ms
-#define SHT31_MEAS_DELAY_US     15000
- 
-typedef enum {
-    SHT31_STATE_IDLE = 0,
-    SHT31_STATE_TRIGGERED,
-} sht31_state_t;
- 
+// ---------------------------------------------------------------------------
+// SHT41
+// ---------------------------------------------------------------------------
+// I2C address (fixed, no ADDR pin on SHT41)
+#define SHT41_ADDRESS           0x44
+
+// Single-byte commands
+#define SHT41_CMD_SOFTRESET     0x94   // soft reset (~1 ms)
+
+// Measure commands (single-shot, no clock stretching)
+#define SHT41_CMD_MEAS_HIGH     0xFD   // High precision   ~10 ms
+#define SHT41_CMD_MEAS_MED      0xF6   // Medium precision  ~5 ms
+#define SHT41_CMD_MEAS_LOW      0xE0   // Low precision     ~2 ms
+
+// Use High precision by default
+#define SHT41_CMD_MEAS          SHT41_CMD_MEAS_HIGH
+#define SHT41_MEAS_DELAY_US     10000  // 10 ms for High precision
 
 typedef enum {
-	SHT31_STATE_FAIL,
-	SHT31_STATE_OK,
-} sht31_life_t;
+    SHT41_STATE_IDLE = 0,
+    SHT41_STATE_TRIGGERED,
+} sht41_state_t;
+
+typedef enum {
+    SHT41_STATE_FAIL,
+    SHT41_STATE_OK,
+} sht41_life_t;
 
 typedef struct {
-    float    temperature;
-    uint8_t  humidity;
-    sht31_state_t state;
-	sht31_life_t life;
-    int64_t  trigger_time;
-} sht31_data_t;
- 
+    float         temperature;
+    uint8_t       humidity;
+    sht41_state_t state;
+    sht41_life_t  life;
+    int64_t       trigger_time;
+} sht41_data_t;
 
+void    sht41_init(void);
+void    sht41_read(void);
+float   get_temperature_sht41(void);
+uint8_t get_humidity_sht41(void);
 
-void    sht31_init(void);
-void    sht31_read(void);
-float   get_temperature_sht31(void);
-uint8_t get_humidity_sht31(void);
-
-#define CRC8_POLYNOMIAL 0x31
+// ---------------------------------------------------------------------------
+// SGP30  (unchanged)
+// ---------------------------------------------------------------------------
+#define CRC8_POLYNOMIAL     0x31
 #define SGP30_ADDR          0x58
-#define	SGP30_ADDR_WRITE	SGP30_ADDR      
-#define	SGP30_ADDR_READ		SGP30_ADDR 
+#define SGP30_ADDR_WRITE    SGP30_ADDR
+#define SGP30_ADDR_READ     SGP30_ADDR
 
 typedef enum {
-	SGP30_STATE_FAIL,
-	SGP30_STATE_OK,
+    SGP30_STATE_FAIL,
+    SGP30_STATE_OK,
 } sgp30_state_t;
 
 typedef struct sgp30_data_st {
-    uint16_t co2;
-    uint16_t tvoc;
-	sgp30_state_t state;
-}sgp30_data_t;
-
-
+    uint16_t      co2;
+    uint16_t      tvoc;
+    sgp30_state_t state;
+} sgp30_data_t;
 
 typedef enum sgp30_cmd_en {
-    INIT_AIR_QUALITY = 0x2003,
+    INIT_AIR_QUALITY    = 0x2003,
     MEASURE_AIR_QUALITY = 0x2008
 } sgp30_cmd_t;
 
+int      sgp30_init(void);
+int      sgp30_read(void);
+uint16_t get_co2_sgp30(void);
+uint16_t get_tvoc_sgp30(void);
 
-int sgp30_init();
-int sgp30_read();
-uint16_t get_co2_sgp30();
-uint16_t get_tvoc_sgp30();
-
-void read_sensors();
-
-enum namesOfWiFiStatus{
-	WIFI_RECONNECT,
-	WIFI_CONNECTED,
-	WIFI_DISCONNECTED
-};
-
-
-
-void sht31_init();
 void sgp30_set_humidity_compensation(float temperature_c, float relative_humidity_pct);
 
-uint8_t get_wifi_status();
-const char* get_wifi_ssid();
-const char* get_wifi_pass();
-int16_t get_wifi_rssi();
+// ---------------------------------------------------------------------------
+// Aggregated read
+// ---------------------------------------------------------------------------
+void read_sensors(void);
 
-uint8_t get_time_mday();
-uint16_t get_time_year();
-uint8_t get_time_month();
-uint8_t get_time_hour();
-uint8_t get_time_minute();
-uint8_t get_time_wday();
-	
+// ---------------------------------------------------------------------------
+// WiFi helpers
+// ---------------------------------------------------------------------------
+enum namesOfWiFiStatus {
+    WIFI_RECONNECT,
+    WIFI_CONNECTED,
+    WIFI_DISCONNECTED
+};
+
+uint8_t     get_wifi_status(void);
+const char *get_wifi_ssid(void);
+const char *get_wifi_pass(void);
+int16_t     get_wifi_rssi(void);
+
+// ---------------------------------------------------------------------------
+// Time helpers
+// ---------------------------------------------------------------------------
+uint8_t  get_time_mday(void);
+uint16_t get_time_year(void);
+uint8_t  get_time_month(void);
+uint8_t  get_time_hour(void);
+uint8_t  get_time_minute(void);
+uint8_t  get_time_wday(void);
+
 #endif /* MAIN_PERIPHERY_H_ */
