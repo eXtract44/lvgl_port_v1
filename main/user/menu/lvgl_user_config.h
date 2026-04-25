@@ -64,7 +64,7 @@
 #define BLOCK_TOP_LEFT_WIDTH_SYMBOLS 32
 #define BLOCK_TOP_LEFT_HEIGHT_SYMBOLS 32
 // строка 1 — температура 
-#define BLOCK_TOP_LEFT_X_START_SYMBOLS -5
+#define BLOCK_TOP_LEFT_X_START_SYMBOLS -15
 #define BLOCK_TOP_LEFT_Y_START_SYMBOLS_OFFSET 10
 #define BLOCK_TOP_LEFT_Y_START_SYMBOLS_1 30
 // строка 2 — влажность (иконка слева, рядом с температурой)
@@ -82,7 +82,7 @@
 
 
 // X позиции значений
-#define BLOCK_TOP_LEFT_X_START_VALUES   30   // левый столбец значений
+#define BLOCK_TOP_LEFT_X_START_VALUES   20   // левый столбец значений
 #define BLOCK_TOP_LEFT_X_START_VALUES_R 150  // правый столбец (влажность)
 
 // Y позиции значений
@@ -197,7 +197,7 @@
 #define BLOCK_BOT_MID_HEIGHT_CO2_CHART 120
 #define BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART 80
 #define BLOCK_BOT_MID_ALIGN_CO2_CHART LV_ALIGN_CENTER
-#define BLOCK_BOT_MID_Y_START_CO2_CHART 70
+#define BLOCK_BOT_MID_Y_START_CO2_CHART 67
 
 #define BLOCK_BOT_MID_WIDTH_SYMBOL 45
 #define BLOCK_BOT_MID_HEIGHT_SYMBOL 45

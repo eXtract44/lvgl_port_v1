@@ -127,7 +127,7 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 
   /*Add a blue arc to the start*/
   ui->co2.indicator =
-      lv_meter_add_arc(meter, scale, 3, lv_palette_main(LV_PALETTE_GREEN), 0);
+      lv_meter_add_arc(meter, scale, 4, lv_palette_main(LV_PALETTE_GREEN), 0);
   lv_meter_set_indicator_start_value(meter, ui->co2.indicator, start_value);
   lv_meter_set_indicator_end_value(meter, ui->co2.indicator, start_value_1);
 
@@ -140,7 +140,7 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 
   /*Add a red arc to the end*/
   ui->co2.indicator =
-      lv_meter_add_arc(meter, scale, 3, lv_palette_main(LV_PALETTE_RED), 0);
+      lv_meter_add_arc(meter, scale, 4, lv_palette_main(LV_PALETTE_RED), 0);
   lv_meter_set_indicator_start_value(meter, ui->co2.indicator, end_value);
   lv_meter_set_indicator_end_value(meter, ui->co2.indicator, end_value_1);
 
@@ -152,7 +152,7 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_meter_set_indicator_end_value(meter, ui->co2.indicator, end_value_1);
 
 ui->co2.needle_arc = lv_meter_add_arc(
-    meter, scale, 5, lv_palette_main(LV_PALETTE_GREEN), 0);
+    meter, scale, 12, lv_palette_main(LV_PALETTE_GREEN), 0);
 lv_meter_set_indicator_start_value(meter, ui->co2.needle_arc, MIN_VALUE_CO2);
 lv_meter_set_indicator_end_value(meter, ui->co2.needle_arc, MIN_VALUE_CO2);
 
@@ -1538,20 +1538,18 @@ static void btn_settings_open_popup_event_handler(lv_event_t *e) {
   ui_create_settings_popup(ui);
 }
 static void btn_settings_close_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (!ui)
     return;
 
   lv_obj_del(ui->settings.popup);
 
-  // [FIX] Обнуляем ВСЕ дочерние указатели
-  ui->settings.popup = NULL;
-  ui->settings.btn_close = NULL;
-  ui->settings.btn_save = NULL;
-  ui->settings.standby_flag = NULL;
-  ui->settings.standby_time = NULL;
-  ui->settings.standby_day_night = NULL;
-  ui->settings.switch_.standby = NULL;
+  ui->settings.popup               = NULL;
+  ui->settings.btn_close           = NULL;
+  ui->settings.btn_save            = NULL;
+  ui->settings.standby_btnmatrix   = NULL;
+  ui->settings.standby_desc_label  = NULL;
+  ui->settings.switch_.theme       = NULL;
 
   show_all_blocks(ui);
 }
@@ -1646,7 +1644,7 @@ static void set_current_city_weather_event_handler(lv_event_t *e) {
 }
 /////////////////////////////////////////////////weather settings events
 
-static void ui_create_co2(ui_main_menu_t *ui) {
+static void ui_create_co2_chart_bot_mid(ui_main_menu_t *ui) {
   //  create_text("CO2 24H", ui->screen, STYLE_TEXT_TITLE,
   //              BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
   //              BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART, ui);
@@ -1833,45 +1831,90 @@ void ui_apply_theme(ui_main_menu_t *ui) {
   lv_obj_report_style_change(&ui->font.time);
   lv_obj_report_style_change(&ui->font.icon);
 }
-static void switch_event_cb(lv_event_t *e) {
-  // Вызывается при любом изменении любого свитча
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
 
-  ui->settings.switch_.standby_status =
-      lv_obj_has_state(ui->settings.switch_.standby, LV_STATE_CHECKED);
-  ui->settings.switch_.theme_status =
-      lv_obj_has_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+// callback для btnmatrix
+static void standby_btnmatrix_event_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+    ui->settings.switch_.standby_mode = (uint8_t)btn_id;
 
-  ui_apply_theme(ui);
+    // обновляем подсказку
+    static const char *descs[] = {
+        "Bildschirm bleibt immer eingeschaltet.",
+        "Standby nach 180 Sek. - immer aktiv.",
+        "Standby nach 180 Sek. - nur nachts aktiv."
+    };
+    lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
 
-  main_settings_save(ui->settings.switch_.standby_status,
-                     ui->settings.switch_.theme_status);
+    main_settings_save(ui->settings.switch_.standby_mode,
+                       ui->settings.switch_.theme_status);
+}
+
+// callback для свитча темы (упрощённый — только тема)
+static void theme_switch_event_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    ui->settings.switch_.theme_status =
+        lv_obj_has_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+    ui_apply_theme(ui);
+    main_settings_save(ui->settings.switch_.standby_mode,
+                       ui->settings.switch_.theme_status);
 }
 
 static void ui_create_settigs_switches(ui_main_menu_t *ui) {
-  ui->settings.switch_.standby = lv_switch_create(ui->settings.popup);
-  lv_obj_align(ui->settings.switch_.standby, LV_ALIGN_TOP_LEFT, 500, 90);
+ // --- тема (свитч остаётся) ---
+    ui->settings.switch_.theme = lv_switch_create(ui->settings.popup);
+    lv_obj_align(ui->settings.switch_.theme, LV_ALIGN_TOP_LEFT, 500, 270);
+    lv_obj_add_event_cb(ui->settings.switch_.theme, theme_switch_event_cb,
+                        LV_EVENT_VALUE_CHANGED, ui);
 
-  ui->settings.switch_.theme = lv_switch_create(ui->settings.popup);
-  lv_obj_align(ui->settings.switch_.theme, LV_ALIGN_TOP_LEFT, 500, 180);
-  lv_obj_add_event_cb(ui->settings.switch_.standby, switch_event_cb,
-                      LV_EVENT_VALUE_CHANGED, ui);
-  lv_obj_add_event_cb(ui->settings.switch_.theme, switch_event_cb,
-                      LV_EVENT_VALUE_CHANGED, ui);
-  // Загружаем сохранённые значения
+    // --- standby btnmatrix ---
+    static const char *btnm_map[] = {"Aus", "Immer", "Nachts", ""};
+    ui->settings.standby_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
+  lv_obj_set_size(ui->settings.standby_btnmatrix, 540, 90);
+lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
+    lv_btnmatrix_set_map(ui->settings.standby_btnmatrix, btnm_map);
+    lv_obj_set_style_text_font(ui->settings.standby_btnmatrix, 
+                           &lv_font_montserrat_20, LV_PART_ITEMS);
 
-  main_settings_load(&ui->settings.switch_.standby_status,
-                     &ui->settings.switch_.theme_status);
+    // взаимоисключающий выбор
+    lv_btnmatrix_set_btn_ctrl_all(ui->settings.standby_btnmatrix,
+                                  LV_BTNMATRIX_CTRL_CHECKABLE);
+    lv_btnmatrix_set_one_checked(ui->settings.standby_btnmatrix, true);
 
-  if (ui->settings.switch_.standby_status)
-    lv_obj_add_state(ui->settings.switch_.standby, LV_STATE_CHECKED);
-  else
-    lv_obj_clear_state(ui->settings.switch_.standby, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(ui->settings.standby_btnmatrix,
+                        standby_btnmatrix_event_cb,
+                        LV_EVENT_VALUE_CHANGED, ui);
 
-  if (ui->settings.switch_.theme_status)
-    lv_obj_add_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
-  else
-    lv_obj_clear_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+    // --- подсказка ---
+    ui->settings.standby_desc_label =
+        create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 225);
+    lv_obj_add_style(ui->settings.standby_desc_label,
+                     &ui->font.very_small_20, 0);
+
+    // --- загружаем сохранённые значения ---
+    main_settings_load(&ui->settings.switch_.standby_mode,
+                       &ui->settings.switch_.theme_status);
+
+    // применяем standby_mode к btnmatrix
+    lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
+                              ui->settings.switch_.standby_mode,
+                              LV_BTNMATRIX_CTRL_CHECKED);
+
+    // применяем тему
+    if (ui->settings.switch_.theme_status)
+        lv_obj_add_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+    else
+        lv_obj_clear_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+
+    // подсказка при загрузке
+    static const char *descs[] = {
+        "Bildschirm bleibt immer eingeschaltet.",
+        "Standby nach 180 Sek. - immer aktiv.",
+        "Standby nach 180 Sek. - nur nachts aktiv."
+    };
+    lv_label_set_text(ui->settings.standby_desc_label,
+                      descs[ui->settings.switch_.standby_mode]);
 }
 
 static void ui_create_settings_popup(ui_main_menu_t *ui) {
@@ -1883,10 +1926,11 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
 
   create_text("Einstellungen", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
+              
   create_text("Standby:", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 90, ui);
   create_text("Thema Light/Dark:", ui->settings.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 180, ui);
+              LV_ALIGN_TOP_LEFT, 15, 270, ui);
 
   ui->settings.btn_close =
       create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
@@ -1898,7 +1942,7 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
 }
 
 static void create_block_bot_middle(ui_main_menu_t *ui) {
-  ui_create_co2(ui);
+  ui_create_co2_chart_bot_mid(ui);
   ui_create_settings_popup_btns(ui);
   // ui_create_standby(ui);
 }
@@ -2423,7 +2467,7 @@ void update_block_top_left(ui_main_menu_t *ui) {
                                       lv_palette_main(LV_PALETTE_ORANGE), 0);
         else if (margin < 3.0f)
           lv_obj_set_style_text_color(ui->sensor.dew_point_label,
-                                      lv_palette_main(LV_PALETTE_YELLOW), 0);
+                                      lv_palette_main(LV_PALETTE_LIME), 0);
         else
           lv_obj_remove_local_style_prop(ui->sensor.dew_point_label,
                                          LV_STYLE_TEXT_COLOR, 0);
@@ -2654,10 +2698,6 @@ void co2_meter_anim_cb(lv_timer_t *timer) {
     ui->co2.co2_display = ui->co2.co2_target;
   }
 
-  // заменяешь эту строку:
-  // co2_display += (co2_target - co2_display) / 8;
-
-  // на это:
   int32_t diff = ui->co2.co2_target - ui->co2.co2_display;
   if (diff == 0)
     return;
@@ -2686,8 +2726,28 @@ lv_obj_invalidate(ui->co2.meter);
 bool is_screen_pressed(void) { return standby_touched; }
 
 static void standby_handle(ui_main_menu_t *ui) {
-  static uint32_t timer_standby_sec = 0;
+ static uint32_t timer_standby_sec = 0;
 
+  uint8_t mode = ui->settings.switch_.standby_mode;
+
+  // определяем активен ли standby сейчас
+  bool standby_active = false;
+  if (mode == 1) {
+    standby_active = true;          // Immer — всегда
+  } else if (mode == 2) {
+    standby_active = !get_is_day(); // Nachts — только ночью
+  }
+  // mode == 0 (Aus) — standby_active остаётся false
+
+  if (!standby_active) {
+    // standby выключен — сбрасываем таймер, экран всегда включён
+    timer_standby_sec = 0;
+    set_visible(ui->standby.background, false);
+    wavesahre_rgb_lcd_bl_on();
+    return;
+  }
+
+  // standby активен — обычная логика
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
     set_visible(ui->standby.background, false);
@@ -2700,9 +2760,6 @@ static void standby_handle(ui_main_menu_t *ui) {
       set_visible(ui->standby.background, true);
       timer_standby_sec = MAX_STANDBY_TIME * 5;
     }
-  }
-  if (!ui->settings.switch_.standby_status) {
-    timer_standby_sec = 0;
   }
 }
 
@@ -2920,8 +2977,8 @@ void init_lv_objects() {
   ui.weather.settings_popup.cities_de = cities_de;
   ui.weather.settings_popup.city_count = CITY_COUNT;
 
-  main_settings_load(&ui.settings.switch_.standby_status,
-                     &ui.settings.switch_.theme_status);
+ main_settings_load(&ui.settings.switch_.standby_mode,
+                   &ui.settings.switch_.theme_status);
   weather_settings_load(&ui.weather.settings_popup.saved_city);
   build_weather_url(ui.weather.settings_popup.saved_city);
   init_fonts(&ui);

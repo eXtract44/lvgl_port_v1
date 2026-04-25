@@ -120,10 +120,9 @@ typedef struct {
 } ui_weather_t;
 
 typedef struct {
-  lv_obj_t *standby;
   lv_obj_t *theme;
-  bool standby_status;
   bool theme_status;
+  uint8_t standby_mode;  // 0=aus, 1=immer, 2=nachts
 } ui_switchs_t;
 
 typedef struct {
@@ -146,16 +145,13 @@ typedef struct {
 } ui_wifi_t;
 
 typedef struct {
-  ui_switchs_t switch_;
+ ui_switchs_t switch_;
   lv_obj_t *btn_open;
-
   lv_obj_t *popup;
   lv_obj_t *btn_close;
   lv_obj_t *btn_save;
-
-  lv_obj_t *standby_flag;
-  lv_obj_t *standby_time;
-  lv_obj_t *standby_day_night;
+  lv_obj_t *standby_btnmatrix;   // Aus / Immer / Nachts
+  lv_obj_t *standby_desc_label;  // подсказка под кнопками
 } ui_settings_t;
 
 typedef struct {
