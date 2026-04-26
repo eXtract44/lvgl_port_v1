@@ -1841,9 +1841,9 @@ static void standby_btnmatrix_event_cb(lv_event_t *e) {
 
     // обновляем подсказку
     static const char *descs[] = {
-        "Bildschirm bleibt immer eingeschaltet.",
-        "Standby nach 180 Sek. - immer aktiv.",
-        "Standby nach 180 Sek. - nur nachts aktiv."
+         "Immer eingeschaltet.",
+        "Aus nach 180 Sek.",
+        "Aus Nachts nach 180 Sek."
     };
     lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
 
@@ -1869,7 +1869,7 @@ static void ui_create_settigs_switches(ui_main_menu_t *ui) {
                         LV_EVENT_VALUE_CHANGED, ui);
 
     // --- standby btnmatrix ---
-    static const char *btnm_map[] = {"Aus", "Immer", "Nachts", ""};
+    static const char *btnm_map[] = {"Ein", "Auto", "Auto Nachts", ""};
     ui->settings.standby_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
   lv_obj_set_size(ui->settings.standby_btnmatrix, 540, 90);
 lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
@@ -1909,9 +1909,9 @@ lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
 
     // подсказка при загрузке
     static const char *descs[] = {
-        "Bildschirm bleibt immer eingeschaltet.",
-        "Standby nach 180 Sek. - immer aktiv.",
-        "Standby nach 180 Sek. - nur nachts aktiv."
+        "Immer eingeschaltet.",
+        "Aus nach 180 Sek.",
+        "Aus Nachts nach 180 Sek."
     };
     lv_label_set_text(ui->settings.standby_desc_label,
                       descs[ui->settings.switch_.standby_mode]);
@@ -1927,7 +1927,7 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
   create_text("Einstellungen", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
               
-  create_text("Standby:", ui->settings.popup, STYLE_TEXT_SMALL,
+  create_text("Display:", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 90, ui);
   create_text("Thema Light/Dark:", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 270, ui);
