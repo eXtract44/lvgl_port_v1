@@ -30,29 +30,29 @@ void weather_settings_save(uint16_t city) {
     nvs_close(handle);
 }
 
-void main_settings_save(uint8_t  standby_mode, bool theme) {
-      nvs_handle_t handle;
+void main_settings_save(uint8_t standby_mode, uint8_t theme_mode) {
+    nvs_handle_t handle;
     esp_err_t err = nvs_open("main_settings", NVS_READWRITE, &handle);
     if (err != ESP_OK) return;
 
-    nvs_set_u8(handle, "standby", standby_mode);  // uint8_t напрямую
-    nvs_set_u8(handle, "theme",   (uint8_t)theme);
+    nvs_set_u8(handle, "standby",    standby_mode);
+    nvs_set_u8(handle, "theme_mode", theme_mode);
     nvs_commit(handle);
     nvs_close(handle);
 }
 
-void main_settings_load(uint8_t  *standby_mode, bool *theme) {
-  nvs_handle_t handle;
+void main_settings_load(uint8_t *standby_mode, uint8_t *theme_mode) {
+    nvs_handle_t handle;
     esp_err_t err = nvs_open("main_settings", NVS_READONLY, &handle);
     if (err != ESP_OK) {
         *standby_mode = 0;  // дефолт — выключен
-        *theme        = false;
+        *theme_mode   = 0;  // дефолт — Auto
         return;
     }
 
     uint8_t val = 0;
-    nvs_get_u8(handle, "standby", &val); *standby_mode = val;
-    nvs_get_u8(handle, "theme",   &val); *theme = (bool)val;
+    nvs_get_u8(handle, "standby",    &val); *standby_mode = val;
+    nvs_get_u8(handle, "theme_mode", &val); *theme_mode   = val;
     nvs_close(handle);
 }
 

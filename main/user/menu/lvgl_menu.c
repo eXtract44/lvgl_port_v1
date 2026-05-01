@@ -21,15 +21,14 @@
 #include "user/periphery/wifi.h"
 
 extern const city_t cities_de[];
-
-ui_main_menu_t ui = {0};
-
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
 extern wifi_ap_record_t ap_info;
 extern sht41_data_t sht41_data;
 extern sgp30_data_t sgp30_data;
 extern forecast_data_t forecast_data;
+
+ui_main_menu_t ui = {0};
 
 int standby_touched = 0; // callback for extern touch driver
 
@@ -1809,27 +1808,28 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
 }
 
 void ui_apply_theme(ui_main_menu_t *ui) {
-  if (ui->settings.switch_.theme_status) {
-    apply_theme_dark(ui);
-  } else {
-    apply_theme_light(ui);
-  }
-
-  // Говорим LVGL перерисовать все объекты
-  lv_obj_report_style_change(&ui->style.main);
-  lv_obj_report_style_change(&ui->style.popup);
-  lv_obj_report_style_change(&ui->style.top_left);
-  lv_obj_report_style_change(&ui->style.bot_left);
-  lv_obj_report_style_change(&ui->style.top_right);
-  lv_obj_report_style_change(&ui->style.bot_right);
-  
-  lv_obj_report_style_change(&ui->font.very_small_20);
-  lv_obj_report_style_change(&ui->font.small_24);
-  lv_obj_report_style_change(&ui->font.medium_32);
-  lv_obj_report_style_change(&ui->font.large_48);
-  lv_obj_report_style_change(&ui->font.nav_btn);
-  lv_obj_report_style_change(&ui->font.time);
-  lv_obj_report_style_change(&ui->font.icon);
+	switch (ui->settings.switch_.theme_mode) {
+	    case 0: // Auto
+	        ui->settings.switch_.theme_last_is_day = get_is_day();
+	        ui->settings.switch_.theme_last_is_day
+	            ? apply_theme_light(ui) : apply_theme_dark(ui);
+	        break;
+	    case 1: apply_theme_light(ui); break; // Hell
+	    case 2: apply_theme_dark(ui);  break; // Dunkel
+	  }
+	  lv_obj_report_style_change(&ui->style.main);
+	  lv_obj_report_style_change(&ui->style.popup);
+	  lv_obj_report_style_change(&ui->style.top_left);
+	  lv_obj_report_style_change(&ui->style.bot_left);
+	  lv_obj_report_style_change(&ui->style.top_right);
+	  lv_obj_report_style_change(&ui->style.bot_right);
+	  lv_obj_report_style_change(&ui->font.very_small_20);
+	  lv_obj_report_style_change(&ui->font.small_24);
+	  lv_obj_report_style_change(&ui->font.medium_32);
+	  lv_obj_report_style_change(&ui->font.large_48);
+	  lv_obj_report_style_change(&ui->font.nav_btn);
+	  lv_obj_report_style_change(&ui->font.time);
+	  lv_obj_report_style_change(&ui->font.icon);
 }
 
 // callback для btnmatrix
@@ -1848,73 +1848,119 @@ static void standby_btnmatrix_event_cb(lv_event_t *e) {
     lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
 
     main_settings_save(ui->settings.switch_.standby_mode,
-                       ui->settings.switch_.theme_status);
+                       ui->settings.switch_.theme_mode);
 }
 
-// callback для свитча темы (упрощённый — только тема)
-static void theme_switch_event_cb(lv_event_t *e) {
+static void theme_btnmatrix_event_cb(lv_event_t *e) {
     ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    ui->settings.switch_.theme_status =
-        lv_obj_has_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
-    ui_apply_theme(ui);
+    lv_obj_t *obj = lv_event_get_target(e);
+    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+    ui->settings.switch_.theme_mode = (uint8_t)btn_id;
+
+    static const char *descs[] = {
+        "Automatisch: Tagsüber hell, nachts dunkel.",
+        "Immer helles Design.",
+        "Immer dunkles Design."
+    };
+    lv_label_set_text(ui->settings.theme_desc_label, descs[btn_id]);
+
+    // применяем тему сразу
+    switch (btn_id) {
+        case 0: // Auto
+            ui->settings.switch_.theme_last_is_day = get_is_day();
+            ui->settings.switch_.theme_last_is_day
+                ? apply_theme_light(ui) : apply_theme_dark(ui);
+            break;
+        case 1: apply_theme_light(ui); break; // Hell
+        case 2: apply_theme_dark(ui);  break; // Dunkel
+    }
+    lv_obj_report_style_change(&ui->style.main);
+    lv_obj_report_style_change(&ui->style.popup);
+    lv_obj_report_style_change(&ui->style.top_left);
+    lv_obj_report_style_change(&ui->style.bot_left);
+    lv_obj_report_style_change(&ui->style.top_right);
+    lv_obj_report_style_change(&ui->style.bot_right);
+    lv_obj_report_style_change(&ui->font.very_small_20);
+    lv_obj_report_style_change(&ui->font.small_24);
+    lv_obj_report_style_change(&ui->font.medium_32);
+    lv_obj_report_style_change(&ui->font.large_48);
+    lv_obj_report_style_change(&ui->font.nav_btn);
+    lv_obj_report_style_change(&ui->font.time);
+    lv_obj_report_style_change(&ui->font.icon);
+
     main_settings_save(ui->settings.switch_.standby_mode,
-                       ui->settings.switch_.theme_status);
+                       ui->settings.switch_.theme_mode);
 }
 
 static void ui_create_settigs_switches(ui_main_menu_t *ui) {
- // --- тема (свитч остаётся) ---
-    ui->settings.switch_.theme = lv_switch_create(ui->settings.popup);
-    lv_obj_align(ui->settings.switch_.theme, LV_ALIGN_TOP_LEFT, 500, 270);
-    lv_obj_add_event_cb(ui->settings.switch_.theme, theme_switch_event_cb,
-                        LV_EVENT_VALUE_CHANGED, ui);
+	// --- standby btnmatrix ---
+	   static const char *standby_map[] = {"Ein", "Auto", "Auto Nachts", ""};
+	   ui->settings.standby_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
+	   lv_obj_set_size(ui->settings.standby_btnmatrix, 540, 90);
+	   lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
+	   lv_btnmatrix_set_map(ui->settings.standby_btnmatrix, standby_map);
+	   lv_obj_set_style_text_font(ui->settings.standby_btnmatrix,
+	                              &lv_font_montserrat_20, LV_PART_ITEMS);
+	   lv_btnmatrix_set_btn_ctrl_all(ui->settings.standby_btnmatrix,
+	                                 LV_BTNMATRIX_CTRL_CHECKABLE);
+	   lv_btnmatrix_set_one_checked(ui->settings.standby_btnmatrix, true);
+	   lv_obj_add_event_cb(ui->settings.standby_btnmatrix,
+	                       standby_btnmatrix_event_cb,
+	                       LV_EVENT_VALUE_CHANGED, ui);
 
-    // --- standby btnmatrix ---
-    static const char *btnm_map[] = {"Ein", "Auto", "Auto Nachts", ""};
-    ui->settings.standby_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
-  lv_obj_set_size(ui->settings.standby_btnmatrix, 540, 90);
-lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
-    lv_btnmatrix_set_map(ui->settings.standby_btnmatrix, btnm_map);
-    lv_obj_set_style_text_font(ui->settings.standby_btnmatrix, 
-                           &lv_font_montserrat_20, LV_PART_ITEMS);
+	   ui->settings.standby_desc_label =
+	       create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 225);
+	   lv_obj_add_style(ui->settings.standby_desc_label, &ui->font.very_small_20, 0);
 
-    // взаимоисключающий выбор
-    lv_btnmatrix_set_btn_ctrl_all(ui->settings.standby_btnmatrix,
-                                  LV_BTNMATRIX_CTRL_CHECKABLE);
-    lv_btnmatrix_set_one_checked(ui->settings.standby_btnmatrix, true);
+	   // --- theme btnmatrix ---
+	   static const char *theme_map[] = {"Auto", "Hell", "Dunkel", ""};
+	   ui->settings.theme_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
+	   lv_obj_set_size(ui->settings.theme_btnmatrix, 540, 90);
+	   lv_obj_align(ui->settings.theme_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 310);
+	   lv_btnmatrix_set_map(ui->settings.theme_btnmatrix, theme_map);
+	   lv_obj_set_style_text_font(ui->settings.theme_btnmatrix,
+	                              &lv_font_montserrat_20, LV_PART_ITEMS);
+	   lv_btnmatrix_set_btn_ctrl_all(ui->settings.theme_btnmatrix,
+	                                 LV_BTNMATRIX_CTRL_CHECKABLE);
+	   lv_btnmatrix_set_one_checked(ui->settings.theme_btnmatrix, true);
+	   lv_obj_add_event_cb(ui->settings.theme_btnmatrix,
+	                       theme_btnmatrix_event_cb,
+	                       LV_EVENT_VALUE_CHANGED, ui);
 
-    lv_obj_add_event_cb(ui->settings.standby_btnmatrix,
-                        standby_btnmatrix_event_cb,
-                        LV_EVENT_VALUE_CHANGED, ui);
+	   ui->settings.theme_desc_label =
+	       create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 405);
+	   lv_obj_add_style(ui->settings.theme_desc_label, &ui->font.very_small_20, 0);
 
-    // --- подсказка ---
-    ui->settings.standby_desc_label =
-        create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 225);
-    lv_obj_add_style(ui->settings.standby_desc_label,
-                     &ui->font.very_small_20, 0);
+	   // --- загружаем сохранённые значения ---
+	   main_settings_load(&ui->settings.switch_.standby_mode,
+	                      &ui->settings.switch_.theme_mode);
 
-    // --- загружаем сохранённые значения ---
-    main_settings_load(&ui->settings.switch_.standby_mode,
-                       &ui->settings.switch_.theme_status);
+	   // применяем standby к btnmatrix
+	   lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
+	                             ui->settings.switch_.standby_mode,
+	                             LV_BTNMATRIX_CTRL_CHECKED);
 
-    // применяем standby_mode к btnmatrix
-    lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
-                              ui->settings.switch_.standby_mode,
-                              LV_BTNMATRIX_CTRL_CHECKED);
+	   // применяем theme к btnmatrix
+	   lv_btnmatrix_set_btn_ctrl(ui->settings.theme_btnmatrix,
+	                             ui->settings.switch_.theme_mode,
+	                             LV_BTNMATRIX_CTRL_CHECKED);
 
-    // применяем тему
-    if (ui->settings.switch_.theme_status)
-        lv_obj_add_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
-    else
-        lv_obj_clear_state(ui->settings.switch_.theme, LV_STATE_CHECKED);
+	   // подсказки при загрузке
+	   static const char *standby_descs[] = {
+	       "Immer eingeschaltet.",
+	       "Aus nach 180 Sek.",
+	       "Aus Nachts nach 180 Sek."
+	   };
+	   lv_label_set_text(ui->settings.standby_desc_label,
+	                     standby_descs[ui->settings.switch_.standby_mode]);
 
-    // подсказка при загрузке
-    static const char *descs[] = {
-        "Immer eingeschaltet.",
-        "Aus nach 180 Sek.",
-        "Aus Nachts nach 180 Sek."
-    };
-    lv_label_set_text(ui->settings.standby_desc_label,
-                      descs[ui->settings.switch_.standby_mode]);
+	   static const char *theme_descs[] = {
+	       "Automatisch: Tagsüber hell, nachts dunkel.",
+	       "Immer helles Design.",
+	       "Immer dunkles Design."
+	   };
+	   lv_label_set_text(ui->settings.theme_desc_label,
+	                     theme_descs[ui->settings.switch_.theme_mode]);
 }
 
 static void ui_create_settings_popup(ui_main_menu_t *ui) {
@@ -1929,8 +1975,8 @@ static void ui_create_settings_popup(ui_main_menu_t *ui) {
               
   create_text("Display:", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 90, ui);
-  create_text("Thema Light/Dark:", ui->settings.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 270, ui);
+			  create_text("Thema:", ui->settings.popup, STYLE_TEXT_SMALL,
+			              LV_ALIGN_TOP_LEFT, 15, 270, ui);
 
   ui->settings.btn_close =
       create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
@@ -2764,10 +2810,32 @@ static void standby_handle(ui_main_menu_t *ui) {
 }
 
 static void timer_10000(lv_timer_t *timer) {
-  LV_UNUSED(timer);
-#if ACTIVATE_BLOCK_TOP_RIGHT
-  update_block_top_right(&ui);
-#endif
+	 LV_UNUSED(timer);
+	#if ACTIVATE_BLOCK_TOP_RIGHT
+	  update_block_top_right(&ui);
+	#endif
+
+	  // --- авто-тема ---
+	  if (ui.settings.switch_.theme_mode == 0) { // 0 = Auto
+	    bool is_day = get_is_day();
+	    if (is_day != ui.settings.switch_.theme_last_is_day) {
+	      ui.settings.switch_.theme_last_is_day = is_day;
+	      is_day ? apply_theme_light(&ui) : apply_theme_dark(&ui);
+	      lv_obj_report_style_change(&ui.style.main);
+	      lv_obj_report_style_change(&ui.style.popup);
+	      lv_obj_report_style_change(&ui.style.top_left);
+	      lv_obj_report_style_change(&ui.style.bot_left);
+	      lv_obj_report_style_change(&ui.style.top_right);
+	      lv_obj_report_style_change(&ui.style.bot_right);
+	      lv_obj_report_style_change(&ui.font.very_small_20);
+	      lv_obj_report_style_change(&ui.font.small_24);
+	      lv_obj_report_style_change(&ui.font.medium_32);
+	      lv_obj_report_style_change(&ui.font.large_48);
+	      lv_obj_report_style_change(&ui.font.nav_btn);
+	      lv_obj_report_style_change(&ui.font.time);
+	      lv_obj_report_style_change(&ui.font.icon);
+	    }
+	  }
 }
 
 static void sensor_record_values(ui_main_menu_t *ui) {
@@ -2967,7 +3035,8 @@ static void init_styles(ui_main_menu_t *ui) {
   lv_style_init(&ui->style.bot_right);
   lv_style_init(&ui->style.meter_co2);
   lv_style_init(&ui->style.chart_co2);
-
+  
+  ui->settings.switch_.theme_last_is_day = get_is_day();
   ui_apply_theme(ui); // применяем нужную тему
 }
 
