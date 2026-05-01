@@ -1566,6 +1566,8 @@ static void btn_settings_close_popup_event_handler(lv_event_t *e) {
   ui->settings.standby_desc_label = NULL;
   ui->settings.theme_btnmatrix = NULL;
   ui->settings.theme_desc_label = NULL;
+  ui->settings.co2_btnmatrix  = NULL;
+ui->settings.co2_desc_label = NULL;
 
   show_all_blocks(ui);
 }
@@ -1732,12 +1734,6 @@ static void ui_create_weather_settings_popup(ui_main_menu_t *ui) {
               STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 0, ui);
   create_text("Stadt:", ui->weather.settings_popup.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 90, ui);
-  //  create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL,
-  //  LV_ALIGN_TOP_LEFT,
-  //              15, 180, ui);
-  //  create_text("OPTION:", ui->weather.popup, STYLE_TEXT_SMALL,
-  //  LV_ALIGN_TOP_LEFT,
-  //              15, 270, ui);
   ui_create_city_list_weather(ui);
 }
 
@@ -1870,7 +1866,22 @@ static void standby_btnmatrix_event_cb(lv_event_t *e) {
                      ui->settings.switch_.theme_mode,
                      ui->settings.switch_.co2_mode);
 }
+static void co2_btnmatrix_event_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+    ui->settings.switch_.co2_mode = (uint8_t)btn_id;
 
+    static const char *descs[] = {
+    "400-2400 ppm: fuer Schlafraeume und Bueros.",
+    "400-4000 ppm: fuer Wohnraeume.",
+    "400-6000 ppm: fuer Industrie und Lager."};
+    lv_label_set_text(ui->settings.co2_desc_label, descs[btn_id]);
+
+    main_settings_save(ui->settings.switch_.standby_mode,
+                       ui->settings.switch_.theme_mode,
+                       ui->settings.switch_.co2_mode);
+}
 static void theme_btnmatrix_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   lv_obj_t *obj = lv_event_get_target(e);
@@ -1951,6 +1962,39 @@ static void ui_create_settigs_switches(ui_main_menu_t *ui) {
   ui->settings.theme_desc_label =
       create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 405);
   lv_obj_add_style(ui->settings.theme_desc_label, &ui->font.very_small_20, 0);
+
+create_text("Luftqualitaetssensor:", ui->settings.popup, STYLE_TEXT_SMALL,
+            LV_ALIGN_TOP_LEFT, 15, 450, ui);
+
+static const char *co2_map[] = {"Sensitiv", "Normal",
+                                 "Robust", ""};
+ui->settings.co2_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
+lv_obj_set_size(ui->settings.co2_btnmatrix, 540, 90);
+lv_obj_align(ui->settings.co2_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 490);
+lv_btnmatrix_set_map(ui->settings.co2_btnmatrix, co2_map);
+lv_obj_set_style_text_font(ui->settings.co2_btnmatrix,
+                           &lv_font_montserrat_20, LV_PART_ITEMS);
+lv_btnmatrix_set_btn_ctrl_all(ui->settings.co2_btnmatrix,
+                               LV_BTNMATRIX_CTRL_CHECKABLE);
+lv_btnmatrix_set_one_checked(ui->settings.co2_btnmatrix, true);
+lv_obj_add_event_cb(ui->settings.co2_btnmatrix, co2_btnmatrix_event_cb,
+                    LV_EVENT_VALUE_CHANGED, ui);
+
+ui->settings.co2_desc_label =
+    create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 585);
+lv_obj_add_style(ui->settings.co2_desc_label, &ui->font.very_small_20, 0);
+
+// применяем сохранённое значение
+lv_btnmatrix_set_btn_ctrl(ui->settings.co2_btnmatrix,
+                          ui->settings.switch_.co2_mode,
+                          LV_BTNMATRIX_CTRL_CHECKED);
+
+static const char *co2_descs[] = {
+    "400-2400 ppm: fuer Schlafraeume und Bueros.",
+    "400-4000 ppm: fuer Wohnraeume.",
+    "400-6000 ppm: fuer Industrie und Lager."};
+lv_label_set_text(ui->settings.co2_desc_label,
+                  co2_descs[ui->settings.switch_.co2_mode]);
 
   // --- загружаем сохранённые значения ---
   main_settings_load(&ui->settings.switch_.standby_mode,
@@ -2610,6 +2654,19 @@ void update_block_top_left(ui_main_menu_t *ui) {
     sensor_record_values(ui);
   }
 }
+
+static int16_t co2_scale(int16_t real_ppm, uint8_t mode) {
+  static const int16_t mode_max[] = {2400, 4000, 6000};
+  int16_t max = mode_max[mode];
+  if (real_ppm <= MIN_VALUE_CO2)
+    return MIN_VALUE_CO2;
+  if (real_ppm >= max)
+    return MAX_VALUE_CO2;
+  return (int16_t)((int32_t)(real_ppm - MIN_VALUE_CO2) *
+                       (MAX_VALUE_CO2 - MIN_VALUE_CO2) / (max - MIN_VALUE_CO2) +
+                   MIN_VALUE_CO2);
+}
+
 static lv_color_t calc_co2_color(uint16_t co2) {
   if (co2 < 800)
     return lv_palette_main(LV_PALETTE_GREEN);
@@ -2624,9 +2681,9 @@ static lv_color_t calc_co2_color(uint16_t co2) {
 void update_block_top_middle(ui_main_menu_t *ui) {
   if (sgp30_data.state == SGP30_STATE_OK) {
     uint16_t raw = get_co2_sgp30();
-    ui->co2.co2_target = raw;
-    // Лейбл показываем реальное значение (или display — на вкус)
-    print_value("%.f", raw, ui->co2.co2_label);
+    ui->co2.co2_target = co2_scale(raw, ui->settings.switch_.co2_mode);
+    print_value("%.f", (float)raw,
+                ui->co2.co2_label); // реальное, без изменений
   } else {
     lv_label_set_text(ui->co2.co2_label, "KS");
   }
@@ -2743,11 +2800,9 @@ void update_block_bot_middle(ui_main_menu_t *ui) {
   static uint16_t cnt_chart_co2 = 0;
   cnt_chart_co2++;            // 1 tick == 1 sec
   if (cnt_chart_co2 > 3600) { // equal 1 hour
-    uint16_t temp_co2_chart = get_co2_sgp30();
-    if (temp_co2_chart > MAX_VALUE_CO2)
-      temp_co2_chart = MAX_VALUE_CO2;
-
-    lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, temp_co2_chart);
+   int16_t raw_chart = (int16_t)get_co2_sgp30();
+int16_t scaled = co2_scale(raw_chart, ui->settings.switch_.co2_mode);
+lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, scaled);
     cnt_chart_co2 = 0;
   }
   draw_symbol_wifi(ui);
@@ -3102,8 +3157,9 @@ void init_lv_objects() {
   ui.weather.settings_popup.city_count = CITY_COUNT;
 
   main_settings_load(&ui.settings.switch_.standby_mode,
-                     &ui.settings.switch_.theme_mode, &ui.settings.switch_.co2_mode);
-                     
+                     &ui.settings.switch_.theme_mode,
+                     &ui.settings.switch_.co2_mode);
+
   ui.settings.switch_.theme_last_is_day = get_is_day(); // ← инициализируем кэш
   weather_settings_load(&ui.weather.settings_popup.saved_city);
   build_weather_url(ui.weather.settings_popup.saved_city);
