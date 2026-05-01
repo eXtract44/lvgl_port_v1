@@ -150,11 +150,10 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_meter_set_indicator_start_value(meter, ui->co2.indicator, end_value);
   lv_meter_set_indicator_end_value(meter, ui->co2.indicator, end_value_1);
 
-ui->co2.needle_arc = lv_meter_add_arc(
-    meter, scale, 12, lv_palette_main(LV_PALETTE_GREEN), 0);
-lv_meter_set_indicator_start_value(meter, ui->co2.needle_arc, MIN_VALUE_CO2);
-lv_meter_set_indicator_end_value(meter, ui->co2.needle_arc, MIN_VALUE_CO2);
-
+  ui->co2.needle_arc =
+      lv_meter_add_arc(meter, scale, 12, lv_palette_main(LV_PALETTE_GREEN), 0);
+  lv_meter_set_indicator_start_value(meter, ui->co2.needle_arc, MIN_VALUE_CO2);
+  lv_meter_set_indicator_end_value(meter, ui->co2.needle_arc, MIN_VALUE_CO2);
 
   /*Add a needle line indicator*/
   ui->co2.indicator = lv_meter_add_needle_line(
@@ -204,8 +203,9 @@ void print_wday(uint8_t wday, ui_main_menu_t *ui) {
   // показываем highlight и перемещаем к текущему дню
   static const uint8_t wday_to_idx[7] = {6, 0, 1, 2, 3, 4, 5}; // So→6, Mo→0
   lv_obj_clear_flag(ui->time.wday_highlight, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_align_to(ui->time.wday_highlight, ui->time.wday_labels[wday_to_idx[wday]],
-                  LV_ALIGN_CENTER, 0, 0);
+  lv_obj_align_to(ui->time.wday_highlight,
+                  ui->time.wday_labels[wday_to_idx[wday]], LV_ALIGN_CENTER, 0,
+                  0);
 }
 
 void print_time(uint8_t time_hour, uint8_t time_minute, ui_main_menu_t *ui) {
@@ -265,27 +265,35 @@ static void get_easter(uint16_t year, uint8_t *out_day, uint8_t *out_month) {
   int N = (4 + k - q) % 7;
   int d = (19 * a + M) % 30;
   int e = (2 * b + 4 * c + 6 * d + N) % 7;
-  int day   = 22 + d + e;
+  int day = 22 + d + e;
   int month = 3;
   if (day > 31) {
-    day  -= 31;
+    day -= 31;
     month = 4;
     // исключения алгоритма
-    if (day == 26) day = 19;
-    if (day == 25 && d == 28 && e == 6 && a > 10) day = 18;
+    if (day == 26)
+      day = 19;
+    if (day == 25 && d == 28 && e == 6 && a > 10)
+      day = 18;
   }
-  *out_day   = (uint8_t)day;
+  *out_day = (uint8_t)day;
   *out_month = (uint8_t)month;
 }
 
 // Возвращает название федерального праздника Германии или NULL
-static const char *get_german_holiday(uint8_t day, uint8_t month, uint16_t year) {
+static const char *get_german_holiday(uint8_t day, uint8_t month,
+                                      uint16_t year) {
   // Фиксированные праздники
- if (day == 1  && month == 1)  return "Neujahr";       // 7  ✓
-if (day == 1  && month == 5)  return "Tag d. Arbeit"; // 13 ✗ — "Maifeiertag"? (12 ✓)
-if (day == 3  && month == 10) return "Tag d. Einheit";// 14 ✗ — "Dt. Einheit"? (11 ✓)
-if (day == 25 && month == 12) return "1. Weihnacht";  // 11 ✓
-if (day == 26 && month == 12) return "2. Weihnacht";  // 11 ✓
+  if (day == 1 && month == 1)
+    return "Neujahr"; // 7  ✓
+  if (day == 1 && month == 5)
+    return "Tag d. Arbeit"; // 13 ✗ — "Maifeiertag"? (12 ✓)
+  if (day == 3 && month == 10)
+    return "Tag d. Einheit"; // 14 ✗ — "Dt. Einheit"? (11 ✓)
+  if (day == 25 && month == 12)
+    return "1. Weihnacht"; // 11 ✓
+  if (day == 26 && month == 12)
+    return "2. Weihnacht"; // 11 ✓
 
   // Праздники относительно Пасхи
   uint8_t e_day, e_month;
@@ -296,22 +304,32 @@ if (day == 26 && month == 12) return "2. Weihnacht";  // 11 ✓
   // Проще: сравниваем день+месяц с Пасхой ± смещение
   // Функция: easter_offset → проверяем совпадение
   // Считаем день года для Пасхи и для проверяемой даты
-  static const uint8_t days_in_month[13] = {0,31,28,31,30,31,30,31,31,30,31,30,31};
+  static const uint8_t days_in_month[13] = {0,  31, 28, 31, 30, 31, 30,
+                                            31, 31, 30, 31, 30, 31};
   uint16_t easter_doy = e_day;
-  for (int m = 1; m < e_month; m++) easter_doy += days_in_month[m];
+  for (int m = 1; m < e_month; m++)
+    easter_doy += days_in_month[m];
 
   uint16_t check_doy = day;
-  for (int m = 1; m < month; m++) check_doy += days_in_month[m];
+  for (int m = 1; m < month; m++)
+    check_doy += days_in_month[m];
 
   int16_t diff = (int16_t)check_doy - (int16_t)easter_doy;
 
-if (diff == -2) return "Karfreitag";    // 10 ✓
-if (diff ==  0) return "Ostersonntag";  // 12 ✓
-if (diff ==  1) return "Ostermontag";   // 11 ✓
-if (diff == 39) return "Himmelfahrt";   // 11 ✓
-if (diff == 49) return "Pfingstsonntag";// 14 ✗ — "Pfingstso."?  (10 ✓)
-if (diff == 50) return "Pfingstmontag"; // 13 ✗ — "Pfingstmo."?  (10 ✓)
-if (diff == 60) return "Fronleichnam";  // 12 ✓
+  if (diff == -2)
+    return "Karfreitag"; // 10 ✓
+  if (diff == 0)
+    return "Ostersonntag"; // 12 ✓
+  if (diff == 1)
+    return "Ostermontag"; // 11 ✓
+  if (diff == 39)
+    return "Himmelfahrt"; // 11 ✓
+  if (diff == 49)
+    return "Pfingstsonntag"; // 14 ✗ — "Pfingstso."?  (10 ✓)
+  if (diff == 50)
+    return "Pfingstmontag"; // 13 ✗ — "Pfingstmo."?  (10 ✓)
+  if (diff == 60)
+    return "Fronleichnam"; // 12 ✓
 
   return NULL;
 }
@@ -326,12 +344,12 @@ void print_holiday(uint8_t day, uint8_t month, uint16_t year,
   if (holiday == NULL) {
     lv_obj_add_flag(ui->time.holiday_label, LV_OBJ_FLAG_HIDDEN);
   } else {
-    lv_label_set_text_fmt(ui->time.holiday_label,
-                          MY_BELL_SYMBOL " %s", holiday);
+    lv_label_set_text_fmt(ui->time.holiday_label, MY_BELL_SYMBOL " %s",
+                          holiday);
     lv_obj_clear_flag(ui->time.holiday_label, LV_OBJ_FLAG_HIDDEN);
   }
 }
-                     
+
 static lv_obj_t *create_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                              lv_align_t align, lv_coord_t x_ofs,
                              lv_coord_t y_ofs, const char *symbol,
@@ -753,22 +771,22 @@ static void ui_create_weather_forecast_popup(ui_main_menu_t *ui) {
     ui->weather.forecast_popup.day_label[i] =
         create_label(ui->weather.forecast_popup.popup, day_names[i],
                      LV_ALIGN_TOP_MID, col_x, col_y_start);
-    lv_obj_add_style(ui->weather.forecast_popup.day_label[i], &ui->font.medium_32,
-                     0);
+    lv_obj_add_style(ui->weather.forecast_popup.day_label[i],
+                     &ui->font.medium_32, 0);
 
     // --- Погодный код ---
     ui->weather.forecast_popup.wcode_label[i] =
         create_label(ui->weather.forecast_popup.popup, "-", LV_ALIGN_TOP_MID,
                      col_x, col_y_start + row_h);
-    lv_obj_add_style(ui->weather.forecast_popup.wcode_label[i], &ui->font.very_small_20,
-                     0);
+    lv_obj_add_style(ui->weather.forecast_popup.wcode_label[i],
+                     &ui->font.very_small_20, 0);
 
     // --- Температура ---
     ui->weather.forecast_popup.temp_label[i] =
         create_label(ui->weather.forecast_popup.popup, "-", LV_ALIGN_TOP_MID,
                      col_x, col_y_start + row_h * 2);
-    lv_obj_add_style(ui->weather.forecast_popup.temp_label[i], &ui->font.medium_32,
-                     0);
+    lv_obj_add_style(ui->weather.forecast_popup.temp_label[i],
+                     &ui->font.medium_32, 0);
 
     // --- Влажность ---
     ui->weather.forecast_popup.humidity_label[i] =
@@ -1020,7 +1038,7 @@ static void create_block_top_left(ui_main_menu_t *ui) {
                       ui);
 
   // --- заголовок ---
-  create_text("innen", ui->sensor.screen, STYLE_TEXT_TITLE,
+  create_text("innen", ui->sensor.screen, STYLE_TEXT_SMALL,
               BLOCK_TOP_LEFT_ALIGN_TITLE, 0, BLOCK_TOP_LEFT_Y_START_TITLE, ui);
 
   // ═══════════════════════════════════════════
@@ -1123,7 +1141,7 @@ static void create_block_top_left(ui_main_menu_t *ui) {
 
   // значение TVOC
   value = create_label(ui->sensor.screen, "0", BLOCK_TOP_LEFT_ALIGN_VALUES,
-                       BLOCK_TOP_LEFT_X_START_VALUES+15,
+                       BLOCK_TOP_LEFT_X_START_VALUES + 15,
                        BLOCK_TOP_LEFT_Y_START_VALUE_4 + 3);
   if (!value)
     return;
@@ -1201,7 +1219,7 @@ static void create_block_top_right(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->time.mday_month_label, &ui->font.time, 0);
 
   // --- колонка дней недели (Mo Di Mi Do Fr Sa So) ---
-  static const char *wday_names[7] = { "Mo", "Di", "Mi", "Do", "Fr", "Sa","So"};
+  static const char *wday_names[7] = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
 
   for (int i = 0; i < 7; i++) {
     lv_coord_t y = BLOCK_TOP_RIGHT_WDAY_COL_Y_START +
@@ -1232,8 +1250,8 @@ static void create_block_top_right(ui_main_menu_t *ui) {
   ui->time.wday_highlight = hl;
 
   // --- строка праздника внизу ---
-  lbl = create_label(ui->time.screen, "", BLOCK_TOP_RIGHT_HOLIDAY_ALIGN,
-                     -28, BLOCK_TOP_RIGHT_HOLIDAY_Y_START);
+  lbl = create_label(ui->time.screen, "", BLOCK_TOP_RIGHT_HOLIDAY_ALIGN, -28,
+                     BLOCK_TOP_RIGHT_HOLIDAY_Y_START);
   if (!lbl)
     return;
   lv_obj_add_style(lbl, &ui->font.very_small_20, 0);
@@ -1260,7 +1278,7 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
                       block_bot_left_open_popup_event_handler, LV_EVENT_CLICKED,
                       ui);
 
-  create_text("aussen", ui->weather.screen, STYLE_TEXT_TITLE,
+  create_text("aussen", ui->weather.screen, STYLE_TEXT_SMALL,
               BLOCK_BOT_LEFT_ALIGN_TITLE, 0, BLOCK_BOT_LEFT_Y_START_TITLE, ui);
 
   // ═══════════════════════════════════════════
@@ -1360,7 +1378,6 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
   ui->weather.rain_label = value;
 
   // иконка вероятности (право)
-
 
   // ═══════════════════════════════════════════
   // СТРОКА 4 — ветер (лево) + давление (право)
@@ -1537,18 +1554,18 @@ static void btn_settings_open_popup_event_handler(lv_event_t *e) {
   ui_create_settings_popup(ui);
 }
 static void btn_settings_close_popup_event_handler(lv_event_t *e) {
-   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (!ui)
     return;
 
   lv_obj_del(ui->settings.popup);
 
-  ui->settings.popup               = NULL;
-  ui->settings.btn_close           = NULL;
-  ui->settings.btn_save            = NULL;
-  ui->settings.standby_btnmatrix   = NULL;
-  ui->settings.standby_desc_label  = NULL;
-  ui->settings.switch_.theme       = NULL;
+  ui->settings.popup = NULL;
+  ui->settings.btn_close = NULL;
+  ui->settings.standby_btnmatrix = NULL;
+  ui->settings.standby_desc_label = NULL;
+  ui->settings.theme_btnmatrix = NULL;
+  ui->settings.theme_desc_label = NULL;
 
   show_all_blocks(ui);
 }
@@ -1583,7 +1600,8 @@ static void btn_weather_open_popup_event_handler(lv_event_t *e) {
                       ui->weather.settings_popup
                           .cities_de[ui->weather.settings_popup.saved_city]
                           .name);
-    lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32, 0);
+    lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32,
+                     0);
   }
 }
 static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
@@ -1808,175 +1826,179 @@ static void ui_create_wifi_popup(ui_main_menu_t *ui) {
 }
 
 void ui_apply_theme(ui_main_menu_t *ui) {
-	switch (ui->settings.switch_.theme_mode) {
-	    case 0: // Auto
-	        ui->settings.switch_.theme_last_is_day = get_is_day();
-	        ui->settings.switch_.theme_last_is_day
-	            ? apply_theme_light(ui) : apply_theme_dark(ui);
-	        break;
-	    case 1: apply_theme_light(ui); break; // Hell
-	    case 2: apply_theme_dark(ui);  break; // Dunkel
-	  }
-	  lv_obj_report_style_change(&ui->style.main);
-	  lv_obj_report_style_change(&ui->style.popup);
-	  lv_obj_report_style_change(&ui->style.top_left);
-	  lv_obj_report_style_change(&ui->style.bot_left);
-	  lv_obj_report_style_change(&ui->style.top_right);
-	  lv_obj_report_style_change(&ui->style.bot_right);
-	  lv_obj_report_style_change(&ui->font.very_small_20);
-	  lv_obj_report_style_change(&ui->font.small_24);
-	  lv_obj_report_style_change(&ui->font.medium_32);
-	  lv_obj_report_style_change(&ui->font.large_48);
-	  lv_obj_report_style_change(&ui->font.nav_btn);
-	  lv_obj_report_style_change(&ui->font.time);
-	  lv_obj_report_style_change(&ui->font.icon);
+  switch (ui->settings.switch_.theme_mode) {
+  case 0: // Auto
+    ui->settings.switch_.theme_last_is_day = get_is_day();
+    ui->settings.switch_.theme_last_is_day ? apply_theme_light(ui)
+                                           : apply_theme_dark(ui);
+    break;
+  case 1:
+    apply_theme_light(ui);
+    break; // Hell
+  case 2:
+    apply_theme_dark(ui);
+    break; // Dunkel
+  }
+  lv_obj_report_style_change(&ui->style.main);
+  lv_obj_report_style_change(&ui->style.popup);
+  lv_obj_report_style_change(&ui->style.top_left);
+  lv_obj_report_style_change(&ui->style.bot_left);
+  lv_obj_report_style_change(&ui->style.top_right);
+  lv_obj_report_style_change(&ui->style.bot_right);
+  lv_obj_report_style_change(&ui->font.very_small_20);
+  lv_obj_report_style_change(&ui->font.small_24);
+  lv_obj_report_style_change(&ui->font.medium_32);
+  lv_obj_report_style_change(&ui->font.large_48);
+  lv_obj_report_style_change(&ui->font.nav_btn);
+  lv_obj_report_style_change(&ui->font.time);
+  lv_obj_report_style_change(&ui->font.icon);
 }
 
 // callback для btnmatrix
 static void standby_btnmatrix_event_cb(lv_event_t *e) {
-    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    lv_obj_t *obj = lv_event_get_target(e);
-    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
-    ui->settings.switch_.standby_mode = (uint8_t)btn_id;
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  lv_obj_t *obj = lv_event_get_target(e);
+  uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+  ui->settings.switch_.standby_mode = (uint8_t)btn_id;
 
-    // обновляем подсказку
-    static const char *descs[] = {
-         "Immer eingeschaltet.",
-        "Aus nach 180 Sek.",
-        "Aus Nachts nach 180 Sek."
-    };
-    lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
+  // обновляем подсказку
+  static const char *descs[] = {"Immer eingeschaltet.", "Aus nach 180 Sek.",
+                                "Aus Nachts nach 180 Sek."};
+  lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
 
-    main_settings_save(ui->settings.switch_.standby_mode,
-                       ui->settings.switch_.theme_mode);
+  main_settings_save(ui->settings.switch_.standby_mode,
+                     ui->settings.switch_.theme_mode,
+                     ui->settings.switch_.co2_mode);
 }
 
 static void theme_btnmatrix_event_cb(lv_event_t *e) {
-    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    lv_obj_t *obj = lv_event_get_target(e);
-    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
-    ui->settings.switch_.theme_mode = (uint8_t)btn_id;
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  lv_obj_t *obj = lv_event_get_target(e);
+  uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+  ui->settings.switch_.theme_mode = (uint8_t)btn_id;
 
-    static const char *descs[] = {
-        "Automatisch: Tagsüber hell, nachts dunkel.",
-        "Immer helles Design.",
-        "Immer dunkles Design."
-    };
-    lv_label_set_text(ui->settings.theme_desc_label, descs[btn_id]);
+  static const char *descs[] = {"Automatisch: Tagsueber hell, nachts dunkel.",
+                                "Immer helles Design.",
+                                "Immer dunkles Design."};
+  lv_label_set_text(ui->settings.theme_desc_label, descs[btn_id]);
 
-    // применяем тему сразу
-    switch (btn_id) {
-        case 0: // Auto
-            ui->settings.switch_.theme_last_is_day = get_is_day();
-            ui->settings.switch_.theme_last_is_day
-                ? apply_theme_light(ui) : apply_theme_dark(ui);
-            break;
-        case 1: apply_theme_light(ui); break; // Hell
-        case 2: apply_theme_dark(ui);  break; // Dunkel
-    }
-    lv_obj_report_style_change(&ui->style.main);
-    lv_obj_report_style_change(&ui->style.popup);
-    lv_obj_report_style_change(&ui->style.top_left);
-    lv_obj_report_style_change(&ui->style.bot_left);
-    lv_obj_report_style_change(&ui->style.top_right);
-    lv_obj_report_style_change(&ui->style.bot_right);
-    lv_obj_report_style_change(&ui->font.very_small_20);
-    lv_obj_report_style_change(&ui->font.small_24);
-    lv_obj_report_style_change(&ui->font.medium_32);
-    lv_obj_report_style_change(&ui->font.large_48);
-    lv_obj_report_style_change(&ui->font.nav_btn);
-    lv_obj_report_style_change(&ui->font.time);
-    lv_obj_report_style_change(&ui->font.icon);
+  // применяем тему сразу
+  switch (btn_id) {
+  case 0: // Auto
+    ui->settings.switch_.theme_last_is_day = get_is_day();
+    ui->settings.switch_.theme_last_is_day ? apply_theme_light(ui)
+                                           : apply_theme_dark(ui);
+    break;
+  case 1:
+    apply_theme_light(ui);
+    break; // Hell
+  case 2:
+    apply_theme_dark(ui);
+    break; // Dunkel
+  }
+  lv_obj_report_style_change(&ui->style.main);
+  lv_obj_report_style_change(&ui->style.popup);
+  lv_obj_report_style_change(&ui->style.top_left);
+  lv_obj_report_style_change(&ui->style.bot_left);
+  lv_obj_report_style_change(&ui->style.top_right);
+  lv_obj_report_style_change(&ui->style.bot_right);
+  lv_obj_report_style_change(&ui->font.very_small_20);
+  lv_obj_report_style_change(&ui->font.small_24);
+  lv_obj_report_style_change(&ui->font.medium_32);
+  lv_obj_report_style_change(&ui->font.large_48);
+  lv_obj_report_style_change(&ui->font.nav_btn);
+  lv_obj_report_style_change(&ui->font.time);
+  lv_obj_report_style_change(&ui->font.icon);
 
-    main_settings_save(ui->settings.switch_.standby_mode,
-                       ui->settings.switch_.theme_mode);
+  main_settings_save(ui->settings.switch_.standby_mode,
+                     ui->settings.switch_.theme_mode,
+                     ui->settings.switch_.co2_mode);
 }
 
 static void ui_create_settigs_switches(ui_main_menu_t *ui) {
-	// --- standby btnmatrix ---
-	   static const char *standby_map[] = {"Ein", "Auto", "Auto Nachts", ""};
-	   ui->settings.standby_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
-	   lv_obj_set_size(ui->settings.standby_btnmatrix, 540, 90);
-	   lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
-	   lv_btnmatrix_set_map(ui->settings.standby_btnmatrix, standby_map);
-	   lv_obj_set_style_text_font(ui->settings.standby_btnmatrix,
-	                              &lv_font_montserrat_20, LV_PART_ITEMS);
-	   lv_btnmatrix_set_btn_ctrl_all(ui->settings.standby_btnmatrix,
-	                                 LV_BTNMATRIX_CTRL_CHECKABLE);
-	   lv_btnmatrix_set_one_checked(ui->settings.standby_btnmatrix, true);
-	   lv_obj_add_event_cb(ui->settings.standby_btnmatrix,
-	                       standby_btnmatrix_event_cb,
-	                       LV_EVENT_VALUE_CHANGED, ui);
+  // --- standby btnmatrix ---
+  static const char *standby_map[] = {"Ein", "Auto", "Auto Nachts", ""};
+  ui->settings.standby_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
+  lv_obj_set_size(ui->settings.standby_btnmatrix, 540, 90);
+  lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
+  lv_btnmatrix_set_map(ui->settings.standby_btnmatrix, standby_map);
+  lv_obj_set_style_text_font(ui->settings.standby_btnmatrix,
+                             &lv_font_montserrat_20, LV_PART_ITEMS);
+  lv_btnmatrix_set_btn_ctrl_all(ui->settings.standby_btnmatrix,
+                                LV_BTNMATRIX_CTRL_CHECKABLE);
+  lv_btnmatrix_set_one_checked(ui->settings.standby_btnmatrix, true);
+  lv_obj_add_event_cb(ui->settings.standby_btnmatrix,
+                      standby_btnmatrix_event_cb, LV_EVENT_VALUE_CHANGED, ui);
 
-	   ui->settings.standby_desc_label =
-	       create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 225);
-	   lv_obj_add_style(ui->settings.standby_desc_label, &ui->font.very_small_20, 0);
+  ui->settings.standby_desc_label =
+      create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 225);
+  lv_obj_add_style(ui->settings.standby_desc_label, &ui->font.very_small_20, 0);
 
-	   // --- theme btnmatrix ---
-	   static const char *theme_map[] = {"Auto", "Hell", "Dunkel", ""};
-	   ui->settings.theme_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
-	   lv_obj_set_size(ui->settings.theme_btnmatrix, 540, 90);
-	   lv_obj_align(ui->settings.theme_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 310);
-	   lv_btnmatrix_set_map(ui->settings.theme_btnmatrix, theme_map);
-	   lv_obj_set_style_text_font(ui->settings.theme_btnmatrix,
-	                              &lv_font_montserrat_20, LV_PART_ITEMS);
-	   lv_btnmatrix_set_btn_ctrl_all(ui->settings.theme_btnmatrix,
-	                                 LV_BTNMATRIX_CTRL_CHECKABLE);
-	   lv_btnmatrix_set_one_checked(ui->settings.theme_btnmatrix, true);
-	   lv_obj_add_event_cb(ui->settings.theme_btnmatrix,
-	                       theme_btnmatrix_event_cb,
-	                       LV_EVENT_VALUE_CHANGED, ui);
+  // --- theme btnmatrix ---
+  static const char *theme_map[] = {"Auto", "Hell", "Dunkel", ""};
+  ui->settings.theme_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
+  lv_obj_set_size(ui->settings.theme_btnmatrix, 540, 90);
+  lv_obj_align(ui->settings.theme_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 310);
+  lv_btnmatrix_set_map(ui->settings.theme_btnmatrix, theme_map);
+  lv_obj_set_style_text_font(ui->settings.theme_btnmatrix,
+                             &lv_font_montserrat_20, LV_PART_ITEMS);
+  lv_btnmatrix_set_btn_ctrl_all(ui->settings.theme_btnmatrix,
+                                LV_BTNMATRIX_CTRL_CHECKABLE);
+  lv_btnmatrix_set_one_checked(ui->settings.theme_btnmatrix, true);
+  lv_obj_add_event_cb(ui->settings.theme_btnmatrix, theme_btnmatrix_event_cb,
+                      LV_EVENT_VALUE_CHANGED, ui);
 
-	   ui->settings.theme_desc_label =
-	       create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 405);
-	   lv_obj_add_style(ui->settings.theme_desc_label, &ui->font.very_small_20, 0);
+  ui->settings.theme_desc_label =
+      create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 405);
+  lv_obj_add_style(ui->settings.theme_desc_label, &ui->font.very_small_20, 0);
 
-	   // --- загружаем сохранённые значения ---
-	   main_settings_load(&ui->settings.switch_.standby_mode,
-	                      &ui->settings.switch_.theme_mode);
+  // --- загружаем сохранённые значения ---
+  main_settings_load(&ui->settings.switch_.standby_mode,
+                     &ui->settings.switch_.theme_mode,
+                     &ui->settings.switch_.co2_mode);
 
-	   // применяем standby к btnmatrix
-	   lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
-	                             ui->settings.switch_.standby_mode,
-	                             LV_BTNMATRIX_CTRL_CHECKED);
+  // применяем standby к btnmatrix
+  lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
+                            ui->settings.switch_.standby_mode,
+                            LV_BTNMATRIX_CTRL_CHECKED);
 
-	   // применяем theme к btnmatrix
-	   lv_btnmatrix_set_btn_ctrl(ui->settings.theme_btnmatrix,
-	                             ui->settings.switch_.theme_mode,
-	                             LV_BTNMATRIX_CTRL_CHECKED);
+  // применяем theme к btnmatrix
+  lv_btnmatrix_set_btn_ctrl(ui->settings.theme_btnmatrix,
+                            ui->settings.switch_.theme_mode,
+                            LV_BTNMATRIX_CTRL_CHECKED);
 
-	   // подсказки при загрузке
-	   static const char *standby_descs[] = {
-	       "Immer eingeschaltet.",
-	       "Aus nach 180 Sek.",
-	       "Aus Nachts nach 180 Sek."
-	   };
-	   lv_label_set_text(ui->settings.standby_desc_label,
-	                     standby_descs[ui->settings.switch_.standby_mode]);
+  // подсказки при загрузке
+  static const char *standby_descs[] = {
+      "Immer eingeschaltet.", "Aus nach 180 Sek.", "Aus Nachts nach 180 Sek."};
+  lv_label_set_text(ui->settings.standby_desc_label,
+                    standby_descs[ui->settings.switch_.standby_mode]);
 
-	   static const char *theme_descs[] = {
-	       "Automatisch: Tagsüber hell, nachts dunkel.",
-	       "Immer helles Design.",
-	       "Immer dunkles Design."
-	   };
-	   lv_label_set_text(ui->settings.theme_desc_label,
-	                     theme_descs[ui->settings.switch_.theme_mode]);
+  static const char *theme_descs[] = {
+      "Automatisch: Tagsueber hell, nachts dunkel.", "Immer helles Design.",
+      "Immer dunkles Design."};
+  lv_label_set_text(ui->settings.theme_desc_label,
+                    theme_descs[ui->settings.switch_.theme_mode]);
 }
 
 static void ui_create_settings_popup(ui_main_menu_t *ui) {
   ui->settings.popup =
       create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
                         POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_style_width(ui->settings.popup, 8, LV_PART_SCROLLBAR);
+  lv_obj_set_style_bg_color(ui->settings.popup, lv_color_hex(0x2196F3),
+                            LV_PART_SCROLLBAR);
+  lv_obj_set_style_bg_opa(ui->settings.popup, LV_OPA_COVER, LV_PART_SCROLLBAR);
+  lv_obj_set_style_radius(ui->settings.popup, 4, LV_PART_SCROLLBAR);
   lv_obj_add_style(ui->settings.popup, &ui->style.popup, 0);
 
   create_text("Einstellungen", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_MID, 0, 0, ui);
-              
+
   create_text("Display:", ui->settings.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 90, ui);
-			  create_text("Thema:", ui->settings.popup, STYLE_TEXT_SMALL,
-			              LV_ALIGN_TOP_LEFT, 15, 270, ui);
+  create_text("Thema:", ui->settings.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+              15, 270, ui);
 
   ui->settings.btn_close =
       create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
@@ -2000,6 +2022,9 @@ static void create_block_bot_right(ui_main_menu_t *ui) {
       BLOCK_BOT_RIGHT_Y_START);
   lv_obj_add_style(ui->animation.screen, &ui->style.bot_right, 0);
   lv_obj_set_scrollbar_mode(ui->animation.screen, LV_SCROLLBAR_MODE_OFF);
+
+  create_text("wetter", ui->animation.screen, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_MID, 0, BLOCK_BOT_RIGHT_Y_START_TITLE, ui);
 
 #if ACTIVATE_ANIM_SUN_MOON
   ui->animation.image.sun_48_48 = create_anim_image_orbit(
@@ -2416,30 +2441,55 @@ static float calc_dew_point(float temp, float humidity) {
 
 // ─── вспомогательная функция — кружки TVOC ──────────────
 // возвращает строку типа "●●●○○" и устанавливает цвет
-static void update_tvoc_dots(lv_obj_t *dots[5], uint16_t tvoc, bool dark_theme) {
- uint8_t filled;
-    lv_color_t color;
+static void update_tvoc_dots(lv_obj_t *dots[5], uint16_t tvoc,
+                             uint8_t theme_mode) {
+  uint8_t filled;
+  bool dark_theme;
+  if (theme_mode == 2) { // Dunkel — всегда тёмная
+    dark_theme = true;
+  } else if (theme_mode == 1) { // Hell — всегда светлая
+    dark_theme = false;
+  } else { // Auto
+    dark_theme = !get_is_day();
+  }
+  lv_color_t color;
 
-    if      (tvoc <= 150) { filled = 1; color = lv_color_hex(0x00E676); } // яркий зелёный
-    else if (tvoc <= 300) { filled = 2; color = lv_color_hex(0xC6FF00); } // жёлто-зелёный
-    else if (tvoc <= 500) { filled = 3; color = lv_color_hex(0xFFD600); } // жёлтый
-    else if (tvoc <= 750) { filled = 4; color = lv_color_hex(0xFF6D00); } // оранжевый
-    else                  { filled = 5; color = lv_color_hex(0xFF1744); } // красный
+  if (tvoc <= 150) {
+    filled = 1;
+    color = lv_color_hex(0x00E676);
+  } // яркий зелёный
+  else if (tvoc <= 300) {
+    filled = 2;
+    color = lv_color_hex(0xC6FF00);
+  } // жёлто-зелёный
+  else if (tvoc <= 500) {
+    filled = 3;
+    color = lv_color_hex(0xFFD600);
+  } // жёлтый
+  else if (tvoc <= 750) {
+    filled = 4;
+    color = lv_color_hex(0xFF6D00);
+  } // оранжевый
+  else {
+    filled = 5;
+    color = lv_color_hex(0xFF1744);
+  } // красный
 
-    // пустые кружки — контрастны для обеих тем
-    lv_color_t empty_color = dark_theme ? lv_color_hex(0x555555)   // тёмная тема — светло-серый
-        : lv_color_hex(0xCCCCCC);  // светлая тема — тёмно-серый
-    lv_opa_t empty_opa = LV_OPA_COVER; // всегда полностью непрозрачный
+  // пустые кружки — контрастны для обеих тем
+  lv_color_t empty_color =
+      dark_theme ? lv_color_hex(0x555555) // тёмная тема — светло-серый
+                 : lv_color_hex(0xCCCCCC); // светлая тема — тёмно-серый
+  lv_opa_t empty_opa = LV_OPA_COVER; // всегда полностью непрозрачный
 
-    for (int i = 0; i < 5; i++) {
-        if (i < filled) {
-            lv_obj_set_style_bg_color(dots[i], color, 0);
-            lv_obj_set_style_bg_opa(dots[i], LV_OPA_COVER, 0);
-        } else {
-            lv_obj_set_style_bg_color(dots[i], empty_color, 0);
-            lv_obj_set_style_bg_opa(dots[i], empty_opa, 0);
-        }
+  for (int i = 0; i < 5; i++) {
+    if (i < filled) {
+      lv_obj_set_style_bg_color(dots[i], color, 0);
+      lv_obj_set_style_bg_opa(dots[i], LV_OPA_COVER, 0);
+    } else {
+      lv_obj_set_style_bg_color(dots[i], empty_color, 0);
+      lv_obj_set_style_bg_opa(dots[i], empty_opa, 0);
     }
+  }
 }
 
 static float calc_heat_index(float t, float rh) {
@@ -2543,7 +2593,8 @@ void update_block_top_left(ui_main_menu_t *ui) {
       }
     } else {
       print_value("%.0f", (float)tvoc, ui->sensor.tvoc_label);
-      update_tvoc_dots(ui->sensor.tvoc_dots, tvoc, ui->settings.switch_.theme_status);
+      update_tvoc_dots(ui->sensor.tvoc_dots, tvoc,
+                       ui->settings.switch_.theme_mode);
     }
   } else {
     lv_label_set_text(ui->sensor.tvoc_label, "K.S");
@@ -2560,11 +2611,15 @@ void update_block_top_left(ui_main_menu_t *ui) {
   }
 }
 static lv_color_t calc_co2_color(uint16_t co2) {
-    if (co2 < 800)  return lv_palette_main(LV_PALETTE_GREEN);
-    if (co2 < 1000) return lv_color_hex(0xC6FF00); // жёлто-зелёный
-    if (co2 < 1200) return lv_palette_main(LV_PALETTE_YELLOW);
-    if (co2 < 1600) return lv_palette_main(LV_PALETTE_ORANGE);
-    return lv_palette_main(LV_PALETTE_RED);
+  if (co2 < 800)
+    return lv_palette_main(LV_PALETTE_GREEN);
+  if (co2 < 1000)
+    return lv_color_hex(0xC6FF00); // жёлто-зелёный
+  if (co2 < 1200)
+    return lv_palette_main(LV_PALETTE_YELLOW);
+  if (co2 < 1600)
+    return lv_palette_main(LV_PALETTE_ORANGE);
+  return lv_palette_main(LV_PALETTE_RED);
 }
 void update_block_top_middle(ui_main_menu_t *ui) {
   if (sgp30_data.state == SGP30_STATE_OK) {
@@ -2578,7 +2633,7 @@ void update_block_top_middle(ui_main_menu_t *ui) {
 }
 
 void update_block_top_right(ui_main_menu_t *ui) {
-if (get_wifi_status() == WIFI_DISCONNECTED) {
+  if (get_wifi_status() == WIFI_DISCONNECTED) {
     print_mday(0, 0, ui);
     print_wday(WDAY_KEIN_WLAN, ui);
     print_time(0, 0, ui);
@@ -2613,7 +2668,7 @@ void update_block_bot_left(ui_main_menu_t *ui) {
     lv_label_set_text(ui->weather.feels_like_label, "K.W");
     lv_label_set_text(ui->weather.uv_label, "UV -");
     lv_label_set_text(ui->weather.rain_label, "- mm");
-   // lv_label_set_text(ui->weather.rain_prob_label, "- %?");
+    // lv_label_set_text(ui->weather.rain_prob_label, "- %?");
     lv_label_set_text(ui->weather.wind_label, "- m/s");
     lv_label_set_text(ui->weather.pressure_label, "- hPa");
     return;
@@ -2660,13 +2715,12 @@ void update_block_bot_left(ui_main_menu_t *ui) {
   float rain_prob = (float)get_precipitation_probability();
 
   if (rain >= 0.0f) {
-    snprintf(ui->string_buffer, sizeof(ui->string_buffer),
-         "%.1fmm  %.0f%%?", rain, rain_prob);
-         lv_label_set_text(ui->weather.rain_label, ui->string_buffer);
+    snprintf(ui->string_buffer, sizeof(ui->string_buffer), "%.1fmm  %.0f%%?",
+             rain, rain_prob);
+    lv_label_set_text(ui->weather.rain_label, ui->string_buffer);
   } else {
     lv_label_set_text(ui->weather.rain_label, "- mm/%%");
   }
-
 
   // ── строка 4 — ветер + давление ──────────────────────
   float wind = (float)get_weather_wind();
@@ -2753,33 +2807,33 @@ void co2_meter_anim_cb(lv_timer_t *timer) {
     step = (diff > 0) ? 1 : -1;
 
   ui->co2.co2_display += step;
-uint16_t val = (uint16_t)ui->co2.co2_display;
+  uint16_t val = (uint16_t)ui->co2.co2_display;
 
-// обновляем иглу
-lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, val);
+  // обновляем иглу
+  lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, val);
 
-// обновляем цветной arc от начала до текущего значения
-lv_meter_set_indicator_start_value(ui->co2.meter, ui->co2.needle_arc,
-                                   MIN_VALUE_CO2);
-lv_meter_set_indicator_end_value(ui->co2.meter, ui->co2.needle_arc, val);
+  // обновляем цветной arc от начала до текущего значения
+  lv_meter_set_indicator_start_value(ui->co2.meter, ui->co2.needle_arc,
+                                     MIN_VALUE_CO2);
+  lv_meter_set_indicator_end_value(ui->co2.meter, ui->co2.needle_arc, val);
 
-// меняем цвет arc в зависимости от значения
-lv_meter_indicator_t *arc = ui->co2.needle_arc;
-arc->type_data.arc.color = calc_co2_color(val);
-lv_obj_invalidate(ui->co2.meter);
+  // меняем цвет arc в зависимости от значения
+  lv_meter_indicator_t *arc = ui->co2.needle_arc;
+  arc->type_data.arc.color = calc_co2_color(val);
+  lv_obj_invalidate(ui->co2.meter);
 }
 
 bool is_screen_pressed(void) { return standby_touched; }
 
 static void standby_handle(ui_main_menu_t *ui) {
- static uint32_t timer_standby_sec = 0;
+  static uint32_t timer_standby_sec = 0;
 
   uint8_t mode = ui->settings.switch_.standby_mode;
 
   // определяем активен ли standby сейчас
   bool standby_active = false;
   if (mode == 1) {
-    standby_active = true;          // Immer — всегда
+    standby_active = true; // Immer — всегда
   } else if (mode == 2) {
     standby_active = !get_is_day(); // Nachts — только ночью
   }
@@ -2810,32 +2864,32 @@ static void standby_handle(ui_main_menu_t *ui) {
 }
 
 static void timer_10000(lv_timer_t *timer) {
-	 LV_UNUSED(timer);
-	#if ACTIVATE_BLOCK_TOP_RIGHT
-	  update_block_top_right(&ui);
-	#endif
+  LV_UNUSED(timer);
+#if ACTIVATE_BLOCK_TOP_RIGHT
+  update_block_top_right(&ui);
+#endif
 
-	  // --- авто-тема ---
-	  if (ui.settings.switch_.theme_mode == 0) { // 0 = Auto
-	    bool is_day = get_is_day();
-	    if (is_day != ui.settings.switch_.theme_last_is_day) {
-	      ui.settings.switch_.theme_last_is_day = is_day;
-	      is_day ? apply_theme_light(&ui) : apply_theme_dark(&ui);
-	      lv_obj_report_style_change(&ui.style.main);
-	      lv_obj_report_style_change(&ui.style.popup);
-	      lv_obj_report_style_change(&ui.style.top_left);
-	      lv_obj_report_style_change(&ui.style.bot_left);
-	      lv_obj_report_style_change(&ui.style.top_right);
-	      lv_obj_report_style_change(&ui.style.bot_right);
-	      lv_obj_report_style_change(&ui.font.very_small_20);
-	      lv_obj_report_style_change(&ui.font.small_24);
-	      lv_obj_report_style_change(&ui.font.medium_32);
-	      lv_obj_report_style_change(&ui.font.large_48);
-	      lv_obj_report_style_change(&ui.font.nav_btn);
-	      lv_obj_report_style_change(&ui.font.time);
-	      lv_obj_report_style_change(&ui.font.icon);
-	    }
-	  }
+  // --- авто-тема ---
+  if (ui.settings.switch_.theme_mode == 0) { // 0 = Auto
+    bool is_day = get_is_day();
+    if (is_day != ui.settings.switch_.theme_last_is_day) {
+      ui.settings.switch_.theme_last_is_day = is_day;
+      is_day ? apply_theme_light(&ui) : apply_theme_dark(&ui);
+      lv_obj_report_style_change(&ui.style.main);
+      lv_obj_report_style_change(&ui.style.popup);
+      lv_obj_report_style_change(&ui.style.top_left);
+      lv_obj_report_style_change(&ui.style.bot_left);
+      lv_obj_report_style_change(&ui.style.top_right);
+      lv_obj_report_style_change(&ui.style.bot_right);
+      lv_obj_report_style_change(&ui.font.very_small_20);
+      lv_obj_report_style_change(&ui.font.small_24);
+      lv_obj_report_style_change(&ui.font.medium_32);
+      lv_obj_report_style_change(&ui.font.large_48);
+      lv_obj_report_style_change(&ui.font.nav_btn);
+      lv_obj_report_style_change(&ui.font.time);
+      lv_obj_report_style_change(&ui.font.icon);
+    }
+  }
 }
 
 static void sensor_record_values(ui_main_menu_t *ui) {
@@ -2909,7 +2963,8 @@ static void apply_theme_dark(ui_main_menu_t *ui) {
   lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
   lv_style_reset(&ui->style.popup);
-  lv_style_set_bg_color(&ui->style.popup, lv_color_hex(0x161C24)); // тёмный, без градиента
+  lv_style_set_bg_color(&ui->style.popup,
+                        lv_color_hex(0x161C24)); // тёмный, без градиента
   lv_style_set_bg_grad_dir(&ui->style.popup, LV_GRAD_DIR_NONE);
   lv_style_set_bg_opa(&ui->style.popup, LV_OPA_COVER);
 
@@ -2972,7 +3027,8 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_bg_opa(&ui->style.main, LV_OPA_COVER);
 
   lv_style_reset(&ui->style.popup);
-  lv_style_set_bg_color(&ui->style.popup, lv_color_hex(0xE8EEF4)); // светлый, без градиента
+  lv_style_set_bg_color(&ui->style.popup,
+                        lv_color_hex(0xE8EEF4)); // светлый, без градиента
   lv_style_set_bg_grad_dir(&ui->style.popup, LV_GRAD_DIR_NONE);
   lv_style_set_bg_opa(&ui->style.popup, LV_OPA_COVER);
 
@@ -3016,12 +3072,12 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.meter_co2, 1);
 
   // Шрифты — только text_color, font не трогаем
-   lv_style_set_text_color(&ui->font.very_small_20, lv_color_hex(0x1A1A2A));
+  lv_style_set_text_color(&ui->font.very_small_20, lv_color_hex(0x1A1A2A));
   lv_style_set_text_color(&ui->font.medium_32, lv_color_hex(0x1A1A2A));
   lv_style_set_text_color(&ui->font.small_24, lv_color_hex(0x1A1A2A));
   lv_style_set_text_color(&ui->font.large_48, lv_color_hex(0x1A1A2A));
   lv_style_set_text_color(&ui->font.time, lv_color_hex(0x1A1A2A));
- 
+
   lv_style_set_text_color(&ui->font.icon, lv_color_hex(0x4A80B8));
   lv_style_set_text_color(&ui->font.nav_btn, lv_color_hex(0x4A80B8));
 }
@@ -3035,8 +3091,7 @@ static void init_styles(ui_main_menu_t *ui) {
   lv_style_init(&ui->style.bot_right);
   lv_style_init(&ui->style.meter_co2);
   lv_style_init(&ui->style.chart_co2);
-  
-  ui->settings.switch_.theme_last_is_day = get_is_day();
+
   ui_apply_theme(ui); // применяем нужную тему
 }
 
@@ -3046,8 +3101,10 @@ void init_lv_objects() {
   ui.weather.settings_popup.cities_de = cities_de;
   ui.weather.settings_popup.city_count = CITY_COUNT;
 
- main_settings_load(&ui.settings.switch_.standby_mode,
-                   &ui.settings.switch_.theme_status);
+  main_settings_load(&ui.settings.switch_.standby_mode,
+                     &ui.settings.switch_.theme_mode, &ui.settings.switch_.co2_mode);
+                     
+  ui.settings.switch_.theme_last_is_day = get_is_day(); // ← инициализируем кэш
   weather_settings_load(&ui.weather.settings_popup.saved_city);
   build_weather_url(ui.weather.settings_popup.saved_city);
   init_fonts(&ui);

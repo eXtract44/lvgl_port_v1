@@ -129,18 +129,17 @@ void build_weather_url(int city_index) {
   }
 
   snprintf(url, sizeof(url),
-           "https://api.open-meteo.com/v1/forecast?"
-           "latitude=%.4f&longitude=%.4f&"
-           "current=temperature_2m,relative_humidity_2m,"
-           "cloud_cover,wind_speed_10m,rain,snowfall,is_day,"
-           "apparent_temperature,uv_index,"
-           "precipitation_probability,surface_pressure&"
-           "daily=temperature_2m_max,temperature_2m_min,"
-           "relative_humidity_2m_max,weathercode,sunrise,sunset&"
-           "models=icon_eu&"
-           "forecast_days=3&"
-           "timeformat=unixtime&timezone=auto",
-           cities_de[city_index].lat, cities_de[city_index].lon);
+             "https://api.open-meteo.com/v1/forecast?"
+         "latitude=%.4f&longitude=%.4f&"
+         "current=temperature_2m,relative_humidity_2m,"
+         "cloud_cover,wind_speed_10m,rain,snowfall,is_day,"
+         "apparent_temperature,uv_index,"
+         "precipitation_probability,surface_pressure&"
+         "daily=temperature_2m_max,temperature_2m_min,"
+         "relative_humidity_2m_max,weathercode,sunrise,sunset&"
+         "forecast_days=3&"
+         "timeformat=unixtime&timezone=auto",
+         cities_de[city_index].lat, cities_de[city_index].lon);
 }
 
 void fetch_weather(void) {

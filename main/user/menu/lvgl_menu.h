@@ -123,6 +123,7 @@ typedef struct {
 	uint8_t standby_mode;
 	 uint8_t theme_mode;        // 0=Auto 1=Hell 2=Dunkel
 	 bool    theme_last_is_day; // кэш — последнее состояние get_is_day()
+	 uint8_t co2_mode;          // 0=Sensitiv 1=Normal 2=Robust
 } ui_switchs_t;
 
 typedef struct {
@@ -149,11 +150,12 @@ typedef struct {
 	lv_obj_t *btn_open;
 	lv_obj_t *popup;
 	lv_obj_t *btn_close;
-	lv_obj_t *btn_save;
 	lv_obj_t *standby_btnmatrix;
 	lv_obj_t *standby_desc_label;
 	lv_obj_t *theme_btnmatrix;   // Auto / Hell / Dunkel
 	lv_obj_t *theme_desc_label;  // подсказка под кнопками
+	 lv_obj_t *co2_btnmatrix;      // ← новое
+  lv_obj_t *co2_desc_label;     // ← новое
 } ui_settings_t;
 
 typedef struct {
