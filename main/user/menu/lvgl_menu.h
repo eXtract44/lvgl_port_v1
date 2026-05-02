@@ -159,16 +159,25 @@ typedef struct {
 } ui_settings_t;
 
 typedef struct {
-  lv_obj_t *meter;
+lv_obj_t *meter;
   lv_obj_t *co2_label;
+  lv_obj_t *co2_unit_label;    // "ppm" под значением
+  lv_obj_t *co2_status_label;  // "GUT" / "MITTEL" / "SCHLECHT"
+  lv_obj_t *co2_footer_label;  // "CO₂ | Luftqualität" внизу
+  lv_obj_t *co2_divider;       // горизонтальная линия
   lv_meter_indicator_t *indicator;
-  lv_meter_indicator_t *needle_arc;  // ← динамический цветной arc
+  lv_meter_indicator_t *needle_arc;
   lv_obj_t *chart;
   lv_obj_t *title;
   lv_chart_series_t *series_co2;
   int32_t co2_target;
   int32_t co2_display;
-
+  lv_obj_t *chart_lbl_max;
+  lv_obj_t *chart_lbl_mid;
+  lv_obj_t *chart_lbl_min;
+  lv_obj_t *chart_lbl_t0;
+  lv_obj_t *chart_lbl_t12;
+  lv_obj_t *chart_lbl_t24;
 } ui_co2_t;
 
 typedef struct {
@@ -372,5 +381,7 @@ static void sensor_record_values(ui_main_menu_t *ui);
 static void wifi_check_timer_cb(lv_timer_t *timer);
 static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e);
 void print_holiday(uint8_t day, uint8_t month, uint16_t year, ui_main_menu_t *ui);
+void update_co2_chart_labels(ui_main_menu_t *ui);
+void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm);
 
 #endif /* INC_LVGL_MENU_H_ */

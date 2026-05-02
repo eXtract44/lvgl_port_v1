@@ -119,10 +119,17 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   /*Add a scale first*/
 
   lv_meter_scale_t *scale = lv_meter_add_scale(meter);
-  lv_meter_set_scale_ticks(meter, scale, 41, 2, 10,
-                           lv_palette_main(LV_PALETTE_GREY));
-  lv_meter_set_scale_range(meter, scale, MIN_VALUE_CO2, MAX_VALUE_CO2, 250,
-                           145);
+  lv_meter_set_scale_range(meter, scale, MIN_VALUE_CO2, MAX_VALUE_CO2, 250, 145);
+
+// мелкие тики — много, тонкие, короткие
+lv_meter_set_scale_ticks(meter, scale, 41, 2, 8,
+                         lv_palette_main(LV_PALETTE_GREY));
+
+// major тики — поверх мелких, толстые и длинные
+lv_meter_scale_t *scale_major = lv_meter_add_scale(meter);
+lv_meter_set_scale_range(meter, scale_major, MIN_VALUE_CO2, MAX_VALUE_CO2, 250, 145);
+lv_meter_set_scale_ticks(meter, scale_major, 6, 4, 18,
+                         lv_color_hex(0xAAAAAA));
 
   /*Add a blue arc to the start*/
   ui->co2.indicator =
@@ -157,7 +164,7 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 
   /*Add a needle line indicator*/
   ui->co2.indicator = lv_meter_add_needle_line(
-      meter, scale, 4, lv_palette_main(LV_PALETTE_GREY), -10);
+    meter, scale, 2, lv_color_hex(0xAAAAAA), -15);
 
   return meter;
 }
@@ -1164,8 +1171,7 @@ static void create_block_top_left(ui_main_menu_t *ui) {
 
 static void create_block_top_middle(ui_main_menu_t *ui) {
   /*BLOCK TOP MID*/
-
-  ui->co2.meter = create_meter(
+ui->co2.meter = create_meter(
       ui->screen, BLOCK_TOP_MID_WIDTH_CO2_METER, BLOCK_TOP_MID_HEIGHT_CO2_METER,
       BLOCK_TOP_MID_ALIGN_CO2_CHART, BLOCK_TOP_MID_X_START,
       BLOCK_TOP_MID_Y_START, ui);
@@ -1173,17 +1179,71 @@ static void create_block_top_middle(ui_main_menu_t *ui) {
     return;
   lv_obj_add_style(ui->co2.meter, &ui->style.meter_co2, 0);
   lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, 0);
-  //	create_text("ppm", ui->screen, STYLE_TEXT_SMALL,
-  //			BLOCK_TOP_MID_ALIGN_CO2_CHART, BLOCK_TOP_MID_X_START,
-  // meter_co2.y_ofs + 45,ui);
 
+  // --- значение CO₂ ---
   lv_obj_t *value =
       create_label(ui->screen, "0", BLOCK_TOP_MID_ALIGN_CO2_CHART,
                    BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE);
   if (!value)
     return;
   ui->co2.co2_label = value;
-  lv_obj_add_style(ui->co2.co2_label, &ui->font.large_48, 0);
+  lv_obj_add_style(ui->co2.co2_label, &ui->font.medium_32, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_label, LV_TEXT_ALIGN_CENTER, 0);
+
+  // --- "ppm" под значением ---
+  ui->co2.co2_unit_label = create_label(
+      ui->screen, "ppm", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 23);
+  lv_obj_add_style(ui->co2.co2_unit_label, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_unit_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_opa(ui->co2.co2_unit_label, LV_OPA_70, 0);
+
+  // --- статус бейдж "GUT" ---
+  ui->co2.co2_status_label = create_label(
+      ui->screen, "GUT", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE + 37);
+  if (!ui->co2.co2_status_label)
+    return;
+  lv_obj_add_style(ui->co2.co2_status_label, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_status_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_color(ui->co2.co2_status_label,
+                              lv_palette_main(LV_PALETTE_GREEN), 0);
+  // овальный фон
+  lv_obj_set_style_bg_opa(ui->co2.co2_status_label, LV_OPA_20, 0);
+  lv_obj_set_style_bg_color(ui->co2.co2_status_label,
+                            lv_palette_main(LV_PALETTE_GREEN), 0);
+  lv_obj_set_style_radius(ui->co2.co2_status_label, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_pad_hor(ui->co2.co2_status_label, 10, 0);
+  lv_obj_set_style_pad_ver(ui->co2.co2_status_label, 3, 0);
+  lv_obj_set_style_border_width(ui->co2.co2_status_label, 1, 0);
+  lv_obj_set_style_border_color(ui->co2.co2_status_label,
+                                lv_palette_main(LV_PALETTE_GREEN), 0);
+  lv_obj_set_style_border_opa(ui->co2.co2_status_label, LV_OPA_50, 0);
+
+
+  // --- футер "CO₂ | Luftqualität" ---
+ ui->co2.co2_footer_label = create_label(
+      ui->screen, "CO2 | Air Quality",
+      BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 60);
+  lv_obj_set_style_text_font(ui->co2.co2_footer_label,
+                             &lv_font_montserrat_12, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_footer_label,
+                              LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_font(ui->co2.co2_footer_label, &lv_font_montserrat_12, 0);
+lv_obj_add_style(ui->co2.co2_footer_label, &ui->font.very_small_20, 0);
+lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER, 0);
+
+// центральный кружок поверх иглы
+lv_obj_t *center_dot = lv_obj_create(ui->screen);
+lv_obj_remove_style_all(center_dot);
+lv_obj_set_size(center_dot, 14, 14);
+lv_obj_set_style_radius(center_dot, LV_RADIUS_CIRCLE, 0);
+lv_obj_set_style_bg_opa(center_dot, LV_OPA_COVER, 0);
+lv_obj_set_style_bg_color(center_dot, lv_color_hex(0x888888), 0);
+lv_obj_set_style_border_width(center_dot, 2, 0);
+lv_obj_set_style_border_color(center_dot, lv_color_hex(0xCCCCCC), 0);
+lv_obj_align_to(center_dot, ui->co2.meter, LV_ALIGN_CENTER, 0, 0);
   /*BLOCK TOP MID*/
 }
 
@@ -1662,17 +1722,75 @@ static void set_current_city_weather_event_handler(lv_event_t *e) {
   build_weather_url(city);
 }
 /////////////////////////////////////////////////weather settings events
+void update_co2_chart_labels(ui_main_menu_t *ui) {
+  static const int16_t mode_max[] = {2400, 4000, 6000};
+
+  int16_t val_max = mode_max[ui->settings.switch_.co2_mode];
+  int16_t val_mid = (MIN_VALUE_CO2 + val_max) / 2;
+
+  char buf[12];
+
+  snprintf(buf, sizeof(buf), "%d ppm", val_max);
+  lv_label_set_text(ui->co2.chart_lbl_max, buf);
+
+  snprintf(buf, sizeof(buf), "%d ppm", val_mid);
+  lv_label_set_text(ui->co2.chart_lbl_mid, buf);
+
+  lv_label_set_text(ui->co2.chart_lbl_min, "400 ppm");
+}
 
 static void ui_create_co2_chart_bot_mid(ui_main_menu_t *ui) {
-  //  create_text("CO2 24H", ui->screen, STYLE_TEXT_TITLE,
-  //              BLOCK_BOT_MID_ALIGN_CO2_CHART, 0,
-  //              BLOCK_BOT_MID_Y_START_TITLE_CO2_CHART, ui);
-
-  ui->co2.chart = create_chart(
+ ui->co2.chart = create_chart(
       ui->screen, BLOCK_BOT_MID_WIDTH_CO2_CHART, BLOCK_BOT_MID_HEIGHT_CO2_CHART,
       BLOCK_BOT_MID_ALIGN_CO2_CHART, 0, BLOCK_BOT_MID_Y_START_CO2_CHART);
 
   lv_obj_add_style(ui->co2.chart, &ui->style.chart_co2, 0);
+
+  // --- inline Y labels (поверх графика) ---
+  // позиционируем относительно chart через lv_obj_align_to
+
+  ui->co2.chart_lbl_max = lv_label_create(ui->screen);
+  lv_obj_add_style(ui->co2.chart_lbl_max, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_opa(ui->co2.chart_lbl_max, LV_OPA_50, 0);
+  lv_obj_align_to(ui->co2.chart_lbl_max, ui->co2.chart,
+                  LV_ALIGN_TOP_LEFT, 4, 2);
+
+  ui->co2.chart_lbl_mid = lv_label_create(ui->screen);
+  lv_obj_add_style(ui->co2.chart_lbl_mid, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_opa(ui->co2.chart_lbl_mid, LV_OPA_50, 0);
+  lv_obj_align_to(ui->co2.chart_lbl_mid, ui->co2.chart,
+                  LV_ALIGN_LEFT_MID, 4, 0);
+
+  ui->co2.chart_lbl_min = lv_label_create(ui->screen);
+  lv_obj_add_style(ui->co2.chart_lbl_min, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_opa(ui->co2.chart_lbl_min, LV_OPA_50, 0);
+  lv_obj_align_to(ui->co2.chart_lbl_min, ui->co2.chart,
+                  LV_ALIGN_BOTTOM_LEFT, 4, -2);
+
+  // --- inline X labels ---
+  ui->co2.chart_lbl_t24 = lv_label_create(ui->screen);
+  lv_obj_add_style(ui->co2.chart_lbl_t24, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_opa(ui->co2.chart_lbl_t24, LV_OPA_70, 0);
+  lv_label_set_text(ui->co2.chart_lbl_t24, "-24h");
+  lv_obj_align_to(ui->co2.chart_lbl_t24, ui->co2.chart,
+                  LV_ALIGN_BOTTOM_LEFT, 2, BLOCK_BOT_MID_Y_START_CO2_TIMES);
+
+  ui->co2.chart_lbl_t12 = lv_label_create(ui->screen);
+  lv_obj_add_style(ui->co2.chart_lbl_t12, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_opa(ui->co2.chart_lbl_t12, LV_OPA_70, 0);
+  lv_label_set_text(ui->co2.chart_lbl_t12, "-12h");
+  lv_obj_align_to(ui->co2.chart_lbl_t12, ui->co2.chart,
+                  LV_ALIGN_BOTTOM_MID, 0, BLOCK_BOT_MID_Y_START_CO2_TIMES);
+
+  ui->co2.chart_lbl_t0 = lv_label_create(ui->screen);
+  lv_obj_add_style(ui->co2.chart_lbl_t0, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_opa(ui->co2.chart_lbl_t0, LV_OPA_70, 0);
+  lv_label_set_text(ui->co2.chart_lbl_t0, "0h");
+  lv_obj_align_to(ui->co2.chart_lbl_t0, ui->co2.chart,
+                  LV_ALIGN_BOTTOM_RIGHT, -2, BLOCK_BOT_MID_Y_START_CO2_TIMES);
+
+  // заполняем Y-лейблы с учётом текущего режима
+  update_co2_chart_labels(ui);
 }
 
 static void ui_create_city_list_weather(ui_main_menu_t *ui) {
@@ -1881,6 +1999,8 @@ static void co2_btnmatrix_event_cb(lv_event_t *e) {
     main_settings_save(ui->settings.switch_.standby_mode,
                        ui->settings.switch_.theme_mode,
                        ui->settings.switch_.co2_mode);
+                        // обновляем Y-лейблы графика под новый диапазон
+    update_co2_chart_labels(ui);
 }
 static void theme_btnmatrix_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -2168,7 +2288,6 @@ static void create_block_bot_right(ui_main_menu_t *ui) {
   }
 #endif
 }
-
 static void create_menu(ui_main_menu_t *ui) {
 
   ui->screen = lv_obj_create(NULL);
@@ -2190,6 +2309,7 @@ static void create_menu(ui_main_menu_t *ui) {
 #endif
 #if ACTIVATE_BLOCK_TOP_MID
   create_block_top_middle(ui);
+  
 #endif
 #if ACTIVATE_BLOCK_TOP_RIGHT
   create_block_top_right(ui);
@@ -2679,13 +2799,14 @@ static lv_color_t calc_co2_color(uint16_t co2) {
   return lv_palette_main(LV_PALETTE_RED);
 }
 void update_block_top_middle(ui_main_menu_t *ui) {
-  if (sgp30_data.state == SGP30_STATE_OK) {
+ if (sgp30_data.state == SGP30_STATE_OK) {
     uint16_t raw = get_co2_sgp30();
     ui->co2.co2_target = co2_scale(raw, ui->settings.switch_.co2_mode);
-    print_value("%.f", (float)raw,
-                ui->co2.co2_label); // реальное, без изменений
+    print_value("%.f", (float)raw, ui->co2.co2_label);
+    update_co2_status_label(ui, raw);  // передаём реальное ppm, не scaled
   } else {
     lv_label_set_text(ui->co2.co2_label, "KS");
+    lv_label_set_text(ui->co2.co2_status_label, "---");
   }
 }
 
@@ -2775,7 +2896,7 @@ if (rain_prob < 0.0f) {
 } else if (rain_prob < 30.0f) {
     precip_text = "unwahrscheinli.";
 } else if (rain_prob < 60.0f) {
-    precip_text = "möglich";
+    precip_text = "moeglich";
 } else if (rain_prob < 80.0f) {
     precip_text = "wahrscheinlich";
 } else {
@@ -2798,6 +2919,33 @@ lv_label_set_text(ui->weather.rain_label, precip_text);
   } else {
     lv_label_set_text(ui->weather.pressure_label, "- hPa");
   }
+}
+
+void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm) {
+  if (!ui->co2.co2_status_label)
+    return;
+
+  const char *text;
+  lv_color_t color;
+
+  if (co2_ppm < 800) {
+    text  = "GUT";
+    color = lv_palette_main(LV_PALETTE_GREEN);
+  } else if (co2_ppm < 1200) {
+    text  = "MITTEL";
+    color = lv_palette_main(LV_PALETTE_YELLOW);
+  } else if (co2_ppm < 1600) {
+    text  = "SCHLECHT";
+    color = lv_palette_main(LV_PALETTE_ORANGE);
+  } else {
+    text  = "GEFAHR";
+    color = lv_palette_main(LV_PALETTE_RED);
+  }
+
+  lv_label_set_text(ui->co2.co2_status_label, text);
+  lv_obj_set_style_text_color(ui->co2.co2_status_label, color, 0);
+  lv_obj_set_style_bg_color(ui->co2.co2_status_label, color, 0);
+  lv_obj_set_style_border_color(ui->co2.co2_status_label, color, 0);
 }
 
 void update_block_bot_middle(ui_main_menu_t *ui) {
