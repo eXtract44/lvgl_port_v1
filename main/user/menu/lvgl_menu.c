@@ -1,24 +1,6 @@
 
 #include "user/menu/lvgl_menu.h"
-#include "esp_heap_caps.h"
-// #include "esp_log_timestamp.h"
-#include "font/lv_symbol_def.h"
-#include "lvgl_port.h"
-#include "lvgl_user_config.h"
-#include "misc/lv_area.h"
-#include "misc/lv_color.h"
 
-#include "esp_wifi.h"
-#include "waveshare_rgb_lcd_port.h"
-#include <esp_log.h>
-#include <math.h>
-#include <stdbool.h>
-#include <time.h>
-
-#include "user/periphery/nvs_user.h"
-#include "user/periphery/open_meteo.h"
-#include "user/periphery/periphery.h"
-#include "user/periphery/wifi.h"
 
 extern const city_t cities_de[];
 extern lv_font_t my_symbols;
@@ -382,26 +364,46 @@ static lv_obj_t *create_btn_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                  lv_align_t align, lv_coord_t x_ofs,
                                  lv_coord_t y_ofs, lv_event_cb_t event_cb,
                                  void *user_data, const char *symbol,
-                                 lv_style_t *icon_style,
-                                 const lv_font_t *font) { // добавили font
+                                 lv_style_t *icon_style, const lv_font_t *font,
+                                 const char *label_text, ui_main_menu_t *ui_ptr) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_btn_icon");
     return NULL;
   }
+
   lv_obj_t *cont = lv_btn_create(parent);
-  lv_obj_remove_style_all(cont);
   lv_obj_set_size(cont, w, h);
   lv_obj_align(cont, align, x_ofs, y_ofs);
   lv_obj_add_event_cb(cont, event_cb, LV_EVENT_CLICKED, user_data);
 
-  lv_obj_t *label = lv_label_create(cont);
-  lv_label_set_text(label, symbol);
-  if (icon_style)
-    lv_obj_add_style(label, icon_style, 0);
+  /* фон из style.popup — переключается с темой автоматически */
+  lv_obj_add_style(cont, &ui_ptr->style.popup, 0);
+  lv_obj_set_style_radius(cont, 10, 0);
+  lv_obj_set_style_border_width(cont, 1, 0);
+  lv_obj_set_style_border_color(cont, lv_color_hex(0x2D5A8E), 0);
+  lv_obj_set_style_border_opa(cont, LV_OPA_60, 0);
+  lv_obj_set_style_shadow_width(cont, 0, 0);
+  lv_obj_set_style_pad_all(cont, 0, 0);
+
+  /* pressed */
+  lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_STATE_PRESSED);
+  lv_obj_set_style_bg_color(cont, lv_color_hex(0x2D6AB4), LV_STATE_PRESSED);
+  lv_obj_set_style_border_color(cont, lv_color_hex(0x60A5FA), LV_STATE_PRESSED);
+
+  /* иконка */
+  lv_obj_t *icon = lv_label_create(cont);
+  lv_label_set_text(icon, symbol);
+  lv_obj_add_style(icon, &ui_ptr->font.nav_btn, 0);
   if (font)
-    lv_obj_set_style_text_font(label, font, 0);
-  lv_obj_set_style_text_color(label, lv_color_hex(0x4A80B8), 0);
-  lv_obj_center(label);
+    lv_obj_set_style_text_font(icon, font, 0);
+  lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 6);
+
+  /* подпись */
+  lv_obj_t *lbl = lv_label_create(cont);
+  lv_label_set_text(lbl, label_text);
+  lv_obj_add_style(lbl, &ui_ptr->font.nav_btn, 0);
+  lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
+  lv_obj_align(lbl, LV_ALIGN_BOTTOM_MID, 0, -5);
 
   return cont;
 }
@@ -1169,6 +1171,63 @@ static void create_block_top_left(ui_main_menu_t *ui) {
   }
 }
 
+static void co2_calib_popup_close_cb(lv_event_t *e) {
+  ui_main_menu_t *ui = lv_event_get_user_data(e);
+  lv_obj_add_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void co2_meter_click_event_cb(lv_event_t *e) {
+  ui_main_menu_t *ui = lv_event_get_user_data(e);
+  bool calibrating =
+      (xTaskGetTickCount() - ui->co2.calib_start_tick) < (12UL * 3600UL * configTICK_RATE_HZ);
+
+  lv_label_set_text(ui->co2.calib_popup_text,
+      calibrating
+      ? "Der CO2-Sensor befindet sich in der Lernphase.\n"
+        "Die Werte sind noch ungenau.\n"
+        "Die Genauigkeit verbessert sich nach ~12 Stunden."
+      : "Der CO2-Sensor ist kalibriert.\n"
+        "Die angezeigten Werte sind zuverlaessig.");
+
+  lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void sgp30_calib_timer_cb(lv_timer_t *t) {
+  ui_main_menu_t *ui = t->user_data;
+  if ((xTaskGetTickCount() - ui->co2.calib_start_tick) >=
+      (12UL * 3600UL * configTICK_RATE_HZ)) {
+    lv_obj_add_flag(ui->co2.calib_icon_label, LV_OBJ_FLAG_HIDDEN);
+    lv_timer_del(t);
+  }
+}
+
+static void ui_create_sgp30_calib_popup(ui_main_menu_t *ui) {
+  ui->co2.calib_popup = create_background(
+      ui->screen, POPUP_WINDOW_WIDTH, 220,
+      POPUP_WINDOW_ALIGN, 0, 0);
+  lv_obj_add_style(ui->co2.calib_popup, &ui->style.popup, 0);
+  lv_obj_add_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+
+  ui->co2.calib_popup_text = create_label(
+      ui->co2.calib_popup,
+      "Der CO2-Sensor befindet sich in der Lernphase.\n"
+      "Die Werte sind noch ungenau.\n"
+      "Die Genauigkeit verbessert sich nach ~12 Stunden.",
+      LV_ALIGN_TOP_MID, 0, 30);
+  lv_obj_set_style_text_align(ui->co2.calib_popup_text,
+      LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_add_style(ui->co2.calib_popup_text, &ui->font.very_small_20, 0);
+  lv_obj_set_width(ui->co2.calib_popup_text, POPUP_WINDOW_WIDTH - 40);
+
+  lv_obj_t *btn = create_btn_cb(
+      ui->co2.calib_popup, 120, 45,
+      LV_ALIGN_BOTTOM_MID, 0, -15,
+      co2_calib_popup_close_cb, ui);
+  lv_obj_t *lbl = lv_label_create(btn);
+  lv_label_set_text(lbl, "OK");
+  lv_obj_center(lbl);
+}
+
 static void create_block_top_middle(ui_main_menu_t *ui) {
   /*BLOCK TOP MID*/
 ui->co2.meter = create_meter(
@@ -1244,6 +1303,21 @@ lv_obj_set_style_bg_color(center_dot, lv_color_hex(0x888888), 0);
 lv_obj_set_style_border_width(center_dot, 2, 0);
 lv_obj_set_style_border_color(center_dot, lv_color_hex(0xCCCCCC), 0);
 lv_obj_align_to(center_dot, ui->co2.meter, LV_ALIGN_CENTER, 0, 0);
+  // --- иконка калибровки ---
+  ui->co2.calib_icon_label = create_label(
+      ui->screen, LV_SYMBOL_WARNING,
+      BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      0, BLOCK_TOP_MID_Y_START + 40);
+  lv_obj_set_style_text_color(ui->co2.calib_icon_label,
+      lv_palette_main(LV_PALETTE_ORANGE), 0);
+  lv_obj_set_style_text_font(ui->co2.calib_icon_label,
+      &lv_font_montserrat_20, 0);
+
+  // --- метр кликабельный ---
+  lv_obj_add_flag(ui->co2.meter, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(ui->co2.meter, co2_meter_click_event_cb,
+      LV_EVENT_CLICKED, ui);
+
   /*BLOCK TOP MID*/
 }
 
@@ -1857,22 +1931,22 @@ static void ui_create_weather_settings_popup(ui_main_menu_t *ui) {
 
 static void ui_create_settings_popup_btns(ui_main_menu_t *ui) {
   ui->weather.settings_popup.btn_open = create_btn_icon(
-      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_1,
-      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_weather_open_popup_event_handler, ui,
-      MY_CLOUD_SYMBOL, &ui->font.nav_btn, NULL); // my_symbols через стиль
+    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_1,
+    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_weather_open_popup_event_handler, ui,
+    MY_CLOUD_SYMBOL, &ui->font.nav_btn, NULL, "Wetter", ui);
 
-  ui->wifi.btn_open = create_btn_icon(
-      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_2,
-      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_wifi_open_popup_event_handler, ui,
-      LV_SYMBOL_WIFI, NULL, &lv_font_montserrat_32); // стандартный шрифт
+ui->wifi.btn_open = create_btn_icon(
+    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_2,
+    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_wifi_open_popup_event_handler, ui,
+    LV_SYMBOL_WIFI, NULL, &lv_font_montserrat_32, "WLAN", ui);
 
-  ui->settings.btn_open = create_btn_icon(
-      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_3,
-      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_settings_open_popup_event_handler, ui,
-      LV_SYMBOL_SETTINGS, NULL, &lv_font_montserrat_32);
+ui->settings.btn_open = create_btn_icon(
+    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_3,
+    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_settings_open_popup_event_handler, ui,
+    LV_SYMBOL_SETTINGS, NULL, &lv_font_montserrat_32, "Setup", ui);
 }
 
 static void ui_create_wifi_popup(ui_main_menu_t *ui) {
@@ -3323,4 +3397,10 @@ void init_lv_objects() {
   lv_timer_create(timer_1000, 1000, NULL);
   lv_timer_create(timer_200, 200, NULL);
   lv_timer_create(co2_meter_anim_cb, 33, &ui);
+  
+   // SGP30 калибровка
+  ui.co2.calib_start_tick = xTaskGetTickCount();
+  ui_create_sgp30_calib_popup(&ui);
+  lv_obj_clear_flag(ui.co2.calib_popup, LV_OBJ_FLAG_HIDDEN); // попап при старте
+  lv_timer_create(sgp30_calib_timer_cb, 60000, &ui);         // проверка раз в минуту
 }

@@ -9,9 +9,30 @@
 #define INC_LVGL_MENU_H_
 
 #include "../components/lvgl__lvgl/lvgl.h"
+#include "lvgl_port.h"
+#include "esp_wifi.h"
 #include "user/menu/lvgl_user_config.h"
 #include "user/periphery/open_meteo.h"
 #include <stdio.h>
+#include "esp_heap_caps.h"
+// #include "esp_log_timestamp.h"
+#include "font/lv_symbol_def.h"
+
+#include "lvgl_user_config.h"
+#include "misc/lv_area.h"
+#include "misc/lv_color.h"
+
+
+#include "waveshare_rgb_lcd_port.h"
+#include <esp_log.h>
+#include <math.h>
+#include <stdbool.h>
+#include <time.h>
+
+#include "user/periphery/nvs_user.h"
+#include "user/periphery/open_meteo.h"
+#include "user/periphery/periphery.h"
+#include "user/periphery/wifi.h"
 
 #define constrain(input, min, max)                                             \
   ({                                                                           \
@@ -178,6 +199,11 @@ lv_obj_t *meter;
   lv_obj_t *chart_lbl_t0;
   lv_obj_t *chart_lbl_t12;
   lv_obj_t *chart_lbl_t24;
+  lv_obj_t *calib_icon_label;
+lv_obj_t *calib_popup;
+lv_obj_t *calib_popup_text;
+TickType_t calib_start_tick;
+  
 } ui_co2_t;
 
 typedef struct {
@@ -366,7 +392,8 @@ static lv_obj_t *create_btn_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                  lv_align_t align, lv_coord_t x_ofs,
                                  lv_coord_t y_ofs, lv_event_cb_t event_cb,
                                  void *user_data, const char *symbol,
-                                 lv_style_t *icon_style, const lv_font_t *font);
+                                 lv_style_t *icon_style, const lv_font_t *font,
+                                 const char *label_text, ui_main_menu_t *ui_ptr);
 static lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                lv_align_t align, lv_coord_t x_ofs,
                                lv_coord_t y_ofs, lv_event_cb_t event_cb,
@@ -383,5 +410,9 @@ static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e);
 void print_holiday(uint8_t day, uint8_t month, uint16_t year, ui_main_menu_t *ui);
 void update_co2_chart_labels(ui_main_menu_t *ui);
 void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm);
+static void co2_calib_popup_close_cb(lv_event_t *e);
+static void co2_meter_click_event_cb(lv_event_t *e);
+static void ui_create_sgp30_calib_popup(ui_main_menu_t *ui);
+static void sgp30_calib_timer_cb(lv_timer_t *t);
 
 #endif /* INC_LVGL_MENU_H_ */

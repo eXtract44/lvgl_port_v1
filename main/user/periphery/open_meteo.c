@@ -16,7 +16,7 @@
 #include "user/periphery/periphery.h"
 #include <stdint.h>
 
-static const char *TAG = "WEATHER_APP";
+//static const char *TAG = "WEATHER_APP";
 forecast_data_t forecast_data;
 current_weather_t current_weather_data = {0};
 
