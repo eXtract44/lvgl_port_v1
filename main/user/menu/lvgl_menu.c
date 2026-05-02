@@ -2707,7 +2707,7 @@ static lv_color_t calc_uv_color(float uv) {
   if (uv < 3.0f)
     return lv_palette_main(LV_PALETTE_GREEN);
   if (uv < 6.0f)
-    return lv_palette_main(LV_PALETTE_YELLOW);
+    return lv_color_hex(0xB3B300);
   if (uv < 8.0f)
     return lv_palette_main(LV_PALETTE_ORANGE);
   if (uv < 11.0f)
@@ -2724,8 +2724,7 @@ void update_block_bot_left(ui_main_menu_t *ui) {
     lv_label_set_text(ui->weather.humidity_label, "K.W");
     lv_label_set_text(ui->weather.feels_like_label, "K.W");
     lv_label_set_text(ui->weather.uv_label, "UV -");
-    lv_label_set_text(ui->weather.rain_label, "- mm");
-    // lv_label_set_text(ui->weather.rain_prob_label, "- %?");
+   lv_label_set_text(ui->weather.rain_label, "unwahrscheinli.");
     lv_label_set_text(ui->weather.wind_label, "- m/s");
     lv_label_set_text(ui->weather.pressure_label, "- hPa");
     return;
@@ -2768,16 +2767,21 @@ void update_block_bot_left(ui_main_menu_t *ui) {
   }
 
   // ── строка 3 — осадки + вероятность ──────────────────
-  float rain = get_weather_rain() + get_weather_snow();
-  float rain_prob = (float)get_precipitation_probability();
+ float rain_prob = (float)get_precipitation_probability();
 
-  if (rain >= 0.0f) {
-    snprintf(ui->string_buffer, sizeof(ui->string_buffer), "%.1fmm  %.0f%%?",
-             rain, rain_prob);
-    lv_label_set_text(ui->weather.rain_label, ui->string_buffer);
-  } else {
-    lv_label_set_text(ui->weather.rain_label, "- mm/%%");
-  }
+const char *precip_text;
+if (rain_prob < 0.0f) {
+    precip_text = "unwahrscheinli.";
+} else if (rain_prob < 30.0f) {
+    precip_text = "unwahrscheinli.";
+} else if (rain_prob < 60.0f) {
+    precip_text = "möglich";
+} else if (rain_prob < 80.0f) {
+    precip_text = "wahrscheinlich";
+} else {
+    precip_text = "erwartet";
+}
+lv_label_set_text(ui->weather.rain_label, precip_text);
 
   // ── строка 4 — ветер + давление ──────────────────────
   float wind = (float)get_weather_wind();
