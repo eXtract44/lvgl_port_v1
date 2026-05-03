@@ -3030,7 +3030,7 @@ void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm) {
     text  = "MITTEL";
     color = lv_palette_main(LV_PALETTE_YELLOW);
   } else if (co2_ppm < 1600) {
-    text  = "MÄSS.";
+    text  = "HOCH";
     color = lv_palette_main(LV_PALETTE_ORANGE);
   } else {
     text  = "GEFAHR";
