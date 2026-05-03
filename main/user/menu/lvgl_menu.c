@@ -15,6 +15,8 @@ ui_main_menu_t ui = {0};
 int standby_touched = 0; // callback for extern touch driver
 
 #define FEELS_LIKE_MIN_DIFF 1.5f
+#define CO2_CALIB_TIME (12UL * 3600UL * configTICK_RATE_HZ) 
+/*(30 * configTICK_RATE_HZ)*/
 
 LV_IMG_DECLARE(sun_48_48);
 LV_IMG_DECLARE(moon_42_42);
@@ -1178,16 +1180,23 @@ static void co2_calib_popup_close_cb(lv_event_t *e) {
 
 static void co2_meter_click_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = lv_event_get_user_data(e);
-  bool calibrating =
-      (xTaskGetTickCount() - ui->co2.calib_start_tick) < (12UL * 3600UL * configTICK_RATE_HZ);
 
-  lv_label_set_text(ui->co2.calib_popup_text,
-      calibrating
-      ? "Der CO2-Sensor befindet sich in der Lernphase.\n"
-        "Die Werte sind noch ungenau.\n"
-        "Die Genauigkeit verbessert sich nach ~12 Stunden."
-      : "Der CO2-Sensor ist kalibriert.\n"
+  TickType_t elapsed = xTaskGetTickCount() - ui->co2.calib_start_tick;
+  TickType_t total   = CO2_CALIB_TIME;
+
+  if (elapsed < total) {
+    uint32_t remaining_sec = (total - elapsed) / configTICK_RATE_HZ;
+    uint32_t h = remaining_sec / 3600;
+    uint32_t m = (remaining_sec % 3600) / 60;
+    lv_label_set_text_fmt(ui->co2.calib_popup_text,
+        "Der CO2-Sensor befindet sich in der Lernphase.\n"
+        "Die Werte sind noch ungenau.\n\n"
+        "Verbleibende Zeit: %02u:%02u Std.", (unsigned int)h, (unsigned int)m);
+  } else {
+    lv_label_set_text(ui->co2.calib_popup_text,
+        "Der CO2-Sensor ist kalibriert.\n"
         "Die angezeigten Werte sind zuverlaessig.");
+  }
 
   lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
 }
@@ -1195,7 +1204,7 @@ static void co2_meter_click_event_cb(lv_event_t *e) {
 static void sgp30_calib_timer_cb(lv_timer_t *t) {
   ui_main_menu_t *ui = t->user_data;
   if ((xTaskGetTickCount() - ui->co2.calib_start_tick) >=
-      (12UL * 3600UL * configTICK_RATE_HZ)) {
+      CO2_CALIB_TIME) {
     lv_obj_add_flag(ui->co2.calib_icon_label, LV_OBJ_FLAG_HIDDEN);
     lv_timer_del(t);
   }
@@ -1927,6 +1936,18 @@ static void ui_create_weather_settings_popup(ui_main_menu_t *ui) {
   create_text("Stadt:", ui->weather.settings_popup.popup, STYLE_TEXT_SMALL,
               LV_ALIGN_TOP_LEFT, 15, 90, ui);
   ui_create_city_list_weather(ui);
+  
+   lv_obj_t *info_label = create_label(
+      ui->weather.settings_popup.popup,
+      "Datenquelle: Open-Meteo (open-meteo.com)\n"
+      "Aktuelle Werte sind berechnet, keine Echtzeitmessung.\n"
+      "Vorhersagen koennen von der Realitaet abweichen.",
+      LV_ALIGN_BOTTOM_MID, 0, -10);
+  lv_obj_set_style_text_font(info_label, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_color(info_label, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_text_align(info_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_label_set_long_mode(info_label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(info_label, POPUP_WINDOW_WIDTH - 40);
 }
 
 static void ui_create_settings_popup_btns(ui_main_menu_t *ui) {
@@ -3009,7 +3030,7 @@ void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm) {
     text  = "MITTEL";
     color = lv_palette_main(LV_PALETTE_YELLOW);
   } else if (co2_ppm < 1600) {
-    text  = "SCHLECHT";
+    text  = "MÄSS.";
     color = lv_palette_main(LV_PALETTE_ORANGE);
   } else {
     text  = "GEFAHR";
@@ -3273,15 +3294,13 @@ static void apply_theme_dark(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.bot_right, 1);
   lv_style_set_radius(&ui->style.bot_right, 12);
 
-  lv_style_reset(&ui->style.chart_co2);
-  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
-  lv_style_set_bg_color(&ui->style.chart_co2,
-                        lv_color_hex(0x7A2E2E)); // тёмный красный
-  lv_style_set_bg_grad_color(&ui->style.chart_co2,
-                             lv_color_hex(0x1E5C30)); // тёмный зелёный
-  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
-  lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
-  lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
+lv_style_reset(&ui->style.chart_co2);
+lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0x1A2233));
+lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_NONE);
+lv_style_set_border_color(&ui->style.chart_co2, lv_color_hex(0x2E4A6A));
+lv_style_set_border_width(&ui->style.chart_co2, 1);
+lv_style_set_radius(&ui->style.chart_co2, 8);
 
   lv_style_reset(&ui->style.meter_co2);
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0x1A2E22));
@@ -3337,15 +3356,13 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.bot_right, 1);
   lv_style_set_radius(&ui->style.bot_right, 12);
 
-  lv_style_reset(&ui->style.chart_co2);
-  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
-  lv_style_set_bg_color(&ui->style.chart_co2,
-                        lv_color_hex(0xD4888A)); // пастельный красный
-  lv_style_set_bg_grad_color(&ui->style.chart_co2,
-                             lv_color_hex(0x88B898)); // пастельный зелёный
-  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_VER);
-  lv_style_set_bg_main_stop(&ui->style.chart_co2, 128);
-  lv_style_set_bg_grad_stop(&ui->style.chart_co2, 192);
+lv_style_reset(&ui->style.chart_co2);
+lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0xEEF2F7));
+lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_NONE);
+lv_style_set_border_color(&ui->style.chart_co2, lv_color_hex(0xB0BEC5));
+lv_style_set_border_width(&ui->style.chart_co2, 1);
+lv_style_set_radius(&ui->style.chart_co2, 8);
 
   lv_style_reset(&ui->style.meter_co2);
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0xEDE9FF));
