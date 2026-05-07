@@ -16,6 +16,7 @@
 #include "user/periphery/nvs_user.h"
 #include "user/periphery/periphery.h"
 #include "user/periphery/time_user.h"
+#include "user/periphery/backlight.h"
 
 //#include "user/periphery/sd_card.h"
 
@@ -63,6 +64,9 @@ void weather_task(void *arg) {
     ESP_LOGI("I2C_SCAN", "Done.");
 }
 void app_main() {
+	
+	backlight_init();
+	backlight_set(30);
 	i2c_bus_mutex_init();
 	
 nvs_user_init();
@@ -78,9 +82,8 @@ nvs_user_init();
      start_ntp_time_task();
 #endif
   // --- LCD + LVGL ---
-//  wifi_print_info();
   waveshare_esp32_s3_rgb_lcd_init(); // Initialize the Waveshare ESP32-S3 RGB
-  //aht10_init(); 
+  wavesahre_rgb_lcd_bl_off();
   //i2c_scan();                    
   if (lvgl_port_lock(-1)) {
     init_lv_objects();

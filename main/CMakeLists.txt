@@ -7,9 +7,11 @@ idf_component_register(
     "user/periphery/sd_card.c"
      "user/periphery/nvs_user.c"
      "user/periphery/i2c_bus.c"
+     "user/periphery/periphery.c" 
+     "user/periphery/backlight.c"
     
     "user/menu/lvgl_menu.c" 
-    "user/periphery/periphery.c" 
+    
     "user/fonts/my_symbols.c" 
     "user/fonts/my_time_font.c"
    

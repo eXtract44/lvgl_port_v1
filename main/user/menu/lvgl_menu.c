@@ -1711,6 +1711,10 @@ static void btn_settings_close_popup_event_handler(lv_event_t *e) {
   ui->settings.theme_desc_label = NULL;
   ui->settings.co2_btnmatrix  = NULL;
 ui->settings.co2_desc_label = NULL;
+ui->settings.backlight_btnmatrix = NULL;
+ui->settings.backlight_desc_label = NULL;
+ui->settings.backlight_slider = NULL;
+ui->settings.backlight_pct_label = NULL;
 
   show_all_blocks(ui);
 }
@@ -2063,6 +2067,54 @@ void ui_apply_theme(ui_main_menu_t *ui) {
   lv_obj_report_style_change(&ui->font.icon);
 }
 
+static void backlight_btnmatrix_event_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+    ui->settings.switch_.backlight_mode = (uint8_t)btn_id;
+
+
+
+    // слайдер активен только в Manuell
+    if (btn_id == 0) {
+        lv_obj_clear_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
+        backlight_set(ui->settings.switch_.backlight_pct);
+    } else {
+        lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
+        uint8_t pct = (btn_id == 1) ? backlight_get_auto_pct()
+                                    : backlight_get_zeitplan_pct();
+        backlight_set(pct);
+    }
+    static const char *bl_descs[] = {
+    "Feste Helligkeit per Schieberegler.",
+    "Tagsueber 80%, nachts 5%.",
+    "Sanfter Verlauf: Morgen, Tag, Abend, Nacht."};
+lv_label_set_text(ui->settings.backlight_desc_label, bl_descs[btn_id]);
+
+    main_settings_save(ui->settings.switch_.standby_mode,
+                   ui->settings.switch_.backlight_pct,
+                   ui->settings.switch_.backlight_mode,
+                   ui->settings.switch_.theme_mode,
+                   ui->settings.switch_.co2_mode);
+}
+
+static void backlight_slider_event_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    lv_obj_t *slider = lv_event_get_target(e);
+    uint8_t pct = (uint8_t)lv_slider_get_value(slider);
+    ui->settings.switch_.backlight_pct = pct;
+
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d%%", pct);
+    lv_label_set_text(ui->settings.backlight_pct_label, buf);
+
+    backlight_set(pct);
+   main_settings_save(ui->settings.switch_.standby_mode,
+                   ui->settings.switch_.backlight_pct,
+                   ui->settings.switch_.backlight_mode,
+                   ui->settings.switch_.theme_mode,
+                   ui->settings.switch_.co2_mode);
+}
 // callback для btnmatrix
 static void standby_btnmatrix_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -2076,8 +2128,10 @@ static void standby_btnmatrix_event_cb(lv_event_t *e) {
   lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
 
   main_settings_save(ui->settings.switch_.standby_mode,
-                     ui->settings.switch_.theme_mode,
-                     ui->settings.switch_.co2_mode);
+                   ui->settings.switch_.backlight_pct,
+                   ui->settings.switch_.backlight_mode,
+                   ui->settings.switch_.theme_mode,
+                   ui->settings.switch_.co2_mode);
 }
 static void co2_btnmatrix_event_cb(lv_event_t *e) {
     ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -2092,8 +2146,10 @@ static void co2_btnmatrix_event_cb(lv_event_t *e) {
     lv_label_set_text(ui->settings.co2_desc_label, descs[btn_id]);
 
     main_settings_save(ui->settings.switch_.standby_mode,
-                       ui->settings.switch_.theme_mode,
-                       ui->settings.switch_.co2_mode);
+                   ui->settings.switch_.backlight_pct,
+                   ui->settings.switch_.backlight_mode,
+                   ui->settings.switch_.theme_mode,
+                   ui->settings.switch_.co2_mode);
                         // обновляем Y-лейблы графика под новый диапазон
     update_co2_chart_labels(ui);
 }
@@ -2136,10 +2192,12 @@ static void theme_btnmatrix_event_cb(lv_event_t *e) {
   lv_obj_report_style_change(&ui->font.time);
   lv_obj_report_style_change(&ui->font.icon);
 
-  main_settings_save(ui->settings.switch_.standby_mode,
-                     ui->settings.switch_.theme_mode,
-                     ui->settings.switch_.co2_mode);
-}
+main_settings_save(ui->settings.switch_.standby_mode,
+                   ui->settings.switch_.backlight_pct,
+                   ui->settings.switch_.backlight_mode,
+                   ui->settings.switch_.theme_mode,
+                   ui->settings.switch_.co2_mode);
+};
 
 static void ui_create_settigs_switches(ui_main_menu_t *ui) {
   // --- standby btnmatrix ---
@@ -2199,6 +2257,65 @@ ui->settings.co2_desc_label =
     create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 585);
 lv_obj_add_style(ui->settings.co2_desc_label, &ui->font.very_small_20, 0);
 
+// --- Helligkeit ---
+create_text("Helligkeit:", ui->settings.popup, STYLE_TEXT_SMALL,
+            LV_ALIGN_TOP_LEFT, 15, 630, ui);
+
+static const char *bl_map[] = {"Manuell", "Auto", "Zeitplan", ""};
+ui->settings.backlight_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
+lv_obj_set_size(ui->settings.backlight_btnmatrix, 540, 90);
+lv_obj_align(ui->settings.backlight_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 675);
+lv_btnmatrix_set_map(ui->settings.backlight_btnmatrix, bl_map);
+lv_obj_set_style_text_font(ui->settings.backlight_btnmatrix,
+                           &lv_font_montserrat_20, LV_PART_ITEMS);
+lv_btnmatrix_set_btn_ctrl_all(ui->settings.backlight_btnmatrix,
+                              LV_BTNMATRIX_CTRL_CHECKABLE);
+lv_btnmatrix_set_one_checked(ui->settings.backlight_btnmatrix, true);
+lv_obj_add_event_cb(ui->settings.backlight_btnmatrix,
+                    backlight_btnmatrix_event_cb, LV_EVENT_VALUE_CHANGED, ui);
+
+// описание режима — под кнопками
+ui->settings.backlight_desc_label =
+    create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 775);
+lv_obj_add_style(ui->settings.backlight_desc_label, &ui->font.very_small_20, 0);
+
+// слайдер — под описанием
+ui->settings.backlight_slider = lv_slider_create(ui->settings.popup);
+lv_obj_set_size(ui->settings.backlight_slider, 440, 40);
+lv_obj_align(ui->settings.backlight_slider, LV_ALIGN_TOP_LEFT, 25, 830);
+lv_slider_set_range(ui->settings.backlight_slider, 5, 100);
+lv_slider_set_value(ui->settings.backlight_slider,
+                    ui->settings.switch_.backlight_pct, LV_ANIM_OFF);
+lv_obj_add_event_cb(ui->settings.backlight_slider,
+                    backlight_slider_event_cb, LV_EVENT_VALUE_CHANGED, ui);
+
+// % справа от слайдера
+ui->settings.backlight_pct_label =
+    create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 480, 838);
+lv_obj_add_style(ui->settings.backlight_pct_label, &ui->font.small_24, 0);
+
+// применяем сохранённые значения
+lv_btnmatrix_set_btn_ctrl(ui->settings.backlight_btnmatrix,
+                          ui->settings.switch_.backlight_mode,
+                          LV_BTNMATRIX_CTRL_CHECKED);
+
+if (ui->settings.switch_.backlight_mode != 0)
+    lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
+
+static const char *bl_descs[] = {
+    "Feste Helligkeit per Schieberegler.",
+    "Tagsueber 80%, nachts 5%.",
+    "Sanfter Verlauf: Morgen, Tag, Abend, Nacht."};
+lv_label_set_text(ui->settings.backlight_desc_label,
+                  bl_descs[ui->settings.switch_.backlight_mode]);
+
+char bl_buf[8];
+snprintf(bl_buf, sizeof(bl_buf), "%d%%", ui->settings.switch_.backlight_pct);
+lv_label_set_text(ui->settings.backlight_pct_label, bl_buf);
+
+//CO2 here
+
+
 // применяем сохранённое значение
 lv_btnmatrix_set_btn_ctrl(ui->settings.co2_btnmatrix,
                           ui->settings.switch_.co2_mode,
@@ -2212,9 +2329,11 @@ lv_label_set_text(ui->settings.co2_desc_label,
                   co2_descs[ui->settings.switch_.co2_mode]);
 
   // --- загружаем сохранённые значения ---
-  main_settings_load(&ui->settings.switch_.standby_mode,
-                     &ui->settings.switch_.theme_mode,
-                     &ui->settings.switch_.co2_mode);
+main_settings_load(&ui->settings.switch_.standby_mode,
+                   &ui->settings.switch_.backlight_pct,
+                   &ui->settings.switch_.backlight_mode,
+                   &ui->settings.switch_.theme_mode,
+                   &ui->settings.switch_.co2_mode);
 
   // применяем standby к btnmatrix
   lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
@@ -2675,7 +2794,9 @@ void hide_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->time.screen, false);
   set_visible(ui->co2.meter, false);
   set_visible(ui->co2.chart, false);
-  // set_visible(ui->standby.bar, false);
+   set_visible(ui->weather.settings_popup.btn_open, false);  // ← Wetter
+  set_visible(ui->wifi.btn_open, false);                    // ← WLAN
+  set_visible(ui->settings.btn_open, false);                // ← Setup
 }
 void show_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->animation.screen, true);
@@ -2684,7 +2805,9 @@ void show_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->time.screen, true);
   set_visible(ui->co2.meter, true);
   set_visible(ui->co2.chart, true);
-  // set_visible(ui->standby.bar, true);
+ set_visible(ui->weather.settings_popup.btn_open, true);   // ← Wetter
+  set_visible(ui->wifi.btn_open, true);                     // ← WLAN
+  set_visible(ui->settings.btn_open, true);                 // ← Setup
 }
 
 static float calc_dew_point(float temp, float humidity) {
@@ -3127,37 +3250,43 @@ void co2_meter_anim_cb(lv_timer_t *timer) {
 
 bool is_screen_pressed(void) { return standby_touched; }
 
+static uint8_t backlight_get_current_pct(ui_main_menu_t *ui) {
+    switch (ui->settings.switch_.backlight_mode) {
+        case 1:  return backlight_get_auto_pct();
+        case 2:  return backlight_get_zeitplan_pct();
+        default: return ui->settings.switch_.backlight_pct;
+    }
+}
+
 static void standby_handle(ui_main_menu_t *ui) {
   static uint32_t timer_standby_sec = 0;
 
   uint8_t mode = ui->settings.switch_.standby_mode;
 
-  // определяем активен ли standby сейчас
   bool standby_active = false;
   if (mode == 1) {
-    standby_active = true; // Immer — всегда
+    standby_active = true;
   } else if (mode == 2) {
-    standby_active = !get_is_day(); // Nachts — только ночью
+    standby_active = !get_is_day();
   }
-  // mode == 0 (Aus) — standby_active остаётся false
 
   if (!standby_active) {
-    // standby выключен — сбрасываем таймер, экран всегда включён
     timer_standby_sec = 0;
+    ui->settings.switch_.standby_screen_off = false;
     set_visible(ui->standby.background, false);
-    wavesahre_rgb_lcd_bl_on();
     return;
   }
 
-  // standby активен — обычная логика
   if (is_screen_pressed()) {
     timer_standby_sec = 0;
+    ui->settings.switch_.standby_screen_off = false;
     set_visible(ui->standby.background, false);
-    wavesahre_rgb_lcd_bl_on();
+    backlight_set(backlight_get_current_pct(ui));  // восстанавливаем яркость
   } else {
     timer_standby_sec++;
     if (timer_standby_sec > MAX_STANDBY_TIME * 5) {
-      wavesahre_rgb_lcd_bl_off();
+      ui->settings.switch_.standby_screen_off = true;
+      backlight_set(0);  // гасим подсветку
       lv_obj_move_foreground(ui->standby.background);
       set_visible(ui->standby.background, true);
       timer_standby_sec = MAX_STANDBY_TIME * 5;
@@ -3205,6 +3334,13 @@ static void sensor_record_values(ui_main_menu_t *ui) {
 
 static void timer_1000(lv_timer_t *timer) {
   LV_UNUSED(timer);
+if (!ui.settings.switch_.standby_screen_off) {
+    switch (ui.settings.switch_.backlight_mode) {
+        case 1: backlight_set(backlight_get_auto_pct());     break;
+        case 2: backlight_set(backlight_get_zeitplan_pct()); break;
+        default: break;
+    }
+}
 #if ACTIVATE_BLOCK_TOP_LEFT
   update_block_top_left(&ui);
 #endif
@@ -3399,10 +3535,12 @@ void init_lv_objects() {
   ui.weather.settings_popup.cities_de = cities_de;
   ui.weather.settings_popup.city_count = CITY_COUNT;
 
-  main_settings_load(&ui.settings.switch_.standby_mode,
-                     &ui.settings.switch_.theme_mode,
-                     &ui.settings.switch_.co2_mode);
-
+main_settings_load(&ui.settings.switch_.standby_mode,
+                   &ui.settings.switch_.backlight_pct,
+                   &ui.settings.switch_.backlight_mode,
+                   &ui.settings.switch_.theme_mode,
+                   &ui.settings.switch_.co2_mode);
+backlight_set(ui.settings.switch_.backlight_pct);
   ui.settings.switch_.theme_last_is_day = get_is_day(); // ← инициализируем кэш
   weather_settings_load(&ui.weather.settings_popup.saved_city);
   build_weather_url(ui.weather.settings_popup.saved_city);

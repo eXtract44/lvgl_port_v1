@@ -49,7 +49,7 @@
 #define DAY_START_HOUR 7
 #define DAY_END_HOUR 20
 
-#define MAX_STANDBY_TIME 180 // sec
+#define MAX_STANDBY_TIME 10 // sec
 /////////////////////////////////////////////////////////////////////////BLOCK_TOP_LEFT
 #define BLOCK_TOP_LEFT_WIDTH 250
 #define BLOCK_TOP_LEFT_HEIGHT 195
