@@ -9,6 +9,7 @@ idf_component_register(
      "user/periphery/i2c_bus.c"
      "user/periphery/periphery.c" 
      "user/periphery/backlight.c"
+     "user/periphery/ota.c"
     
     "user/menu/lvgl_menu.c" 
     
@@ -25,7 +26,9 @@ idf_component_register(
     "user/pics/snow_flake_2_15_15.c"   
     "user/pics/wind_60_50.c"
       
-    INCLUDE_DIRS ".")
+    INCLUDE_DIRS "."
+
+    REQUIRES esp_https_ota app_update)
 
 idf_component_get_property(lvgl_lib lvgl__lvgl COMPONENT_LIB)
 target_compile_options(${lvgl_lib} PRIVATE -Wno-format)
