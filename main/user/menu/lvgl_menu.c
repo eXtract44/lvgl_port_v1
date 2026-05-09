@@ -1,5 +1,6 @@
 
 #include "user/menu/lvgl_menu.h"
+#include "user/periphery/ota.h"
 
 
 extern const city_t cities_de[];
@@ -11,6 +12,7 @@ extern sgp30_data_t sgp30_data;
 extern forecast_data_t forecast_data;
 
 ui_main_menu_t ui = {0};
+ui_main_menu_t *g_ui = &ui;
 
 int standby_touched = 0; // callback for extern touch driver
 
@@ -2198,7 +2200,27 @@ main_settings_save(ui->settings.switch_.standby_mode,
                    ui->settings.switch_.theme_mode,
                    ui->settings.switch_.co2_mode);
 };
+static void ota_progress_cb(ota_state_t state, int progress_pct) {
+    if (!g_ui || !g_ui->settings.ota_status_label) return;
+    if (!lv_obj_is_valid(g_ui->settings.ota_status_label)) return;
 
+    char buf[48];
+    switch (state) {
+        case OTA_STATE_CHECKING:    snprintf(buf, sizeof(buf), "Verbinde..."); break;
+        case OTA_STATE_DOWNLOADING: snprintf(buf, sizeof(buf), "Lade... %d%%", progress_pct); break;
+        case OTA_STATE_SUCCESS:     snprintf(buf, sizeof(buf), "Fertig! Neustart..."); break;
+        case OTA_STATE_FAILED:      snprintf(buf, sizeof(buf), "Fehler!"); break;
+        default:                    snprintf(buf, sizeof(buf), "Bereit"); break;
+    }
+    lv_label_set_text(g_ui->settings.ota_status_label, buf);
+}
+
+static void ota_btn_event_cb(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    lv_label_set_text(ui->settings.ota_status_label, "Starte...");
+    ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
+}
 static void ui_create_settigs_switches(ui_main_menu_t *ui) {
   // --- standby btnmatrix ---
   static const char *standby_map[] = {"Ein", "Auto", "Auto Nachts", ""};
@@ -2327,6 +2349,21 @@ static const char *co2_descs[] = {
     "400-6000 ppm: fuer Industrie und Lager."};
 lv_label_set_text(ui->settings.co2_desc_label,
                   co2_descs[ui->settings.switch_.co2_mode]);
+
+// --- Firmware Update ---
+create_text("Firmware:", ui->settings.popup, STYLE_TEXT_SMALL,
+            LV_ALIGN_TOP_LEFT, 15, 900, ui);
+
+ui->settings.ota_btn = create_btn_cb(
+    ui->settings.popup, 200, 60, LV_ALIGN_TOP_LEFT, 10, 940,
+    ota_btn_event_cb, ui);
+lv_obj_t *ota_btn_label = lv_label_create(ui->settings.ota_btn);
+lv_label_set_text(ota_btn_label, LV_SYMBOL_DOWNLOAD " Update");
+lv_obj_center(ota_btn_label);
+
+ui->settings.ota_status_label =
+    create_label(ui->settings.popup, "Bereit", LV_ALIGN_TOP_LEFT, 225, 955);
+lv_obj_add_style(ui->settings.ota_status_label, &ui->font.very_small_20, 0);
 
   // --- загружаем сохранённые значения ---
 main_settings_load(&ui->settings.switch_.standby_mode,

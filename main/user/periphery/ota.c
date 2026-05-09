@@ -1,5 +1,6 @@
 #include "ota.h"
 
+#include "esp_crt_bundle.h"
 #include "esp_log.h"
 #include "esp_https_ota.h"
 #include "esp_ota_ops.h"
@@ -23,12 +24,13 @@ static void ota_task(void *pvParameters)
     if (args->cb) args->cb(OTA_STATE_CHECKING, 0);
     ESP_LOGI(TAG, "Starte OTA von: %s", args->url);
 
-    esp_http_client_config_t http_cfg = {
-        .url                    = args->url,
-        .timeout_ms             = 15000,
-        .keep_alive_enable      = true,
-        .skip_cert_verification = true,  // GitHub HTTPS без CA сертификата
-    };
+esp_http_client_config_t http_cfg = {
+    .url                        = args->url,
+    .timeout_ms                 = 15000,
+    .keep_alive_enable          = true,
+    .crt_bundle_attach          = esp_crt_bundle_attach,
+    .skip_cert_common_name_check = true,
+};
 
     esp_https_ota_config_t ota_cfg = {
         .http_config            = &http_cfg,

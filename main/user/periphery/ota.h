@@ -1,10 +1,11 @@
-#pragma once
+#ifndef INC_OTA_H_
+#define INC_OTA_H_
 
 #include "esp_err.h"
 
 // URL до .bin файла на GitHub Releases
 // Формат: https://github.com/<user>/<repo>/releases/download/<tag>/<file>.bin
-#define OTA_FIRMWARE_URL "https://github.com/DEIN_NAME/DEIN_REPO/releases/latest/download/lvgl_port_v1.bin"
+#define OTA_FIRMWARE_URL "https://github.com/eXtract44/lvgl_port_v1/bin/lvgl_port_v1.bin"
 
 typedef enum {
     OTA_STATE_IDLE = 0,
@@ -28,3 +29,6 @@ void ota_start(const char *url, ota_progress_cb_t cb);
  * @return Строка вида "v1.0.0" или описание из esp_app_desc
  */
 const char *ota_get_current_version(void);
+
+
+#endif /* INC_OTA_ */

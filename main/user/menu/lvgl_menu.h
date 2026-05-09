@@ -185,6 +185,8 @@ typedef struct {
 lv_obj_t *backlight_desc_label;
 lv_obj_t *backlight_slider;
 lv_obj_t *backlight_pct_label; 
+lv_obj_t *ota_btn;
+lv_obj_t *ota_status_label;
 } ui_settings_t;
 
 typedef struct {
