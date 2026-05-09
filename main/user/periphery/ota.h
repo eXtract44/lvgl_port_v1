@@ -5,7 +5,7 @@
 
 // URL до .bin файла на GitHub Releases
 // Формат: https://github.com/<user>/<repo>/releases/download/<tag>/<file>.bin
-#define OTA_FIRMWARE_URL "https://github.com/eXtract44/lvgl_port_v1/blob/main/releases/download/lvgl_porting.bin"
+#define OTA_FIRMWARE_URL "https://github.com/eXtract44/lvgl_port_v1/raw/refs/heads/main/releases/download/lvgl_porting.bin"
 
 typedef enum {
     OTA_STATE_IDLE = 0,
