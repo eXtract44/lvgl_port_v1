@@ -153,6 +153,8 @@ void lvgl_port_unlock(void);
  *      - false: The tasks don't need to be re-scheduled
  */
 bool lvgl_port_notify_rgb_vsync(void);
+void lvgl_port_suspend(void);
+void lvgl_port_resume(void);
 
 #ifdef __cplusplus
 }

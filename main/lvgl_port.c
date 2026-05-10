@@ -573,3 +573,15 @@ bool lvgl_port_notify_rgb_vsync(void)
 #endif
     return (need_yield == pdTRUE); // Return whether a yield is needed
 }
+
+void lvgl_port_suspend(void) {
+    if (lvgl_task_handle) {
+        vTaskSuspend(lvgl_task_handle);
+    }
+}
+
+void lvgl_port_resume(void) {
+    if (lvgl_task_handle) {
+        vTaskResume(lvgl_task_handle);
+    }
+}

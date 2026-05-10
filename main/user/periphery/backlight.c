@@ -54,12 +54,68 @@ uint8_t backlight_get_auto_pct(void) {
     return get_is_day() ? 80 : 5;
 }
 
-uint8_t backlight_get_zeitplan_pct(void) {
-    uint8_t h = get_time_hour();
+// ──────────────────────────────────────────────
+// Approximate sunrise/sunset for ~51°N (Germany)
+// Values in minutes from midnight
+// ──────────────────────────────────────────────
+typedef struct {
+    uint16_t sunrise_min;
+    uint16_t sunset_min;
+} sun_schedule_t;
 
-    if (h < 6)  return 5;
-    if (h < 8)  return 10 + ((h * 60 - 6 * 60) * (80 - 10)) / (2 * 60);
-    if (h < 20) return 80;
-    if (h < 22) return 80 - ((h * 60 - 20 * 60) * (80 - 10)) / (2 * 60);
-    return 5;
+// Index 0 = January, 11 = December
+static const sun_schedule_t sun_schedule[12] = {
+    {8*60+15, 16*60+30}, // Jan
+    {7*60+45, 17*60+30}, // Feb
+    {6*60+45, 18*60+20}, // Mar
+    {5*60+30, 19*60+15}, // Apr
+    {4*60+30, 20*60+10}, // May
+    {4*60+00, 20*60+50}, // Jun
+    {4*60+20, 20*60+40}, // Jul
+    {5*60+15, 19*60+45}, // Aug
+    {6*60+10, 18*60+30}, // Sep
+    {7*60+10, 17*60+10}, // Oct
+    {7*60+15, 16*60+20}, // Nov  (after DST end)
+    {8*60+05, 16*60+10}, // Dec
+};
+
+#define BACKLIGHT_ZEITPLAN_PCT_MIN        5
+#define BACKLIGHT_ZEITPLAN_PCT_MAX        80
+#define BACKLIGHT_ZEITPLAN_TRANSITION_MIN 90
+
+uint8_t backlight_get_zeitplan_pct(void) {
+    uint8_t  h     = get_time_hour();
+    uint8_t  m     = get_time_minute();
+    uint8_t  month = get_time_month();   // 1..12
+    uint8_t  day   = get_time_mday();     // 1..31 (reserved for future use)
+
+    (void)day; // not used in variant A, suppress warning
+
+    uint16_t now     = (uint16_t)h * 60 + m;
+    uint16_t sunrise = sun_schedule[month - 1].sunrise_min;
+    uint16_t sunset  = sun_schedule[month - 1].sunset_min;
+
+    uint16_t t = BACKLIGHT_ZEITPLAN_TRANSITION_MIN;
+
+    // Night → Dawn transition
+    if (now >= sunrise && now < sunrise + t) {
+        uint8_t progress = (uint8_t)((now - sunrise) * 100 / t);
+        return (uint8_t)(BACKLIGHT_ZEITPLAN_PCT_MIN +
+               (progress * (BACKLIGHT_ZEITPLAN_PCT_MAX - BACKLIGHT_ZEITPLAN_PCT_MIN)) / 100);
+    }
+
+    // Dusk → Night transition
+    if (now >= sunset && now < sunset + t) {
+        uint8_t progress = (uint8_t)((now - sunset) * 100 / t);
+        return (uint8_t)(BACKLIGHT_ZEITPLAN_PCT_MAX -
+               (progress * (BACKLIGHT_ZEITPLAN_PCT_MAX - BACKLIGHT_ZEITPLAN_PCT_MIN)) / 100);
+    }
+
+    // Full day
+    if (now >= sunrise + t && now < sunset) {
+        return BACKLIGHT_ZEITPLAN_PCT_MAX;
+    }
+
+    // Night
+    return BACKLIGHT_ZEITPLAN_PCT_MIN;
 }

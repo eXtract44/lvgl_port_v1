@@ -7,6 +7,7 @@
 #include "esp_app_desc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "lvgl_port.h"
 
 static const char *TAG = "OTA";
 
@@ -20,7 +21,7 @@ typedef struct {
 static void ota_task(void *pvParameters)
 {
     ota_task_args_t *args = (ota_task_args_t *)pvParameters;
-
+lvgl_port_suspend();
     if (args->cb) args->cb(OTA_STATE_CHECKING, 0);
     ESP_LOGI(TAG, "Starte OTA von: %s", args->url);
 
@@ -88,6 +89,7 @@ cleanup:
     if (ota_handle) {
         esp_https_ota_abort(ota_handle);
     }
+    lvgl_port_resume();
     free(args);
     vTaskDelete(NULL);
 }

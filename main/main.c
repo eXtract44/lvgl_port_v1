@@ -1,5 +1,6 @@
 
 #include "../components/lvgl__lvgl/lvgl.h"
+#include "esp_ota_ops.h"
 #include "user/menu/lvgl_menu.h"
 #include "user/menu/lvgl_user_config.h"
 #include "waveshare_rgb_lcd_port.h"
@@ -64,7 +65,7 @@ void weather_task(void *arg) {
     ESP_LOGI("I2C_SCAN", "Done.");
 }
 void app_main() {
-	
+	esp_ota_mark_app_valid_cancel_rollback();
 	backlight_init();
 	backlight_set(30);
 	i2c_bus_mutex_init();
