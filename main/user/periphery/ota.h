@@ -4,7 +4,6 @@
 #include "esp_err.h"
 #include "stdbool.h"
 
-extern volatile bool ota_in_progress;
 // URL до .bin файла на GitHub Releases
 // Формат: https://github.com/<user>/<repo>/releases/download/<tag>/<file>.bin
 #define OTA_FIRMWARE_URL "https://github.com/eXtract44/lvgl_port_v1/raw/refs/heads/main/releases/download/lvgl_porting.bin"

@@ -13,6 +13,7 @@
 #pragma once
 
 void backlight_init(void);
+void backlight_deinit(void);
 void backlight_set(uint8_t percent); // 0–100
 uint8_t backlight_get_zeitplan_pct(void);
 uint8_t backlight_get_auto_pct(void);

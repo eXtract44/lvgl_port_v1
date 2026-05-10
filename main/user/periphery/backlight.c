@@ -35,6 +35,12 @@ void backlight_init(void) {
     ledc_channel_config(&channel);
 }
 
+void backlight_deinit(void) {
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL, 0);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL);
+    ledc_stop(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL, 0);
+}
+
 void backlight_set(uint8_t percent) {
        if (percent > 100) percent = 100;
     if (percent < 0)   percent = 0;

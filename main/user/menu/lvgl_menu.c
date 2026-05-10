@@ -2046,7 +2046,7 @@ static void ota_progress_cb(ota_state_t state, int progress_pct) {
 
 static void ota_start_timer_cb(lv_timer_t *t) {
   lv_timer_del(t);
-  backlight_set(0);
+  backlight_deinit();
   ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
 }
 
@@ -3400,7 +3400,6 @@ static uint8_t backlight_get_current_pct(ui_main_menu_t *ui) {
 }
 
 static void standby_handle(ui_main_menu_t *ui) {
-	if (ota_in_progress) return;
   static uint32_t timer_standby_sec = 0;
 
   uint8_t mode = ui->settings.switch_.standby_mode;
