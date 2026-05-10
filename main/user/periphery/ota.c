@@ -8,6 +8,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl_port.h"
+#include "backlight.h"
 
 static const char *TAG = "OTA";
 
@@ -21,7 +22,9 @@ typedef struct {
 static void ota_task(void *pvParameters)
 {
     ota_task_args_t *args = (ota_task_args_t *)pvParameters;
+    
 lvgl_port_suspend();
+backlight_set(0);
     if (args->cb) args->cb(OTA_STATE_CHECKING, 0);
     ESP_LOGI(TAG, "Starte OTA von: %s", args->url);
 

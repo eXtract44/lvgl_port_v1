@@ -2215,26 +2215,35 @@ static void ota_progress_cb(ota_state_t state, int progress_pct) {
     lv_label_set_text(g_ui->settings.ota_status_label, buf);
 }
 
+static void ota_start_timer_cb(lv_timer_t *t) {
+    lv_timer_del(t);
+    backlight_set(0);
+    lvgl_port_suspend();
+    ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
+}
+
 static void ota_btn_event_cb(lv_event_t *e) {
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+   if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    
-    lv_label_set_text(ui->settings.ota_status_label, "Starte...");
-    
-    // затемняем экран — показываем оверлей
+
+    // оверлей с предупреждением
     lv_obj_t *overlay = lv_obj_create(lv_scr_act());
     lv_obj_set_size(overlay, LV_HOR_RES, LV_VER_RES);
     lv_obj_align(overlay, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(overlay, LV_OPA_80, 0);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_90, 0);
     lv_obj_set_style_border_width(overlay, 0, 0);
-    
+
     lv_obj_t *lbl = lv_label_create(overlay);
-    lv_label_set_text(lbl, "Update wird geladen...");
+    lv_label_set_text(lbl, "Firmware-Update wird gestartet.\n"
+                           "Das Gerat wird neu gestartet.\n\n"
+                           "Bitte warten...");
     lv_obj_center(lbl);
     lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
-    
-    ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
+    lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+
+    // запуск OTA через 3 секунды
+    lv_timer_create(ota_start_timer_cb, 3000, NULL);
 }
 static void ui_create_settigs_switches(ui_main_menu_t *ui) {
   // --- standby btnmatrix ---
