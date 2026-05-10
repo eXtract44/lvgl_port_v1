@@ -63,6 +63,36 @@
 #define SENSOR_HISTORY_POINTS 144 // 12 часов × 12 точек/час
 #define SENSOR_RECORD_INTERVAL 300 //300 тиков (секунд) между записями
 
+enum namesOfStyles {
+  STYLE_TEXT_TITLE,
+  STYLE_TEXT_SMALL,
+  STYLE_TEXT_VERY_LARGE,
+  STYLE_SYMBOLS,
+};
+
+enum namesOfwDay {
+WDAY_SONNTAG = 0,
+WDAY_MONTAG,
+WDAY_DIENSTAG,
+WDAY_MITTWOCH,
+WDAY_DONNERSTAG,
+WDAY_FREITAG,
+WDAY_SAMSTAG,
+WDAY_KEIN_WLAN,
+};
+
+typedef enum {
+    SETTINGS_PAGE_HOME = 0,
+    SETTINGS_PAGE_DISPLAY,
+    SETTINGS_PAGE_WIFI,
+    SETTINGS_PAGE_BLUETOOTH,
+    SETTINGS_PAGE_WEATHER,
+    SETTINGS_PAGE_SENSORS,
+    SETTINGS_PAGE_UPDATE,
+    SETTINGS_PAGE_INFO,
+    SETTINGS_PAGE_LAST_ELEMENT,
+} settings_page_t;
+
 
 
 // Кольцевой буфер для истории датчиков
@@ -82,10 +112,7 @@ typedef struct {
 } weather_snapshot_t;
 
 typedef struct {
-  lv_obj_t *popup;
-  lv_obj_t *btn_open;
   lv_obj_t *btn_close;
-
   lv_obj_t *city_label;
   lv_obj_t *citys_list;
   lv_obj_t *btn_open_city_list;
@@ -152,9 +179,6 @@ typedef struct {
 } ui_switchs_t;
 
 typedef struct {
-  lv_obj_t *btn_open;
-
-  lv_obj_t *popup;
   lv_obj_t *btn_close;
 
   lv_obj_t *ssid_label;
@@ -187,6 +211,10 @@ lv_obj_t *backlight_slider;
 lv_obj_t *backlight_pct_label; 
 lv_obj_t *ota_btn;
 lv_obj_t *ota_status_label;
+ lv_obj_t *page_home;
+    lv_obj_t *page_content;
+    lv_obj_t *btn_back;
+    settings_page_t current_page;
 } ui_settings_t;
 
 typedef struct {
@@ -277,6 +305,7 @@ typedef struct {
   lv_obj_t *wday_labels[7];      // Mo Di Mi Do Fr Sa So
   lv_obj_t *wday_highlight;      // скруглённый прямоугольник за текущим днём
   lv_obj_t *holiday_label;       // MY_BELL_SYMBOL + название праздника
+  lv_obj_t *wifi_status_icon;
 } ui_time_t;
 
 typedef struct {
@@ -300,6 +329,7 @@ typedef struct {
   lv_style_t bot_right;
   lv_style_t chart_co2;
   lv_style_t meter_co2;
+ lv_style_t category_btn;
 
 } screen_style_t;
 
@@ -319,23 +349,7 @@ typedef struct {
   char string_buffer[20];
 } ui_main_menu_t;
 
-enum namesOfStyles {
-  STYLE_TEXT_TITLE,
-  STYLE_TEXT_SMALL,
-  STYLE_TEXT_VERY_LARGE,
-  STYLE_SYMBOLS,
-};
 
-enum namesOfwDay {
-WDAY_SONNTAG = 0,
-WDAY_MONTAG,
-WDAY_DIENSTAG,
-WDAY_MITTWOCH,
-WDAY_DONNERSTAG,
-WDAY_FREITAG,
-WDAY_SAMSTAG,
-WDAY_KEIN_WLAN,
-};
 
 typedef struct {
   lv_obj_t *obj;
@@ -370,8 +384,6 @@ static void apply_theme_light(ui_main_menu_t *ui);
 
 void hide_all_blocks(ui_main_menu_t *ui);
 void show_all_blocks(ui_main_menu_t *ui);
-static void ui_create_wifi_popup(ui_main_menu_t *ui);
-static void ui_create_weather_settings_popup(ui_main_menu_t *ui);
 static void ui_create_settings_popup(ui_main_menu_t *ui);
 static void ui_create_sensor_history_popup(ui_main_menu_t *ui);
 
@@ -424,5 +436,7 @@ static void co2_calib_popup_close_cb(lv_event_t *e);
 static void co2_meter_click_event_cb(lv_event_t *e);
 static void ui_create_sgp30_calib_popup(ui_main_menu_t *ui);
 static void sgp30_calib_timer_cb(lv_timer_t *t);
+static void btn_settings_back_event_handler(lv_event_t *e);
+static void btn_settings_category_event_handler(lv_event_t *e);
 
 #endif /* INC_LVGL_MENU_H_ */

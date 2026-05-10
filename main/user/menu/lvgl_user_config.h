@@ -15,7 +15,7 @@
 #ifndef MAIN_LVGL_USER_CONFIG_H_
 #define MAIN_LVGL_USER_CONFIG_H_
 
-
+#define CURRENT_SOFT_VERSION "10.05.26"
 
 #define ACTIVATE_BLOCK_TOP_LEFT 1  
 #define ACTIVATE_BLOCK_TOP_MID 	1 
@@ -49,7 +49,7 @@
 #define DAY_START_HOUR 7
 #define DAY_END_HOUR 20
 
-#define MAX_STANDBY_TIME 10 // sec
+#define MAX_STANDBY_TIME 180 // sec
 /////////////////////////////////////////////////////////////////////////BLOCK_TOP_LEFT
 #define BLOCK_TOP_LEFT_WIDTH 250
 #define BLOCK_TOP_LEFT_HEIGHT 195
@@ -204,7 +204,7 @@
 #define BLOCK_BOT_MID_Y_START_CO2_CHART 67
 #define BLOCK_BOT_MID_Y_START_CO2_TIMES 33
 
-#define BLOCK_BOT_MID_WIDTH_SYMBOL 78
+#define BLOCK_BOT_MID_WIDTH_SYMBOL 88
 #define BLOCK_BOT_MID_HEIGHT_SYMBOL 72
 #define BLOCK_BOT_MID_Y_START_SYMBOLS -12
 

@@ -37,7 +37,7 @@ void backlight_init(void) {
 
 void backlight_set(uint8_t percent) {
        if (percent > 100) percent = 100;
-    if (percent < 1)   percent = 1;
+    if (percent < 0)   percent = 0;
 
     // маппинг 1–100% → 20–100%
     uint8_t mapped = 20 + (percent * 80) / 100;
@@ -51,7 +51,7 @@ void backlight_set(uint8_t percent) {
 }
 
 uint8_t backlight_get_auto_pct(void) {
-    return get_is_day() ? 80 : 5;
+    return get_is_day() ? 100 : 5;
 }
 
 // ──────────────────────────────────────────────
@@ -80,7 +80,7 @@ static const sun_schedule_t sun_schedule[12] = {
 };
 
 #define BACKLIGHT_ZEITPLAN_PCT_MIN        5
-#define BACKLIGHT_ZEITPLAN_PCT_MAX        80
+#define BACKLIGHT_ZEITPLAN_PCT_MAX        100
 #define BACKLIGHT_ZEITPLAN_TRANSITION_MIN 90
 
 uint8_t backlight_get_zeitplan_pct(void) {

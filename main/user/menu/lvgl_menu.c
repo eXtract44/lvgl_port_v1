@@ -2,7 +2,6 @@
 #include "user/menu/lvgl_menu.h"
 #include "user/periphery/ota.h"
 
-
 extern const city_t cities_de[];
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
@@ -17,7 +16,7 @@ ui_main_menu_t *g_ui = &ui;
 int standby_touched = 0; // callback for extern touch driver
 
 #define FEELS_LIKE_MIN_DIFF 1.5f
-#define CO2_CALIB_TIME (12UL * 3600UL * configTICK_RATE_HZ) 
+#define CO2_CALIB_TIME (12UL * 3600UL * configTICK_RATE_HZ)
 /*(30 * configTICK_RATE_HZ)*/
 
 LV_IMG_DECLARE(sun_48_48);
@@ -105,17 +104,19 @@ static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   /*Add a scale first*/
 
   lv_meter_scale_t *scale = lv_meter_add_scale(meter);
-  lv_meter_set_scale_range(meter, scale, MIN_VALUE_CO2, MAX_VALUE_CO2, 250, 145);
+  lv_meter_set_scale_range(meter, scale, MIN_VALUE_CO2, MAX_VALUE_CO2, 250,
+                           145);
 
-// мелкие тики — много, тонкие, короткие
-lv_meter_set_scale_ticks(meter, scale, 41, 2, 8,
-                         lv_palette_main(LV_PALETTE_GREY));
+  // мелкие тики — много, тонкие, короткие
+  lv_meter_set_scale_ticks(meter, scale, 41, 2, 8,
+                           lv_palette_main(LV_PALETTE_GREY));
 
-// major тики — поверх мелких, толстые и длинные
-lv_meter_scale_t *scale_major = lv_meter_add_scale(meter);
-lv_meter_set_scale_range(meter, scale_major, MIN_VALUE_CO2, MAX_VALUE_CO2, 250, 145);
-lv_meter_set_scale_ticks(meter, scale_major, 6, 4, 18,
-                         lv_color_hex(0xAAAAAA));
+  // major тики — поверх мелких, толстые и длинные
+  lv_meter_scale_t *scale_major = lv_meter_add_scale(meter);
+  lv_meter_set_scale_range(meter, scale_major, MIN_VALUE_CO2, MAX_VALUE_CO2,
+                           250, 145);
+  lv_meter_set_scale_ticks(meter, scale_major, 6, 4, 18,
+                           lv_color_hex(0xAAAAAA));
 
   /*Add a blue arc to the start*/
   ui->co2.indicator =
@@ -149,8 +150,8 @@ lv_meter_set_scale_ticks(meter, scale_major, 6, 4, 18,
   lv_meter_set_indicator_end_value(meter, ui->co2.needle_arc, MIN_VALUE_CO2);
 
   /*Add a needle line indicator*/
-  ui->co2.indicator = lv_meter_add_needle_line(
-    meter, scale, 2, lv_color_hex(0xAAAAAA), -15);
+  ui->co2.indicator =
+      lv_meter_add_needle_line(meter, scale, 2, lv_color_hex(0xAAAAAA), -15);
 
   return meter;
 }
@@ -369,7 +370,8 @@ static lv_obj_t *create_btn_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                  lv_coord_t y_ofs, lv_event_cb_t event_cb,
                                  void *user_data, const char *symbol,
                                  lv_style_t *icon_style, const lv_font_t *font,
-                                 const char *label_text, ui_main_menu_t *ui_ptr) {
+                                 const char *label_text,
+                                 ui_main_menu_t *ui_ptr) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_btn_icon");
     return NULL;
@@ -1184,20 +1186,21 @@ static void co2_meter_click_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = lv_event_get_user_data(e);
 
   TickType_t elapsed = xTaskGetTickCount() - ui->co2.calib_start_tick;
-  TickType_t total   = CO2_CALIB_TIME;
+  TickType_t total = CO2_CALIB_TIME;
 
   if (elapsed < total) {
     uint32_t remaining_sec = (total - elapsed) / configTICK_RATE_HZ;
     uint32_t h = remaining_sec / 3600;
     uint32_t m = (remaining_sec % 3600) / 60;
     lv_label_set_text_fmt(ui->co2.calib_popup_text,
-        "Der CO2-Sensor befindet sich in der Lernphase.\n"
-        "Die Werte sind noch ungenau.\n\n"
-        "Verbleibende Zeit: %02u:%02u Std.", (unsigned int)h, (unsigned int)m);
+                          "Der CO2-Sensor befindet sich in der Lernphase.\n"
+                          "Die Werte sind noch ungenau.\n\n"
+                          "Verbleibende Zeit: %02u:%02u Std.",
+                          (unsigned int)h, (unsigned int)m);
   } else {
     lv_label_set_text(ui->co2.calib_popup_text,
-        "Der CO2-Sensor ist kalibriert.\n"
-        "Die angezeigten Werte sind zuverlaessig.");
+                      "Der CO2-Sensor ist kalibriert.\n"
+                      "Die angezeigten Werte sind zuverlaessig.");
   }
 
   lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
@@ -1205,35 +1208,32 @@ static void co2_meter_click_event_cb(lv_event_t *e) {
 
 static void sgp30_calib_timer_cb(lv_timer_t *t) {
   ui_main_menu_t *ui = t->user_data;
-  if ((xTaskGetTickCount() - ui->co2.calib_start_tick) >=
-      CO2_CALIB_TIME) {
+  if ((xTaskGetTickCount() - ui->co2.calib_start_tick) >= CO2_CALIB_TIME) {
     lv_obj_add_flag(ui->co2.calib_icon_label, LV_OBJ_FLAG_HIDDEN);
     lv_timer_del(t);
   }
 }
 
 static void ui_create_sgp30_calib_popup(ui_main_menu_t *ui) {
-  ui->co2.calib_popup = create_background(
-      ui->screen, POPUP_WINDOW_WIDTH, 220,
-      POPUP_WINDOW_ALIGN, 0, 0);
+  ui->co2.calib_popup = create_background(ui->screen, POPUP_WINDOW_WIDTH, 220,
+                                          POPUP_WINDOW_ALIGN, 0, 0);
   lv_obj_add_style(ui->co2.calib_popup, &ui->style.popup, 0);
   lv_obj_add_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
 
-  ui->co2.calib_popup_text = create_label(
-      ui->co2.calib_popup,
-      "Der CO2-Sensor befindet sich in der Lernphase.\n"
-      "Die Werte sind noch ungenau.\n"
-      "Die Genauigkeit verbessert sich nach ~12 Stunden.",
-      LV_ALIGN_TOP_MID, 0, 30);
-  lv_obj_set_style_text_align(ui->co2.calib_popup_text,
-      LV_TEXT_ALIGN_CENTER, 0);
+  ui->co2.calib_popup_text =
+      create_label(ui->co2.calib_popup,
+                   "Der CO2-Sensor befindet sich in der Lernphase.\n"
+                   "Die Werte sind noch ungenau.\n"
+                   "Die Genauigkeit verbessert sich nach ~12 Stunden.",
+                   LV_ALIGN_TOP_MID, 0, 30);
+  lv_obj_set_style_text_align(ui->co2.calib_popup_text, LV_TEXT_ALIGN_CENTER,
+                              0);
   lv_obj_add_style(ui->co2.calib_popup_text, &ui->font.very_small_20, 0);
   lv_obj_set_width(ui->co2.calib_popup_text, POPUP_WINDOW_WIDTH - 40);
 
-  lv_obj_t *btn = create_btn_cb(
-      ui->co2.calib_popup, 120, 45,
-      LV_ALIGN_BOTTOM_MID, 0, -15,
-      co2_calib_popup_close_cb, ui);
+  lv_obj_t *btn =
+      create_btn_cb(ui->co2.calib_popup, 120, 45, LV_ALIGN_BOTTOM_MID, 0, -15,
+                    co2_calib_popup_close_cb, ui);
   lv_obj_t *lbl = lv_label_create(btn);
   lv_label_set_text(lbl, "OK");
   lv_obj_center(lbl);
@@ -1241,7 +1241,7 @@ static void ui_create_sgp30_calib_popup(ui_main_menu_t *ui) {
 
 static void create_block_top_middle(ui_main_menu_t *ui) {
   /*BLOCK TOP MID*/
-ui->co2.meter = create_meter(
+  ui->co2.meter = create_meter(
       ui->screen, BLOCK_TOP_MID_WIDTH_CO2_METER, BLOCK_TOP_MID_HEIGHT_CO2_METER,
       BLOCK_TOP_MID_ALIGN_CO2_CHART, BLOCK_TOP_MID_X_START,
       BLOCK_TOP_MID_Y_START, ui);
@@ -1261,21 +1261,22 @@ ui->co2.meter = create_meter(
   lv_obj_set_style_text_align(ui->co2.co2_label, LV_TEXT_ALIGN_CENTER, 0);
 
   // --- "ppm" под значением ---
-  ui->co2.co2_unit_label = create_label(
-      ui->screen, "ppm", BLOCK_TOP_MID_ALIGN_CO2_CHART,
-      BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 23);
+  ui->co2.co2_unit_label =
+      create_label(ui->screen, "ppm", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+                   BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 23);
   lv_obj_add_style(ui->co2.co2_unit_label, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_align(ui->co2.co2_unit_label, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_text_opa(ui->co2.co2_unit_label, LV_OPA_70, 0);
 
   // --- статус бейдж "GUT" ---
-  ui->co2.co2_status_label = create_label(
-      ui->screen, "GUT", BLOCK_TOP_MID_ALIGN_CO2_CHART,
-      BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE + 37);
+  ui->co2.co2_status_label =
+      create_label(ui->screen, "GUT", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+                   BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE + 37);
   if (!ui->co2.co2_status_label)
     return;
   lv_obj_add_style(ui->co2.co2_status_label, &ui->font.very_small_20, 0);
-  lv_obj_set_style_text_align(ui->co2.co2_status_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_status_label, LV_TEXT_ALIGN_CENTER,
+                              0);
   lv_obj_set_style_text_color(ui->co2.co2_status_label,
                               lv_palette_main(LV_PALETTE_GREEN), 0);
   // овальный фон
@@ -1290,44 +1291,43 @@ ui->co2.meter = create_meter(
                                 lv_palette_main(LV_PALETTE_GREEN), 0);
   lv_obj_set_style_border_opa(ui->co2.co2_status_label, LV_OPA_50, 0);
 
-
   // --- футер "CO₂ | Luftqualität" ---
- ui->co2.co2_footer_label = create_label(
-      ui->screen, "CO2 | Air Quality",
-      BLOCK_TOP_MID_ALIGN_CO2_CHART,
+  ui->co2.co2_footer_label = create_label(
+      ui->screen, "CO2 | Air Quality", BLOCK_TOP_MID_ALIGN_CO2_CHART,
       BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 60);
-  lv_obj_set_style_text_font(ui->co2.co2_footer_label,
-                             &lv_font_montserrat_12, 0);
-  lv_obj_set_style_text_align(ui->co2.co2_footer_label,
-                              LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_font(ui->co2.co2_footer_label, &lv_font_montserrat_12, 0);
-lv_obj_add_style(ui->co2.co2_footer_label, &ui->font.very_small_20, 0);
-lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_font(ui->co2.co2_footer_label, &lv_font_montserrat_12,
+                             0);
+  lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER,
+                              0);
+  lv_obj_set_style_text_font(ui->co2.co2_footer_label, &lv_font_montserrat_12,
+                             0);
+  lv_obj_add_style(ui->co2.co2_footer_label, &ui->font.very_small_20, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER,
+                              0);
 
-// центральный кружок поверх иглы
-lv_obj_t *center_dot = lv_obj_create(ui->screen);
-lv_obj_remove_style_all(center_dot);
-lv_obj_set_size(center_dot, 14, 14);
-lv_obj_set_style_radius(center_dot, LV_RADIUS_CIRCLE, 0);
-lv_obj_set_style_bg_opa(center_dot, LV_OPA_COVER, 0);
-lv_obj_set_style_bg_color(center_dot, lv_color_hex(0x888888), 0);
-lv_obj_set_style_border_width(center_dot, 2, 0);
-lv_obj_set_style_border_color(center_dot, lv_color_hex(0xCCCCCC), 0);
-lv_obj_align_to(center_dot, ui->co2.meter, LV_ALIGN_CENTER, 0, 0);
+  // центральный кружок поверх иглы
+  lv_obj_t *center_dot = lv_obj_create(ui->screen);
+  lv_obj_remove_style_all(center_dot);
+  lv_obj_set_size(center_dot, 14, 14);
+  lv_obj_set_style_radius(center_dot, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_opa(center_dot, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(center_dot, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_border_width(center_dot, 2, 0);
+  lv_obj_set_style_border_color(center_dot, lv_color_hex(0xCCCCCC), 0);
+  lv_obj_align_to(center_dot, ui->co2.meter, LV_ALIGN_CENTER, 0, 0);
   // --- иконка калибровки ---
-  ui->co2.calib_icon_label = create_label(
-      ui->screen, LV_SYMBOL_WARNING,
-      BLOCK_TOP_MID_ALIGN_CO2_CHART,
-      0, BLOCK_TOP_MID_Y_START + 40);
+  ui->co2.calib_icon_label =
+      create_label(ui->screen, LV_SYMBOL_WARNING, BLOCK_TOP_MID_ALIGN_CO2_CHART,
+                   0, BLOCK_TOP_MID_Y_START + 40);
   lv_obj_set_style_text_color(ui->co2.calib_icon_label,
-      lv_palette_main(LV_PALETTE_ORANGE), 0);
-  lv_obj_set_style_text_font(ui->co2.calib_icon_label,
-      &lv_font_montserrat_20, 0);
+                              lv_palette_main(LV_PALETTE_ORANGE), 0);
+  lv_obj_set_style_text_font(ui->co2.calib_icon_label, &lv_font_montserrat_20,
+                             0);
 
   // --- метр кликабельный ---
   lv_obj_add_flag(ui->co2.meter, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_event_cb(ui->co2.meter, co2_meter_click_event_cb,
-      LV_EVENT_CLICKED, ui);
+  lv_obj_add_event_cb(ui->co2.meter, co2_meter_click_event_cb, LV_EVENT_CLICKED,
+                      ui);
 
   /*BLOCK TOP MID*/
 }
@@ -1403,6 +1403,19 @@ static void create_block_top_right(ui_main_menu_t *ui) {
   lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN); // скрыт пока нет праздника
   ui->time.holiday_label = lbl;
+
+  // --- WiFi статус индикатор ---
+  //TODO
+//  lbl = create_label(ui->time.screen, LV_SYMBOL_WARNING,
+//                     BLOCK_TOP_RIGHT_WDAY_COL_ALIGN,
+//                     BLOCK_TOP_RIGHT_WDAY_COL_X_START,
+//                     BLOCK_TOP_RIGHT_WDAY_COL_Y_START - 22);
+//  if (!lbl)
+//    return;
+//  lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
+//  lv_obj_set_width(lbl, BLOCK_TOP_RIGHT_WDAY_COL_WIDTH);
+//  lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+//  ui->time.wifi_status_icon = lbl;
 
   /*BLOCK TOP RIGHT*/
 }
@@ -1565,48 +1578,7 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
   /*BLOCK BOT LEFT*/
 }
 /////////////////////////////////////////////////wifi events
-static void btn_wifi_open_popup_event_handler(lv_event_t *e) {
 
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (!ui)
-    return;
-
-  // [FIX] Guard от двойного открытия
-  if (ui->wifi.popup != NULL && lv_obj_is_valid(ui->wifi.popup))
-    return;
-
-  hide_all_blocks(ui);
-  ui_create_wifi_popup(ui);
-
-  // Заполняем данные СРАЗУ после создания popup (объекты уже валидны)
-  if (lv_obj_is_valid(ui->wifi.ssid_label))
-    lv_label_set_text(ui->wifi.ssid_label, (char *)ap_info.ssid);
-
-  if (lv_obj_is_valid(ui->wifi.rssi_label))
-    lv_label_set_text_fmt(ui->wifi.rssi_label, "%d dBm", ap_info.rssi);
-}
-static void btn_wifi_close_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (!ui)
-    return;
-
-  // show_all_blocks ПЕРЕД del — иначе обращаемся к уже удалённым объектам
-  show_all_blocks(ui);
-
-  lv_obj_del(ui->wifi.popup);
-
-  // [FIX] Обнуляем ВСЕ дочерние указатели — они удалены вместе с popup
-  ui->wifi.popup = NULL;
-  ui->wifi.btn_close = NULL;
-  ui->wifi.btn_keyboard_ssid = NULL;
-  ui->wifi.btn_keyboard_pass = NULL;
-  ui->wifi.ssid_label = NULL;
-  ui->wifi.pass_label = NULL;
-  ui->wifi.rssi_label = NULL;
-  ui->wifi.keyboard = NULL;
-  ui->wifi.ta_ssid = NULL;
-  ui->wifi.ta_pass = NULL;
-}
 static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (!ui)
@@ -1711,50 +1683,34 @@ static void btn_settings_close_popup_event_handler(lv_event_t *e) {
   ui->settings.standby_desc_label = NULL;
   ui->settings.theme_btnmatrix = NULL;
   ui->settings.theme_desc_label = NULL;
-  ui->settings.co2_btnmatrix  = NULL;
-ui->settings.co2_desc_label = NULL;
-ui->settings.backlight_btnmatrix = NULL;
-ui->settings.backlight_desc_label = NULL;
-ui->settings.backlight_slider = NULL;
-ui->settings.backlight_pct_label = NULL;
+  ui->settings.co2_btnmatrix = NULL;
+  ui->settings.co2_desc_label = NULL;
+  ui->settings.backlight_btnmatrix = NULL;
+  ui->settings.backlight_desc_label = NULL;
+  ui->settings.backlight_slider = NULL;
+  ui->settings.backlight_pct_label = NULL;
+  ui->settings.page_home = NULL;
+  ui->settings.page_content = NULL;
+  ui->settings.btn_back = NULL;
+  ui->settings.current_page = SETTINGS_PAGE_HOME;
+  ui->settings.ota_btn = NULL;
+  ui->settings.ota_status_label = NULL;
+  ui->wifi.ssid_label = NULL;
+  ui->wifi.pass_label = NULL;
+  ui->wifi.rssi_label = NULL;
+  ui->wifi.btn_keyboard_ssid = NULL;
+  ui->wifi.btn_keyboard_pass = NULL;
+  ui->wifi.keyboard = NULL;
+  ui->wifi.ta_ssid = NULL;
+  ui->wifi.ta_pass = NULL;
+   ui->weather.settings_popup.city_label = NULL;
+  ui->weather.settings_popup.btn_open_city_list = NULL;
+  ui->weather.settings_popup.citys_list = NULL;
 
   show_all_blocks(ui);
 }
 /////////////////////////////////////////////////settings events
 
-/////////////////////////////////////////////////weather settings events
-static void btn_weather_open_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (!ui)
-    return;
-
-  // Сразу логируем что видим
-  // ESP_LOGI("WEATHER", "popup open: saved_city = %d",
-  // ui->weather.saved_city);
-
-  // Проверяем напрямую из NVS
-  // uint16_t nvs_city = 0;
-  // weather_settings_load(&nvs_city);
-  // ESP_LOGI("WEATHER", "NVS city = %d", nvs_city);
-
-  // [FIX] Guard от двойного открытия
-  if (ui->weather.settings_popup.popup != NULL &&
-      lv_obj_is_valid(ui->weather.settings_popup.popup))
-    return;
-  hide_all_blocks(ui);
-  ui_create_weather_settings_popup(ui);
-
-  // Показываем последний выбранный город сразу при открытии
-  // (ui_create_city_list_weather тоже это делает, но на случай изменений)
-  if (lv_obj_is_valid(ui->weather.settings_popup.city_label)) {
-    lv_label_set_text(ui->weather.settings_popup.city_label,
-                      ui->weather.settings_popup
-                          .cities_de[ui->weather.settings_popup.saved_city]
-                          .name);
-    lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32,
-                     0);
-  }
-}
 static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   if (!ui)
@@ -1763,23 +1719,7 @@ static void btn_weather_open_list_city_event_handler(lv_event_t *e) {
   if (lv_obj_is_valid(ui->weather.settings_popup.citys_list))
     set_visible(ui->weather.settings_popup.citys_list, true);
 }
-static void btn_weather_close_popup_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (!ui)
-    return;
 
-  lv_obj_del(ui->weather.settings_popup.popup);
-
-  // [FIX] Обнуляем ВСЕ дочерние указатели
-  // citys_list и city_label — дочерние popup, удалены автоматически
-  ui->weather.settings_popup.popup = NULL;
-  ui->weather.settings_popup.btn_close = NULL;
-  ui->weather.settings_popup.btn_open_city_list = NULL;
-  ui->weather.settings_popup.city_label = NULL;
-  ui->weather.settings_popup.citys_list = NULL;
-
-  show_all_blocks(ui);
-}
 static void set_current_city_weather_event_handler(lv_event_t *e) {
   lv_event_code_t code = lv_event_get_code(e);
   if (code != LV_EVENT_CLICKED)
@@ -1829,7 +1769,7 @@ void update_co2_chart_labels(ui_main_menu_t *ui) {
 }
 
 static void ui_create_co2_chart_bot_mid(ui_main_menu_t *ui) {
- ui->co2.chart = create_chart(
+  ui->co2.chart = create_chart(
       ui->screen, BLOCK_BOT_MID_WIDTH_CO2_CHART, BLOCK_BOT_MID_HEIGHT_CO2_CHART,
       BLOCK_BOT_MID_ALIGN_CO2_CHART, 0, BLOCK_BOT_MID_Y_START_CO2_CHART);
 
@@ -1841,42 +1781,42 @@ static void ui_create_co2_chart_bot_mid(ui_main_menu_t *ui) {
   ui->co2.chart_lbl_max = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_max, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_max, LV_OPA_50, 0);
-  lv_obj_align_to(ui->co2.chart_lbl_max, ui->co2.chart,
-                  LV_ALIGN_TOP_LEFT, 4, 2);
+  lv_obj_align_to(ui->co2.chart_lbl_max, ui->co2.chart, LV_ALIGN_TOP_LEFT, 4,
+                  2);
 
   ui->co2.chart_lbl_mid = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_mid, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_mid, LV_OPA_50, 0);
-  lv_obj_align_to(ui->co2.chart_lbl_mid, ui->co2.chart,
-                  LV_ALIGN_LEFT_MID, 4, 0);
+  lv_obj_align_to(ui->co2.chart_lbl_mid, ui->co2.chart, LV_ALIGN_LEFT_MID, 4,
+                  0);
 
   ui->co2.chart_lbl_min = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_min, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_min, LV_OPA_50, 0);
-  lv_obj_align_to(ui->co2.chart_lbl_min, ui->co2.chart,
-                  LV_ALIGN_BOTTOM_LEFT, 4, -2);
+  lv_obj_align_to(ui->co2.chart_lbl_min, ui->co2.chart, LV_ALIGN_BOTTOM_LEFT, 4,
+                  -2);
 
   // --- inline X labels ---
   ui->co2.chart_lbl_t24 = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_t24, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_t24, LV_OPA_70, 0);
   lv_label_set_text(ui->co2.chart_lbl_t24, "-24h");
-  lv_obj_align_to(ui->co2.chart_lbl_t24, ui->co2.chart,
-                  LV_ALIGN_BOTTOM_LEFT, 2, BLOCK_BOT_MID_Y_START_CO2_TIMES);
+  lv_obj_align_to(ui->co2.chart_lbl_t24, ui->co2.chart, LV_ALIGN_BOTTOM_LEFT, 2,
+                  BLOCK_BOT_MID_Y_START_CO2_TIMES);
 
   ui->co2.chart_lbl_t12 = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_t12, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_t12, LV_OPA_70, 0);
   lv_label_set_text(ui->co2.chart_lbl_t12, "-12h");
-  lv_obj_align_to(ui->co2.chart_lbl_t12, ui->co2.chart,
-                  LV_ALIGN_BOTTOM_MID, 0, BLOCK_BOT_MID_Y_START_CO2_TIMES);
+  lv_obj_align_to(ui->co2.chart_lbl_t12, ui->co2.chart, LV_ALIGN_BOTTOM_MID, 0,
+                  BLOCK_BOT_MID_Y_START_CO2_TIMES);
 
   ui->co2.chart_lbl_t0 = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_t0, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_t0, LV_OPA_70, 0);
   lv_label_set_text(ui->co2.chart_lbl_t0, "0h");
-  lv_obj_align_to(ui->co2.chart_lbl_t0, ui->co2.chart,
-                  LV_ALIGN_BOTTOM_RIGHT, -2, BLOCK_BOT_MID_Y_START_CO2_TIMES);
+  lv_obj_align_to(ui->co2.chart_lbl_t0, ui->co2.chart, LV_ALIGN_BOTTOM_RIGHT,
+                  -2, BLOCK_BOT_MID_Y_START_CO2_TIMES);
 
   // заполняем Y-лейблы с учётом текущего режима
   update_co2_chart_labels(ui);
@@ -1888,7 +1828,7 @@ static void ui_create_city_list_weather(ui_main_menu_t *ui) {
   // Если родитель screen — список не удаляется вместе с popup
   // и зависает поверх интерфейса навсегда
   ui->weather.settings_popup.citys_list =
-      lv_list_create(ui->weather.settings_popup.popup);
+      lv_list_create(ui->settings.page_content);
   lv_obj_set_size(ui->weather.settings_popup.citys_list, 350, 250);
   lv_obj_center(ui->weather.settings_popup.citys_list);
 
@@ -1916,128 +1856,13 @@ static void ui_create_city_list_weather(ui_main_menu_t *ui) {
   set_visible(ui->weather.settings_popup.citys_list, false);
 }
 
-static void ui_create_weather_settings_popup(ui_main_menu_t *ui) {
-  ui->weather.settings_popup.popup =
-      create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
-                        POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_add_style(ui->weather.settings_popup.popup, &ui->style.popup, 0);
-
-  ui->weather.settings_popup.btn_close =
-      create_btn_cb(ui->weather.settings_popup.popup, 50, 50, LV_ALIGN_TOP_LEFT,
-                    500, -10, btn_weather_close_popup_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->weather.settings_popup.btn_close,
-                              LV_SYMBOL_HOME, 0);
-
-  ui->weather.settings_popup.btn_open_city_list =
-      create_btn_cb(ui->weather.settings_popup.popup, 50, 50, LV_ALIGN_TOP_LEFT,
-                    500, 90, btn_weather_open_list_city_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->weather.settings_popup.btn_open_city_list,
-                              LV_SYMBOL_GPS, 0);
-
-  ui->weather.settings_popup.city_label = create_label(
-      ui->weather.settings_popup.popup, "Stadt", LV_ALIGN_TOP_LEFT, 220, 90);
-
-  create_text("Wetter Einstellungen", ui->weather.settings_popup.popup,
-              STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 0, ui);
-  create_text("Stadt:", ui->weather.settings_popup.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 90, ui);
-  ui_create_city_list_weather(ui);
-  
-   lv_obj_t *info_label = create_label(
-      ui->weather.settings_popup.popup,
-      "Datenquelle: Open-Meteo (open-meteo.com)\n"
-      "Aktuelle Werte sind berechnet, keine Echtzeitmessung.\n"
-      "Vorhersagen koennen von der Realitaet abweichen.",
-      LV_ALIGN_BOTTOM_MID, 0, -10);
-  lv_obj_set_style_text_font(info_label, &lv_font_montserrat_20, 0);
-  lv_obj_set_style_text_color(info_label, lv_color_hex(0x888888), 0);
-  lv_obj_set_style_text_align(info_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_label_set_long_mode(info_label, LV_LABEL_LONG_WRAP);
-  lv_obj_set_width(info_label, POPUP_WINDOW_WIDTH - 40);
-}
 
 static void ui_create_settings_popup_btns(ui_main_menu_t *ui) {
-  ui->weather.settings_popup.btn_open = create_btn_icon(
-    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_1,
-    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_weather_open_popup_event_handler, ui,
-    MY_CLOUD_SYMBOL, &ui->font.nav_btn, NULL, "Wetter", ui);
-
-ui->wifi.btn_open = create_btn_icon(
-    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_2,
-    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_wifi_open_popup_event_handler, ui,
-    LV_SYMBOL_WIFI, NULL, &lv_font_montserrat_32, "WLAN", ui);
-
-ui->settings.btn_open = create_btn_icon(
-    ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
-    BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_3,
-    BLOCK_BOT_MID_Y_START_SYMBOLS, btn_settings_open_popup_event_handler, ui,
-    LV_SYMBOL_SETTINGS, NULL, &lv_font_montserrat_32, "Setup", ui);
-}
-
-static void ui_create_wifi_popup(ui_main_menu_t *ui) {
-
-  ui->wifi.popup =
-      create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
-                        POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_set_scrollbar_mode(ui->wifi.popup, LV_SCROLLBAR_MODE_OFF);
-  lv_obj_add_style(ui->wifi.popup, &ui->style.popup, 0);
-
-  create_text("WIFI Einstellungen", ui->wifi.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_MID, 0, 0, ui);
-  create_text("Name:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,
-              90, ui);
-  create_text("Passwort:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
-              15, 180, ui);
-  create_text("Signal:", ui->wifi.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
-              15, 270, ui);
-
-  ui->wifi.btn_close =
-      create_btn_cb(ui->wifi.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
-                    btn_wifi_close_popup_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->wifi.btn_close, LV_SYMBOL_HOME, 0);
-
-  ui->wifi.btn_keyboard_ssid =
-      create_btn_cb(ui->wifi.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, 90,
-                    btn_keyboard_open_ssid_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_ssid, LV_SYMBOL_KEYBOARD,
-                              0);
-
-  ui->wifi.btn_keyboard_pass =
-      create_btn_cb(ui->wifi.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, 180,
-                    btn_keyboard_open_pass_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_pass, LV_SYMBOL_KEYBOARD,
-                              0);
-
-  ui->wifi.ssid_label =
-      create_label(ui->wifi.popup, "WiFiName", LV_ALIGN_TOP_LEFT, 220, 90);
-  lv_obj_add_style(ui->wifi.ssid_label, &ui->font.medium_32, 0);
-  ui->wifi.pass_label =
-      create_label(ui->wifi.popup, "*********", LV_ALIGN_TOP_LEFT, 220, 180);
-  lv_obj_add_style(ui->wifi.pass_label, &ui->font.medium_32, 0);
-  ui->wifi.rssi_label =
-      create_label(ui->wifi.popup, "WiFiRSSI", LV_ALIGN_TOP_LEFT, 220, 270);
-  lv_obj_add_style(ui->wifi.rssi_label, &ui->font.medium_32, 0);
-  ui->wifi.keyboard = lv_keyboard_create(ui->wifi.popup);
-  // [FIX] Было &ui (адрес локального параметра функции — UB после возврата!)
-  // Теперь ui — указатель на глобальную структуру, всегда валиден
-  lv_obj_add_event_cb(ui->wifi.keyboard, ta_wifi_event_cb, LV_EVENT_ALL, ui);
-
-  ui->wifi.ta_ssid = lv_textarea_create(ui->wifi.popup);
-  lv_obj_align(ui->wifi.ta_ssid, LV_ALIGN_TOP_MID, 0, 75);
-  lv_textarea_set_placeholder_text(ui->wifi.ta_ssid, "WiFi Name");
-  lv_obj_set_size(ui->wifi.ta_ssid, 550, 70);
-
-  ui->wifi.ta_pass = lv_textarea_create(ui->wifi.popup);
-  lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 75);
-  // [FIX] Было "WiFi SSID" — опечатка в placeholder для pass
-  lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "WiFi Passwort");
-  lv_obj_set_size(ui->wifi.ta_pass, 550, 70);
-
-  set_visible(ui->wifi.ta_ssid, false);
-  set_visible(ui->wifi.ta_pass, false);
-  set_visible(ui->wifi.keyboard, false);
+  ui->settings.btn_open = create_btn_icon(
+      ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
+      BLOCK_BOT_MID_ALIGN_SYMBOL, BLOCK_BOT_MID_X_START_SYMBOL_2,
+      BLOCK_BOT_MID_Y_START_SYMBOLS, btn_settings_open_popup_event_handler, ui,
+      LV_SYMBOL_SETTINGS, NULL, &lv_font_montserrat_32, "Einstellungen", ui);
 }
 
 void ui_apply_theme(ui_main_menu_t *ui) {
@@ -2070,52 +1895,47 @@ void ui_apply_theme(ui_main_menu_t *ui) {
 }
 
 static void backlight_btnmatrix_event_cb(lv_event_t *e) {
-    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    lv_obj_t *obj = lv_event_get_target(e);
-    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
-    ui->settings.switch_.backlight_mode = (uint8_t)btn_id;
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  lv_obj_t *obj = lv_event_get_target(e);
+  uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+  ui->settings.switch_.backlight_mode = (uint8_t)btn_id;
 
+  // слайдер активен только в Manuell
+  if (btn_id == 0) {
+    lv_obj_clear_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
+    backlight_set(ui->settings.switch_.backlight_pct);
+  } else {
+    lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
+    uint8_t pct =
+        (btn_id == 1) ? backlight_get_auto_pct() : backlight_get_zeitplan_pct();
+    backlight_set(pct);
+  }
+  static const char *bl_descs[] = {
+      "Feste Helligkeit per Schieberegler.", "Tagsueber 80%, nachts 5%.",
+      "Sanfter Verlauf: Morgen, Tag, Abend, Nacht."};
+  lv_label_set_text(ui->settings.backlight_desc_label, bl_descs[btn_id]);
 
-
-    // слайдер активен только в Manuell
-    if (btn_id == 0) {
-        lv_obj_clear_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
-        backlight_set(ui->settings.switch_.backlight_pct);
-    } else {
-        lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
-        uint8_t pct = (btn_id == 1) ? backlight_get_auto_pct()
-                                    : backlight_get_zeitplan_pct();
-        backlight_set(pct);
-    }
-    static const char *bl_descs[] = {
-    "Feste Helligkeit per Schieberegler.",
-    "Tagsueber 80%, nachts 5%.",
-    "Sanfter Verlauf: Morgen, Tag, Abend, Nacht."};
-lv_label_set_text(ui->settings.backlight_desc_label, bl_descs[btn_id]);
-
-    main_settings_save(ui->settings.switch_.standby_mode,
-                   ui->settings.switch_.backlight_pct,
-                   ui->settings.switch_.backlight_mode,
-                   ui->settings.switch_.theme_mode,
-                   ui->settings.switch_.co2_mode);
+  main_settings_save(
+      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
+      ui->settings.switch_.co2_mode);
 }
 
 static void backlight_slider_event_cb(lv_event_t *e) {
-    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    lv_obj_t *slider = lv_event_get_target(e);
-    uint8_t pct = (uint8_t)lv_slider_get_value(slider);
-    ui->settings.switch_.backlight_pct = pct;
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  lv_obj_t *slider = lv_event_get_target(e);
+  uint8_t pct = (uint8_t)lv_slider_get_value(slider);
+  ui->settings.switch_.backlight_pct = pct;
 
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%d%%", pct);
-    lv_label_set_text(ui->settings.backlight_pct_label, buf);
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%d%%", pct);
+  lv_label_set_text(ui->settings.backlight_pct_label, buf);
 
-    backlight_set(pct);
-   main_settings_save(ui->settings.switch_.standby_mode,
-                   ui->settings.switch_.backlight_pct,
-                   ui->settings.switch_.backlight_mode,
-                   ui->settings.switch_.theme_mode,
-                   ui->settings.switch_.co2_mode);
+  backlight_set(pct);
+  main_settings_save(
+      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
+      ui->settings.switch_.co2_mode);
 }
 // callback для btnmatrix
 static void standby_btnmatrix_event_cb(lv_event_t *e) {
@@ -2129,31 +1949,28 @@ static void standby_btnmatrix_event_cb(lv_event_t *e) {
                                 "Aus Nachts nach 180 Sek."};
   lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
 
-  main_settings_save(ui->settings.switch_.standby_mode,
-                   ui->settings.switch_.backlight_pct,
-                   ui->settings.switch_.backlight_mode,
-                   ui->settings.switch_.theme_mode,
-                   ui->settings.switch_.co2_mode);
+  main_settings_save(
+      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
+      ui->settings.switch_.co2_mode);
 }
 static void co2_btnmatrix_event_cb(lv_event_t *e) {
-    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    lv_obj_t *obj = lv_event_get_target(e);
-    uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
-    ui->settings.switch_.co2_mode = (uint8_t)btn_id;
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  lv_obj_t *obj = lv_event_get_target(e);
+  uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+  ui->settings.switch_.co2_mode = (uint8_t)btn_id;
 
-    static const char *descs[] = {
-    "400-2400 ppm: fuer Schlafraeume und Bueros.",
-    "400-4000 ppm: fuer Wohnraeume.",
-    "400-6000 ppm: fuer Industrie und Lager."};
-    lv_label_set_text(ui->settings.co2_desc_label, descs[btn_id]);
+  static const char *descs[] = {"400-2400 ppm: fuer Schlafraeume und Bueros.",
+                                "400-4000 ppm: fuer Wohnraeume.",
+                                "400-6000 ppm: fuer Industrie und Lager."};
+  lv_label_set_text(ui->settings.co2_desc_label, descs[btn_id]);
 
-    main_settings_save(ui->settings.switch_.standby_mode,
-                   ui->settings.switch_.backlight_pct,
-                   ui->settings.switch_.backlight_mode,
-                   ui->settings.switch_.theme_mode,
-                   ui->settings.switch_.co2_mode);
-                        // обновляем Y-лейблы графика под новый диапазон
-    update_co2_chart_labels(ui);
+  main_settings_save(
+      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
+      ui->settings.switch_.co2_mode);
+  // обновляем Y-лейблы графика под новый диапазон
+  update_co2_chart_labels(ui);
 }
 static void theme_btnmatrix_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -2194,62 +2011,127 @@ static void theme_btnmatrix_event_cb(lv_event_t *e) {
   lv_obj_report_style_change(&ui->font.time);
   lv_obj_report_style_change(&ui->font.icon);
 
-main_settings_save(ui->settings.switch_.standby_mode,
-                   ui->settings.switch_.backlight_pct,
-                   ui->settings.switch_.backlight_mode,
-                   ui->settings.switch_.theme_mode,
-                   ui->settings.switch_.co2_mode);
+  main_settings_save(
+      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
+      ui->settings.switch_.co2_mode);
 };
 static void ota_progress_cb(ota_state_t state, int progress_pct) {
-    if (!g_ui || !g_ui->settings.ota_status_label) return;
-    if (!lv_obj_is_valid(g_ui->settings.ota_status_label)) return;
+  if (!g_ui || !g_ui->settings.ota_status_label)
+    return;
+  if (!lv_obj_is_valid(g_ui->settings.ota_status_label))
+    return;
 
-    char buf[48];
-    switch (state) {
-        case OTA_STATE_CHECKING:    snprintf(buf, sizeof(buf), "Verbinde..."); break;
-        case OTA_STATE_DOWNLOADING: snprintf(buf, sizeof(buf), "Lade... %d%%", progress_pct); break;
-        case OTA_STATE_SUCCESS:     snprintf(buf, sizeof(buf), "Fertig! Neustart..."); break;
-        case OTA_STATE_FAILED:      snprintf(buf, sizeof(buf), "Fehler!"); break;
-        default:                    snprintf(buf, sizeof(buf), "Bereit"); break;
-    }
-    lv_label_set_text(g_ui->settings.ota_status_label, buf);
+  char buf[48];
+  switch (state) {
+  case OTA_STATE_CHECKING:
+    snprintf(buf, sizeof(buf), "Verbinde...");
+    break;
+  case OTA_STATE_DOWNLOADING:
+    snprintf(buf, sizeof(buf), "Lade... %d%%", progress_pct);
+    break;
+  case OTA_STATE_SUCCESS:
+    snprintf(buf, sizeof(buf), "Fertig! Neustart...");
+    break;
+  case OTA_STATE_FAILED:
+    snprintf(buf, sizeof(buf), "Fehler!");
+    break;
+  default:
+    snprintf(buf, sizeof(buf), "Bereit");
+    break;
+  }
+  lv_label_set_text(g_ui->settings.ota_status_label, buf);
 }
 
 static void ota_start_timer_cb(lv_timer_t *t) {
-    lv_timer_del(t);
-    backlight_set(0);
-    ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
+  lv_timer_del(t);
+  backlight_set(0);
+  ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
 }
 
 static void ota_btn_event_cb(lv_event_t *e) {
-   if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+    return;
+  // ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
 
-    // оверлей с предупреждением
-    lv_obj_t *overlay = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(overlay, LV_HOR_RES, LV_VER_RES);
-    lv_obj_align(overlay, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(overlay, LV_OPA_90, 0);
-    lv_obj_set_style_border_width(overlay, 0, 0);
+  // оверлей с предупреждением
+  lv_obj_t *overlay = lv_obj_create(lv_scr_act());
+  lv_obj_set_size(overlay, LV_HOR_RES, LV_VER_RES);
+  lv_obj_align(overlay, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
+  lv_obj_set_style_bg_opa(overlay, LV_OPA_90, 0);
+  lv_obj_set_style_border_width(overlay, 0, 0);
 
-    lv_obj_t *lbl = lv_label_create(overlay);
-    lv_label_set_text(lbl, "Firmware-Update wird gestartet.\n"
-                           "Das Gerat wird neu gestartet.\n\n"
-                           "Bitte warten...");
-    lv_obj_center(lbl);
-    lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
-    lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_t *lbl = lv_label_create(overlay);
+  lv_label_set_text(lbl, "Firmware-Update wird gestartet.\n"
+                         "Das Gerat wird neu gestartet.\n\n"
+                         "Bitte warten...");
+  lv_obj_center(lbl);
+  lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
+  lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
 
-    // запуск OTA через 3 секунды
-    lv_timer_create(ota_start_timer_cb, 3000, NULL);
+  // запуск OTA через 3 секунды
+  lv_timer_create(ota_start_timer_cb, 3000, NULL);
 }
-static void ui_create_settigs_switches(ui_main_menu_t *ui) {
-  // --- standby btnmatrix ---
+
+static void ui_create_settigs_display(ui_main_menu_t *ui) {
+  const lv_coord_t W = LVGL_PORT_H_RES - 60; // ширина элементов
+  const lv_coord_t X = 20;                    // отступ слева
+
+  // --- Заголовок ---
+  create_text("Display", ui->settings.page_content, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_MID, 0, 10, ui);
+
+  // --- Helligkeit ---
+  create_text("Helligkeit:", ui->settings.page_content, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, X, 60, ui);
+
+  static const char *bl_map[] = {"Manuell", "Auto", "Zeitplan", ""};
+  ui->settings.backlight_btnmatrix =
+      lv_btnmatrix_create(ui->settings.page_content);
+  lv_obj_set_size(ui->settings.backlight_btnmatrix, W, 90);
+  lv_obj_align(ui->settings.backlight_btnmatrix, LV_ALIGN_TOP_LEFT, X, 100);
+  lv_btnmatrix_set_map(ui->settings.backlight_btnmatrix, bl_map);
+  lv_obj_set_style_text_font(ui->settings.backlight_btnmatrix,
+                             &lv_font_montserrat_20, LV_PART_ITEMS);
+  lv_btnmatrix_set_btn_ctrl_all(ui->settings.backlight_btnmatrix,
+                                LV_BTNMATRIX_CTRL_CHECKABLE);
+  lv_btnmatrix_set_one_checked(ui->settings.backlight_btnmatrix, true);
+  lv_obj_add_event_cb(ui->settings.backlight_btnmatrix,
+                      backlight_btnmatrix_event_cb, LV_EVENT_VALUE_CHANGED, ui);
+
+  ui->settings.backlight_desc_label =
+      create_label(ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, X, 200);
+  lv_obj_add_style(ui->settings.backlight_desc_label, &ui->font.very_small_20, 0);
+
+  ui->settings.backlight_slider = lv_slider_create(ui->settings.page_content);
+  lv_obj_set_size(ui->settings.backlight_slider, W - 80, 40);
+  lv_obj_align(ui->settings.backlight_slider, LV_ALIGN_TOP_LEFT, X, 240);
+  lv_slider_set_range(ui->settings.backlight_slider, 5, 100);
+  lv_slider_set_value(ui->settings.backlight_slider,
+                      ui->settings.switch_.backlight_pct, LV_ANIM_OFF);
+  lv_obj_add_event_cb(ui->settings.backlight_slider, backlight_slider_event_cb,
+                      LV_EVENT_VALUE_CHANGED, ui);
+
+  // disabled стиль слайдера
+  lv_obj_set_style_bg_color(ui->settings.backlight_slider,
+                            lv_color_hex(0x555555), LV_PART_INDICATOR | LV_STATE_DISABLED);
+  lv_obj_set_style_bg_color(ui->settings.backlight_slider,
+                            lv_color_hex(0x555555), LV_PART_KNOB | LV_STATE_DISABLED);
+
+  ui->settings.backlight_pct_label =
+      create_label(ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, W - 50, 248);
+  lv_obj_add_style(ui->settings.backlight_pct_label, &ui->font.small_24, 0);
+
+  // --- Standby ---
+  create_text("Standby:", ui->settings.page_content, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, X, 300, ui);
+
   static const char *standby_map[] = {"Ein", "Auto", "Auto Nachts", ""};
-  ui->settings.standby_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
-  lv_obj_set_size(ui->settings.standby_btnmatrix, 540, 90);
-  lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 130);
+  ui->settings.standby_btnmatrix =
+      lv_btnmatrix_create(ui->settings.page_content);
+  lv_obj_set_size(ui->settings.standby_btnmatrix, W, 90);
+  lv_obj_align(ui->settings.standby_btnmatrix, LV_ALIGN_TOP_LEFT, X, 340);
   lv_btnmatrix_set_map(ui->settings.standby_btnmatrix, standby_map);
   lv_obj_set_style_text_font(ui->settings.standby_btnmatrix,
                              &lv_font_montserrat_20, LV_PART_ITEMS);
@@ -2260,14 +2142,17 @@ static void ui_create_settigs_switches(ui_main_menu_t *ui) {
                       standby_btnmatrix_event_cb, LV_EVENT_VALUE_CHANGED, ui);
 
   ui->settings.standby_desc_label =
-      create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 225);
+      create_label(ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, X, 440);
   lv_obj_add_style(ui->settings.standby_desc_label, &ui->font.very_small_20, 0);
 
-  // --- theme btnmatrix ---
+  // --- Thema ---
+  create_text("Thema:", ui->settings.page_content, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, X, 480, ui);
+
   static const char *theme_map[] = {"Auto", "Hell", "Dunkel", ""};
-  ui->settings.theme_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
-  lv_obj_set_size(ui->settings.theme_btnmatrix, 540, 90);
-  lv_obj_align(ui->settings.theme_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 310);
+  ui->settings.theme_btnmatrix = lv_btnmatrix_create(ui->settings.page_content);
+  lv_obj_set_size(ui->settings.theme_btnmatrix, W, 90);
+  lv_obj_align(ui->settings.theme_btnmatrix, LV_ALIGN_TOP_LEFT, X, 520);
   lv_btnmatrix_set_map(ui->settings.theme_btnmatrix, theme_map);
   lv_obj_set_style_text_font(ui->settings.theme_btnmatrix,
                              &lv_font_montserrat_20, LV_PART_ITEMS);
@@ -2278,173 +2163,371 @@ static void ui_create_settigs_switches(ui_main_menu_t *ui) {
                       LV_EVENT_VALUE_CHANGED, ui);
 
   ui->settings.theme_desc_label =
-      create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 405);
+      create_label(ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, X, 620);
   lv_obj_add_style(ui->settings.theme_desc_label, &ui->font.very_small_20, 0);
 
-create_text("Luftqualitaetssensor:", ui->settings.popup, STYLE_TEXT_SMALL,
-            LV_ALIGN_TOP_LEFT, 15, 450, ui);
+  // --- применяем сохранённые значения ---
+  main_settings_load(
+      &ui->settings.switch_.standby_mode, &ui->settings.switch_.backlight_pct,
+      &ui->settings.switch_.backlight_mode, &ui->settings.switch_.theme_mode,
+      &ui->settings.switch_.co2_mode);
 
-static const char *co2_map[] = {"Sensitiv", "Normal",
-                                 "Robust", ""};
-ui->settings.co2_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
-lv_obj_set_size(ui->settings.co2_btnmatrix, 540, 90);
-lv_obj_align(ui->settings.co2_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 490);
-lv_btnmatrix_set_map(ui->settings.co2_btnmatrix, co2_map);
-lv_obj_set_style_text_font(ui->settings.co2_btnmatrix,
-                           &lv_font_montserrat_20, LV_PART_ITEMS);
-lv_btnmatrix_set_btn_ctrl_all(ui->settings.co2_btnmatrix,
-                               LV_BTNMATRIX_CTRL_CHECKABLE);
-lv_btnmatrix_set_one_checked(ui->settings.co2_btnmatrix, true);
-lv_obj_add_event_cb(ui->settings.co2_btnmatrix, co2_btnmatrix_event_cb,
-                    LV_EVENT_VALUE_CHANGED, ui);
-
-ui->settings.co2_desc_label =
-    create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 585);
-lv_obj_add_style(ui->settings.co2_desc_label, &ui->font.very_small_20, 0);
-
-// --- Helligkeit ---
-create_text("Helligkeit:", ui->settings.popup, STYLE_TEXT_SMALL,
-            LV_ALIGN_TOP_LEFT, 15, 630, ui);
-
-static const char *bl_map[] = {"Manuell", "Auto", "Zeitplan", ""};
-ui->settings.backlight_btnmatrix = lv_btnmatrix_create(ui->settings.popup);
-lv_obj_set_size(ui->settings.backlight_btnmatrix, 540, 90);
-lv_obj_align(ui->settings.backlight_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 675);
-lv_btnmatrix_set_map(ui->settings.backlight_btnmatrix, bl_map);
-lv_obj_set_style_text_font(ui->settings.backlight_btnmatrix,
-                           &lv_font_montserrat_20, LV_PART_ITEMS);
-lv_btnmatrix_set_btn_ctrl_all(ui->settings.backlight_btnmatrix,
-                              LV_BTNMATRIX_CTRL_CHECKABLE);
-lv_btnmatrix_set_one_checked(ui->settings.backlight_btnmatrix, true);
-lv_obj_add_event_cb(ui->settings.backlight_btnmatrix,
-                    backlight_btnmatrix_event_cb, LV_EVENT_VALUE_CHANGED, ui);
-
-// описание режима — под кнопками
-ui->settings.backlight_desc_label =
-    create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 15, 775);
-lv_obj_add_style(ui->settings.backlight_desc_label, &ui->font.very_small_20, 0);
-
-// слайдер — под описанием
-ui->settings.backlight_slider = lv_slider_create(ui->settings.popup);
-lv_obj_set_size(ui->settings.backlight_slider, 440, 40);
-lv_obj_align(ui->settings.backlight_slider, LV_ALIGN_TOP_LEFT, 25, 830);
-lv_slider_set_range(ui->settings.backlight_slider, 5, 100);
-lv_slider_set_value(ui->settings.backlight_slider,
-                    ui->settings.switch_.backlight_pct, LV_ANIM_OFF);
-lv_obj_add_event_cb(ui->settings.backlight_slider,
-                    backlight_slider_event_cb, LV_EVENT_VALUE_CHANGED, ui);
-
-// % справа от слайдера
-ui->settings.backlight_pct_label =
-    create_label(ui->settings.popup, "", LV_ALIGN_TOP_LEFT, 480, 838);
-lv_obj_add_style(ui->settings.backlight_pct_label, &ui->font.small_24, 0);
-
-// применяем сохранённые значения
-lv_btnmatrix_set_btn_ctrl(ui->settings.backlight_btnmatrix,
-                          ui->settings.switch_.backlight_mode,
-                          LV_BTNMATRIX_CTRL_CHECKED);
-
-if (ui->settings.switch_.backlight_mode != 0)
+  lv_btnmatrix_set_btn_ctrl(ui->settings.backlight_btnmatrix,
+                            ui->settings.switch_.backlight_mode,
+                            LV_BTNMATRIX_CTRL_CHECKED);
+  if (ui->settings.switch_.backlight_mode != 0)
     lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
 
-static const char *bl_descs[] = {
-    "Feste Helligkeit per Schieberegler.",
-    "Tagsueber 80%, nachts 5%.",
-    "Sanfter Verlauf: Morgen, Tag, Abend, Nacht."};
-lv_label_set_text(ui->settings.backlight_desc_label,
-                  bl_descs[ui->settings.switch_.backlight_mode]);
+  static const char *bl_descs[] = {
+      "Feste Helligkeit per Schieberegler.",
+      "Tagsueber 80%, nachts 5%.",
+      "Sanfter Verlauf: Morgen, Tag, Abend, Nacht."};
+  lv_label_set_text(ui->settings.backlight_desc_label,
+                    bl_descs[ui->settings.switch_.backlight_mode]);
 
-char bl_buf[8];
-snprintf(bl_buf, sizeof(bl_buf), "%d%%", ui->settings.switch_.backlight_pct);
-lv_label_set_text(ui->settings.backlight_pct_label, bl_buf);
+  char bl_buf[8];
+  snprintf(bl_buf, sizeof(bl_buf), "%d%%", ui->settings.switch_.backlight_pct);
+  lv_label_set_text(ui->settings.backlight_pct_label, bl_buf);
 
-//CO2 here
-
-
-// применяем сохранённое значение
-lv_btnmatrix_set_btn_ctrl(ui->settings.co2_btnmatrix,
-                          ui->settings.switch_.co2_mode,
-                          LV_BTNMATRIX_CTRL_CHECKED);
-
-static const char *co2_descs[] = {
-    "400-2400 ppm: fuer Schlafraeume und Bueros.",
-    "400-4000 ppm: fuer Wohnraeume.",
-    "400-6000 ppm: fuer Industrie und Lager."};
-lv_label_set_text(ui->settings.co2_desc_label,
-                  co2_descs[ui->settings.switch_.co2_mode]);
-
-// --- Firmware Update ---
-create_text("Firmware:", ui->settings.popup, STYLE_TEXT_SMALL,
-            LV_ALIGN_TOP_LEFT, 15, 900, ui);
-
-ui->settings.ota_btn = create_btn_cb(
-    ui->settings.popup, 200, 60, LV_ALIGN_TOP_LEFT, 10, 940,
-    ota_btn_event_cb, ui);
-lv_obj_t *ota_btn_label = lv_label_create(ui->settings.ota_btn);
-lv_label_set_text(ota_btn_label, LV_SYMBOL_DOWNLOAD " Update");
-lv_obj_center(ota_btn_label);
-
-ui->settings.ota_status_label =
-    create_label(ui->settings.popup, "Bereit", LV_ALIGN_TOP_LEFT, 225, 955);
-lv_obj_add_style(ui->settings.ota_status_label, &ui->font.very_small_20, 0);
-
-  // --- загружаем сохранённые значения ---
-main_settings_load(&ui->settings.switch_.standby_mode,
-                   &ui->settings.switch_.backlight_pct,
-                   &ui->settings.switch_.backlight_mode,
-                   &ui->settings.switch_.theme_mode,
-                   &ui->settings.switch_.co2_mode);
-
-  // применяем standby к btnmatrix
   lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
                             ui->settings.switch_.standby_mode,
                             LV_BTNMATRIX_CTRL_CHECKED);
 
-  // применяем theme к btnmatrix
+  static const char *standby_descs[] = {
+      "Immer eingeschaltet.",
+      "Aus nach 180 Sek.",
+      "Aus Nachts nach 180 Sek."};
+  lv_label_set_text(ui->settings.standby_desc_label,
+                    standby_descs[ui->settings.switch_.standby_mode]);
+
   lv_btnmatrix_set_btn_ctrl(ui->settings.theme_btnmatrix,
                             ui->settings.switch_.theme_mode,
                             LV_BTNMATRIX_CTRL_CHECKED);
 
-  // подсказки при загрузке
-  static const char *standby_descs[] = {
-      "Immer eingeschaltet.", "Aus nach 180 Sek.", "Aus Nachts nach 180 Sek."};
-  lv_label_set_text(ui->settings.standby_desc_label,
-                    standby_descs[ui->settings.switch_.standby_mode]);
-
   static const char *theme_descs[] = {
-      "Automatisch: Tagsueber hell, nachts dunkel.", "Immer helles Design.",
+      "Automatisch: Tagsueber hell, nachts dunkel.",
+      "Immer helles Design.",
       "Immer dunkles Design."};
   lv_label_set_text(ui->settings.theme_desc_label,
                     theme_descs[ui->settings.switch_.theme_mode]);
 }
+static void btn_settings_back_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (!ui)
+    return;
 
+  // удаляем контент категории
+  lv_obj_clean(ui->settings.page_content);
+
+  ui->settings.standby_btnmatrix = NULL;
+  ui->settings.standby_desc_label = NULL;
+  ui->settings.theme_btnmatrix = NULL;
+  ui->settings.theme_desc_label = NULL;
+  ui->settings.co2_btnmatrix = NULL;
+  ui->settings.co2_desc_label = NULL;
+  ui->settings.backlight_btnmatrix = NULL;
+  ui->settings.backlight_desc_label = NULL;
+  ui->settings.backlight_slider = NULL;
+  ui->settings.backlight_pct_label = NULL;
+  ui->settings.ota_btn = NULL;
+  ui->settings.ota_status_label = NULL;
+  ui->wifi.ssid_label = NULL;
+  ui->wifi.pass_label = NULL;
+  ui->wifi.rssi_label = NULL;
+  ui->wifi.btn_keyboard_ssid = NULL;
+  ui->wifi.btn_keyboard_pass = NULL;
+  ui->wifi.keyboard = NULL;
+  ui->wifi.ta_ssid = NULL;
+  ui->wifi.ta_pass = NULL;
+  ui->weather.settings_popup.city_label = NULL;
+  ui->weather.settings_popup.btn_open_city_list = NULL;
+  ui->weather.settings_popup.citys_list = NULL;
+  // переключаем страницы
+  lv_obj_clear_flag(ui->settings.page_home, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui->settings.page_content, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui->settings.btn_back, LV_OBJ_FLAG_HIDDEN);
+
+  ui->settings.current_page = SETTINGS_PAGE_HOME;
+}
+
+static void ui_create_settigs_wifi(ui_main_menu_t *ui) {
+  lv_obj_t *p = ui->settings.page_content;
+
+  create_text("Name:",     p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,  10, ui);
+  create_text("Passwort:", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15, 100, ui);
+  create_text("Signal:",   p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15, 190, ui);
+
+  ui->wifi.ssid_label = create_label(p, (char *)ap_info.ssid, LV_ALIGN_TOP_LEFT, 220, 10);
+  lv_obj_add_style(ui->wifi.ssid_label, &ui->font.medium_32, 0);
+
+  ui->wifi.pass_label = create_label(p, "*********", LV_ALIGN_TOP_LEFT, 220, 100);
+  lv_obj_add_style(ui->wifi.pass_label, &ui->font.medium_32, 0);
+
+  ui->wifi.rssi_label = create_label(p, "-- dBm", LV_ALIGN_TOP_LEFT, 220, 190);
+  lv_obj_add_style(ui->wifi.rssi_label, &ui->font.medium_32, 0);
+
+  if (ap_info.rssi != 0)
+    lv_label_set_text_fmt(ui->wifi.rssi_label, "%d dBm", ap_info.rssi);
+
+  ui->wifi.btn_keyboard_ssid = create_btn_cb(p, 50, 50, LV_ALIGN_TOP_LEFT,
+      500, 10, btn_keyboard_open_ssid_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_ssid, LV_SYMBOL_KEYBOARD, 0);
+
+  ui->wifi.btn_keyboard_pass = create_btn_cb(p, 50, 50, LV_ALIGN_TOP_LEFT,
+      500, 100, btn_keyboard_open_pass_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_pass, LV_SYMBOL_KEYBOARD, 0);
+
+  ui->wifi.keyboard = lv_keyboard_create(p);
+  lv_obj_add_event_cb(ui->wifi.keyboard, ta_wifi_event_cb, LV_EVENT_ALL, ui);
+
+  ui->wifi.ta_ssid = lv_textarea_create(p);
+  lv_obj_align(ui->wifi.ta_ssid, LV_ALIGN_TOP_MID, 0, 0);
+  lv_textarea_set_placeholder_text(ui->wifi.ta_ssid, "WiFi Name");
+  lv_obj_set_size(ui->wifi.ta_ssid, 550, 70);
+
+  ui->wifi.ta_pass = lv_textarea_create(p);
+  lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 0);
+  lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "WiFi Passwort");
+  lv_obj_set_size(ui->wifi.ta_pass, 550, 70);
+
+  set_visible(ui->wifi.ta_ssid, false);
+  set_visible(ui->wifi.ta_pass, false);
+  set_visible(ui->wifi.keyboard, false);
+}
+
+static void ui_create_settigs_weather(ui_main_menu_t *ui) {
+  lv_obj_t *p = ui->settings.page_content;
+
+  create_text("Stadt:", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15, 10, ui);
+
+  ui->weather.settings_popup.city_label = create_label(
+      p, ui->weather.settings_popup.cities_de[ui->weather.settings_popup.saved_city].name,
+      LV_ALIGN_TOP_LEFT, 220, 10);
+  lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32, 0);
+
+  ui->weather.settings_popup.btn_open_city_list = create_btn_cb(
+      p, 50, 50, LV_ALIGN_TOP_LEFT, 500, 10,
+      btn_weather_open_list_city_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->weather.settings_popup.btn_open_city_list,
+                              LV_SYMBOL_GPS, 0);
+
+  ui_create_city_list_weather(ui);
+
+  lv_obj_t *info_label = create_label(
+      p,
+      "Datenquelle: Open-Meteo (open-meteo.com)\n"
+      "Aktuelle Werte sind berechnet, keine Echtzeitmessung.\n"
+      "Vorhersagen koennen von der Realitaet abweichen.",
+      LV_ALIGN_BOTTOM_MID, 0, -10);
+  lv_obj_set_style_text_font(info_label, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_color(info_label, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_text_align(info_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_label_set_long_mode(info_label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(info_label, LVGL_PORT_H_RES - 40);
+}
+
+static void ui_create_settigs_sensors(ui_main_menu_t *ui) {
+  lv_obj_t *p = ui->settings.page_content;
+
+  create_text("Luftqualitaetssensor:", p, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, 15, 10, ui);
+
+  static const char *co2_map[] = {"Sensitiv", "Normal", "Robust", ""};
+  ui->settings.co2_btnmatrix = lv_btnmatrix_create(p);
+  lv_obj_set_size(ui->settings.co2_btnmatrix, 540, 90);
+  lv_obj_align(ui->settings.co2_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 50);
+  lv_btnmatrix_set_map(ui->settings.co2_btnmatrix, co2_map);
+  lv_obj_set_style_text_font(ui->settings.co2_btnmatrix,
+                             &lv_font_montserrat_20, LV_PART_ITEMS);
+  lv_btnmatrix_set_btn_ctrl_all(ui->settings.co2_btnmatrix,
+                                LV_BTNMATRIX_CTRL_CHECKABLE);
+  lv_btnmatrix_set_one_checked(ui->settings.co2_btnmatrix, true);
+  lv_obj_add_event_cb(ui->settings.co2_btnmatrix, co2_btnmatrix_event_cb,
+                      LV_EVENT_VALUE_CHANGED, ui);
+
+  ui->settings.co2_desc_label =
+      create_label(p, "", LV_ALIGN_TOP_LEFT, 15, 145);
+  lv_obj_add_style(ui->settings.co2_desc_label, &ui->font.very_small_20, 0);
+
+  lv_btnmatrix_set_btn_ctrl(ui->settings.co2_btnmatrix,
+                            ui->settings.switch_.co2_mode,
+                            LV_BTNMATRIX_CTRL_CHECKED);
+
+  static const char *co2_descs[] = {
+      "400-2400 ppm: fuer Schlafraeume und Bueros.",
+      "400-4000 ppm: fuer Wohnraeume.",
+      "400-6000 ppm: fuer Industrie und Lager."};
+  lv_label_set_text(ui->settings.co2_desc_label,
+                    co2_descs[ui->settings.switch_.co2_mode]);
+}
+
+static void btn_settings_category_event_handler(lv_event_t *e) {
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (!ui)
+    return;
+
+  lv_obj_t *btn = lv_event_get_target(e);
+  settings_page_t page = (settings_page_t)(uintptr_t)lv_obj_get_user_data(btn);
+
+  ui->settings.current_page = page;
+
+  // скрываем home, показываем content + back
+  lv_obj_add_flag(ui->settings.page_home, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(ui->settings.page_content, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(ui->settings.btn_back, LV_OBJ_FLAG_HIDDEN);
+
+  // пока пустышка для всех категорий
+  lv_obj_clean(ui->settings.page_content);
+  lv_obj_t *lbl = lv_label_create(ui->settings.page_content);
+  lv_obj_add_style(lbl, &ui->font.medium_32, 0);
+  lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
+
+  switch (page) {
+  case SETTINGS_PAGE_DISPLAY:
+    lv_obj_del(lbl); // убираем placeholder
+    ui_create_settigs_display(ui);
+    break;
+  case SETTINGS_PAGE_WIFI:
+        lv_obj_del(lbl);
+      ui_create_settigs_wifi(ui);
+    break;
+  case SETTINGS_PAGE_BLUETOOTH:
+     lv_label_set_text(lbl, LV_SYMBOL_BLUETOOTH " Bluetooth");
+      lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 20);
+      create_text("In Entwicklung...", ui->settings.page_content,
+                  STYLE_TEXT_SMALL, LV_ALIGN_CENTER, 0, 0, ui);
+    break;
+  case SETTINGS_PAGE_WEATHER:
+      lv_obj_del(lbl);
+      ui_create_settigs_weather(ui);
+    break;
+  case SETTINGS_PAGE_SENSORS:
+    lv_obj_del(lbl);
+      ui_create_settigs_sensors(ui);
+    break;
+  case SETTINGS_PAGE_UPDATE:
+    lv_obj_del(lbl);
+    create_text("Firmware Update", ui->settings.page_content, STYLE_TEXT_SMALL,
+                LV_ALIGN_TOP_MID, 0, 10, ui);
+    ui->settings.ota_btn =
+        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT, 10,
+                      80, ota_btn_event_cb, NULL);
+    lv_obj_t *ota_lbl = lv_label_create(ui->settings.ota_btn);
+    lv_label_set_text(ota_lbl, LV_SYMBOL_DOWNLOAD " Update");
+    lv_obj_center(ota_lbl);
+    ui->settings.ota_status_label = create_label(
+        ui->settings.page_content, "Bereit", LV_ALIGN_TOP_LEFT, 225, 95);
+    lv_obj_add_style(ui->settings.ota_status_label, &ui->font.very_small_20, 0);
+    break;
+  case SETTINGS_PAGE_INFO:
+     lv_label_set_text(lbl, LV_SYMBOL_LIST " Info");
+      lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 20);
+      create_text("Geraet: ESP32-S3\n"
+                  "Display: 7\"\n"
+                  "Framework: ESP-IDF / LVGL 8.4\n"
+                  "Wetter: Open-Meteo\n"
+                  "Software Version: " CURRENT_SOFT_VERSION,
+                  ui->settings.page_content,
+                  STYLE_TEXT_SMALL, LV_ALIGN_CENTER, 0, 0, ui);
+    break;
+  default:
+    break;
+  }
+}
 static void ui_create_settings_popup(ui_main_menu_t *ui) {
-  ui->settings.popup =
-      create_background(ui->screen, POPUP_WINDOW_WIDTH, POPUP_WINDOW_HEIGHT,
-                        POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_AUTO);
-  lv_obj_set_style_width(ui->settings.popup, 8, LV_PART_SCROLLBAR);
-  lv_obj_set_style_bg_color(ui->settings.popup, lv_color_hex(0x2196F3),
-                            LV_PART_SCROLLBAR);
-  lv_obj_set_style_bg_opa(ui->settings.popup, LV_OPA_COVER, LV_PART_SCROLLBAR);
-  lv_obj_set_style_radius(ui->settings.popup, 4, LV_PART_SCROLLBAR);
+  // --- fullscreen попап ---
+  ui->settings.popup = create_background(
+      ui->screen, LVGL_PORT_H_RES, LVGL_PORT_V_RES, LV_ALIGN_TOP_LEFT, 0, 0);
   lv_obj_add_style(ui->settings.popup, &ui->style.popup, 0);
+  lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_clear_flag(ui->settings.popup, LV_OBJ_FLAG_SCROLLABLE);
 
-  create_text("Einstellungen", ui->settings.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_MID, 0, 0, ui);
-
-  create_text("Display:", ui->settings.popup, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 90, ui);
-  create_text("Thema:", ui->settings.popup, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
-              15, 270, ui);
-
+  // --- кнопка Close (всегда видна) ---
   ui->settings.btn_close =
-      create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 500, -10,
+      create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_RIGHT, -10, 10,
                     btn_settings_close_popup_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->settings.btn_close, LV_SYMBOL_HOME, 0);
+  lv_obj_set_style_bg_img_src(ui->settings.btn_close, LV_SYMBOL_CLOSE, 0);
 
-  // [FIX 4A] Switches создаются здесь — внутри popup, не при init
-  ui_create_settigs_switches(ui);
+  // --- кнопка Back (скрыта на home) ---
+  ui->settings.btn_back =
+      create_btn_cb(ui->settings.popup, 50, 50, LV_ALIGN_TOP_LEFT, 10, 10,
+                    btn_settings_back_event_handler, ui);
+  lv_obj_set_style_bg_img_src(ui->settings.btn_back, LV_SYMBOL_LEFT, 0);
+  lv_obj_add_flag(ui->settings.btn_back, LV_OBJ_FLAG_HIDDEN);
+
+  // --- заголовок ---
+  create_text("Einstellungen", ui->settings.popup, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_MID, 0, 15, ui);
+
+  // --- page_home: список категорий ---
+  ui->settings.page_home = lv_obj_create(ui->settings.popup);
+  lv_obj_remove_style_all(ui->settings.page_home);
+  lv_obj_set_size(ui->settings.page_home, LVGL_PORT_H_RES,
+                  LVGL_PORT_V_RES - 80);
+  lv_obj_align(ui->settings.page_home, LV_ALIGN_BOTTOM_MID, 0, 30);
+  lv_obj_set_scroll_dir(ui->settings.page_home, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(ui->settings.page_home, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_flex_flow(ui->settings.page_home, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(ui->settings.page_home, 10, 0);
+  lv_obj_set_style_pad_all(ui->settings.page_home, 15, 0);
+
+  // --- page_content: контент категории (скрыт) ---
+  ui->settings.page_content = lv_obj_create(ui->settings.popup);
+  lv_obj_remove_style_all(ui->settings.page_content);
+  lv_obj_set_size(ui->settings.page_content, LVGL_PORT_H_RES,
+                  LVGL_PORT_V_RES - 80);
+  lv_obj_align(ui->settings.page_content, LV_ALIGN_BOTTOM_MID, 0, 30);
+  lv_obj_set_scroll_dir(ui->settings.page_content, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(ui->settings.page_content, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_style_pad_all(ui->settings.page_content, 15, 0);
+  lv_obj_add_flag(ui->settings.page_content, LV_OBJ_FLAG_HIDDEN);
+
+  // --- категории ---
+  static const char *cat_labels[] = {
+      LV_SYMBOL_IMAGE " Display",
+      LV_SYMBOL_WIFI " WLAN",
+      "\xEF\x82\x93"
+      " Bluetooth", // символ Bluetooth из my_symbols если есть, иначе замени
+      LV_SYMBOL_GPS " Wetter",
+      LV_SYMBOL_HOME " Sensoren",
+      LV_SYMBOL_DOWNLOAD " Update",
+      LV_SYMBOL_LIST " Info",
+  };
+  static const settings_page_t cat_pages[] = {
+      SETTINGS_PAGE_DISPLAY, SETTINGS_PAGE_WIFI,    SETTINGS_PAGE_BLUETOOTH,
+      SETTINGS_PAGE_WEATHER, SETTINGS_PAGE_SENSORS, SETTINGS_PAGE_UPDATE,
+      SETTINGS_PAGE_INFO,
+  };
+
+  for (int i = 0; i < SETTINGS_PAGE_LAST_ELEMENT - 1; i++) {
+    lv_obj_t *btn = lv_btn_create(ui->settings.page_home);
+    lv_obj_set_size(btn, LVGL_PORT_H_RES - 50, 60);
+    lv_obj_add_style(btn, &ui->style.popup, 0);
+    lv_obj_set_style_radius(btn, 10, 0);
+    lv_obj_set_style_border_width(btn, 1, 0);
+    lv_obj_set_style_border_color(btn, lv_color_hex(0x2D5A8E), 0);
+    lv_obj_set_style_shadow_width(btn, 0, 0);
+    lv_obj_add_style(btn, &ui->style.category_btn, 0);
+    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(btn, lv_color_hex(0x2D6AB4), LV_STATE_PRESSED);
+
+    lv_obj_t *lbl = lv_label_create(btn);
+    lv_label_set_text(lbl, cat_labels[i]);
+    lv_obj_add_style(lbl, &ui->font.medium_32, 0);
+    lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 10, 0);
+
+    // стрелка вправо
+    lv_obj_t *arrow = lv_label_create(btn);
+    lv_label_set_text(arrow, LV_SYMBOL_RIGHT);
+    lv_obj_add_style(arrow, &ui->font.medium_32, 0);
+    lv_obj_align(arrow, LV_ALIGN_RIGHT_MID, -10, 0);
+
+    lv_obj_add_event_cb(btn, btn_settings_category_event_handler,
+                        LV_EVENT_CLICKED, ui);
+    lv_obj_set_user_data(btn, (void *)(uintptr_t)cat_pages[i]);
+  }
+
+  ui->settings.current_page = SETTINGS_PAGE_HOME;
 }
 
 static void create_block_bot_middle(ui_main_menu_t *ui) {
@@ -2583,7 +2666,7 @@ static void create_menu(ui_main_menu_t *ui) {
 #endif
 #if ACTIVATE_BLOCK_TOP_MID
   create_block_top_middle(ui);
-  
+
 #endif
 #if ACTIVATE_BLOCK_TOP_RIGHT
   create_block_top_right(ui);
@@ -2822,29 +2905,27 @@ void draw_weather(ui_main_menu_t *ui) {
 }
 
 void draw_symbol_wifi(ui_main_menu_t *ui) {
-  static uint8_t status_wifi_old = 254;
-  uint8_t current_status = get_wifi_status();
-  if (current_status == status_wifi_old)
-    return;
-
-  // label — первый дочерний объект кнопки
-  lv_obj_t *label = lv_obj_get_child(ui->wifi.btn_open, 0);
-  if (!label)
-    return;
-
-  switch (current_status) {
-  case WIFI_RECONNECT:
-    lv_label_set_text(label, LV_SYMBOL_REFRESH);
-    break;
-  case WIFI_CONNECTED:
-    lv_label_set_text(label, LV_SYMBOL_WIFI);
-    break;
-  case WIFI_DISCONNECTED:
-  default:
-    lv_label_set_text(label, LV_SYMBOL_WARNING);
-    break;
-  }
-  status_wifi_old = current_status;
+//  static uint8_t status_wifi_old = 254;
+//  uint8_t current_status = get_wifi_status();
+//  if (current_status == status_wifi_old)
+//    return;
+//
+//  if (!ui->time.wifi_status_icon)
+//    return;
+//
+//  switch (current_status) {
+//  case WIFI_RECONNECT:
+//    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_REFRESH);
+//    break;
+//  case WIFI_CONNECTED:
+//    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_WIFI);
+//    break;
+//  case WIFI_DISCONNECTED:
+//  default:
+//    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_WARNING);
+//    break;
+//  }
+//  status_wifi_old = current_status;
 }
 
 void hide_all_blocks(ui_main_menu_t *ui) {
@@ -2854,9 +2935,7 @@ void hide_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->time.screen, false);
   set_visible(ui->co2.meter, false);
   set_visible(ui->co2.chart, false);
-   set_visible(ui->weather.settings_popup.btn_open, false);  // ← Wetter
-  set_visible(ui->wifi.btn_open, false);                    // ← WLAN
-  set_visible(ui->settings.btn_open, false);                // ← Setup
+  set_visible(ui->settings.btn_open, false);
 }
 void show_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->animation.screen, true);
@@ -2865,9 +2944,7 @@ void show_all_blocks(ui_main_menu_t *ui) {
   set_visible(ui->time.screen, true);
   set_visible(ui->co2.meter, true);
   set_visible(ui->co2.chart, true);
- set_visible(ui->weather.settings_popup.btn_open, true);   // ← Wetter
-  set_visible(ui->wifi.btn_open, true);                     // ← WLAN
-  set_visible(ui->settings.btn_open, true);                 // ← Setup
+  set_visible(ui->settings.btn_open, true);
 }
 
 static float calc_dew_point(float temp, float humidity) {
@@ -3077,11 +3154,11 @@ static lv_color_t calc_co2_color(uint16_t co2) {
   return lv_palette_main(LV_PALETTE_RED);
 }
 void update_block_top_middle(ui_main_menu_t *ui) {
- if (sgp30_data.state == SGP30_STATE_OK) {
+  if (sgp30_data.state == SGP30_STATE_OK) {
     uint16_t raw = get_co2_sgp30();
     ui->co2.co2_target = co2_scale(raw, ui->settings.switch_.co2_mode);
     print_value("%.f", (float)raw, ui->co2.co2_label);
-    update_co2_status_label(ui, raw);  // передаём реальное ppm, не scaled
+    update_co2_status_label(ui, raw); // передаём реальное ppm, не scaled
   } else {
     lv_label_set_text(ui->co2.co2_label, "KS");
     lv_label_set_text(ui->co2.co2_status_label, "---");
@@ -3123,7 +3200,7 @@ void update_block_bot_left(ui_main_menu_t *ui) {
     lv_label_set_text(ui->weather.humidity_label, "K.W");
     lv_label_set_text(ui->weather.feels_like_label, "K.W");
     lv_label_set_text(ui->weather.uv_label, "UV -");
-   lv_label_set_text(ui->weather.rain_label, "unwahrscheinli.");
+    lv_label_set_text(ui->weather.rain_label, "unwahrscheinli.");
     lv_label_set_text(ui->weather.wind_label, "- m/s");
     lv_label_set_text(ui->weather.pressure_label, "- hPa");
     return;
@@ -3166,21 +3243,21 @@ void update_block_bot_left(ui_main_menu_t *ui) {
   }
 
   // ── строка 3 — осадки + вероятность ──────────────────
- float rain_prob = (float)get_precipitation_probability();
+  float rain_prob = (float)get_precipitation_probability();
 
-const char *precip_text;
-if (rain_prob < 0.0f) {
+  const char *precip_text;
+  if (rain_prob < 0.0f) {
     precip_text = "unwahrscheinli.";
-} else if (rain_prob < 30.0f) {
+  } else if (rain_prob < 30.0f) {
     precip_text = "unwahrscheinli.";
-} else if (rain_prob < 60.0f) {
+  } else if (rain_prob < 60.0f) {
     precip_text = "moeglich";
-} else if (rain_prob < 80.0f) {
+  } else if (rain_prob < 80.0f) {
     precip_text = "wahrscheinlich";
-} else {
+  } else {
     precip_text = "erwartet";
-}
-lv_label_set_text(ui->weather.rain_label, precip_text);
+  }
+  lv_label_set_text(ui->weather.rain_label, precip_text);
 
   // ── строка 4 — ветер + давление ──────────────────────
   float wind = (float)get_weather_wind();
@@ -3207,16 +3284,16 @@ void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm) {
   lv_color_t color;
 
   if (co2_ppm < 800) {
-    text  = "GUT";
+    text = "GUT";
     color = lv_palette_main(LV_PALETTE_GREEN);
   } else if (co2_ppm < 1200) {
-    text  = "MITTEL";
+    text = "MITTEL";
     color = lv_palette_main(LV_PALETTE_YELLOW);
   } else if (co2_ppm < 1600) {
-    text  = "HOCH";
+    text = "HOCH";
     color = lv_palette_main(LV_PALETTE_ORANGE);
   } else {
-    text  = "GEFAHR";
+    text = "GEFAHR";
     color = lv_palette_main(LV_PALETTE_RED);
   }
 
@@ -3230,9 +3307,9 @@ void update_block_bot_middle(ui_main_menu_t *ui) {
   static uint16_t cnt_chart_co2 = 0;
   cnt_chart_co2++;            // 1 tick == 1 sec
   if (cnt_chart_co2 > 3600) { // equal 1 hour
-   int16_t raw_chart = (int16_t)get_co2_sgp30();
-int16_t scaled = co2_scale(raw_chart, ui->settings.switch_.co2_mode);
-lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, scaled);
+    int16_t raw_chart = (int16_t)get_co2_sgp30();
+    int16_t scaled = co2_scale(raw_chart, ui->settings.switch_.co2_mode);
+    lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, scaled);
     cnt_chart_co2 = 0;
   }
   draw_symbol_wifi(ui);
@@ -3311,11 +3388,14 @@ void co2_meter_anim_cb(lv_timer_t *timer) {
 bool is_screen_pressed(void) { return standby_touched; }
 
 static uint8_t backlight_get_current_pct(ui_main_menu_t *ui) {
-    switch (ui->settings.switch_.backlight_mode) {
-        case 1:  return backlight_get_auto_pct();
-        case 2:  return backlight_get_zeitplan_pct();
-        default: return ui->settings.switch_.backlight_pct;
-    }
+  switch (ui->settings.switch_.backlight_mode) {
+  case 1:
+    return backlight_get_auto_pct();
+  case 2:
+    return backlight_get_zeitplan_pct();
+  default:
+    return ui->settings.switch_.backlight_pct;
+  }
 }
 
 static void standby_handle(ui_main_menu_t *ui) {
@@ -3341,12 +3421,12 @@ static void standby_handle(ui_main_menu_t *ui) {
     timer_standby_sec = 0;
     ui->settings.switch_.standby_screen_off = false;
     set_visible(ui->standby.background, false);
-    backlight_set(backlight_get_current_pct(ui));  // восстанавливаем яркость
+    backlight_set(backlight_get_current_pct(ui)); // восстанавливаем яркость
   } else {
     timer_standby_sec++;
     if (timer_standby_sec > MAX_STANDBY_TIME * 5) {
       ui->settings.switch_.standby_screen_off = true;
-      backlight_set(0);  // гасим подсветку
+      backlight_set(0); // гасим подсветку
       lv_obj_move_foreground(ui->standby.background);
       set_visible(ui->standby.background, true);
       timer_standby_sec = MAX_STANDBY_TIME * 5;
@@ -3379,6 +3459,7 @@ static void timer_10000(lv_timer_t *timer) {
       lv_obj_report_style_change(&ui.font.nav_btn);
       lv_obj_report_style_change(&ui.font.time);
       lv_obj_report_style_change(&ui.font.icon);
+      lv_obj_report_style_change(&ui.style.category_btn);
     }
   }
 }
@@ -3394,13 +3475,18 @@ static void sensor_record_values(ui_main_menu_t *ui) {
 
 static void timer_1000(lv_timer_t *timer) {
   LV_UNUSED(timer);
-if (!ui.settings.switch_.standby_screen_off) {
+  if (!ui.settings.switch_.standby_screen_off) {
     switch (ui.settings.switch_.backlight_mode) {
-        case 1: backlight_set(backlight_get_auto_pct());     break;
-        case 2: backlight_set(backlight_get_zeitplan_pct()); break;
-        default: break;
+    case 1:
+      backlight_set(backlight_get_auto_pct());
+      break;
+    case 2:
+      backlight_set(backlight_get_zeitplan_pct());
+      break;
+    default:
+      break;
     }
-}
+  }
 #if ACTIVATE_BLOCK_TOP_LEFT
   update_block_top_left(&ui);
 #endif
@@ -3490,18 +3576,22 @@ static void apply_theme_dark(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.bot_right, 1);
   lv_style_set_radius(&ui->style.bot_right, 12);
 
-lv_style_reset(&ui->style.chart_co2);
-lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
-lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0x1A2233));
-lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_NONE);
-lv_style_set_border_color(&ui->style.chart_co2, lv_color_hex(0x2E4A6A));
-lv_style_set_border_width(&ui->style.chart_co2, 1);
-lv_style_set_radius(&ui->style.chart_co2, 8);
+  lv_style_reset(&ui->style.chart_co2);
+  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+  lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0x1A2233));
+  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_NONE);
+  lv_style_set_border_color(&ui->style.chart_co2, lv_color_hex(0x2E4A6A));
+  lv_style_set_border_width(&ui->style.chart_co2, 1);
+  lv_style_set_radius(&ui->style.chart_co2, 8);
 
   lv_style_reset(&ui->style.meter_co2);
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0x1A2E22));
   lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x2EA843));
   lv_style_set_border_width(&ui->style.meter_co2, 1);
+  
+  lv_style_reset(&ui->style.category_btn);
+lv_style_set_bg_color(&ui->style.category_btn, lv_color_hex(0x1E2D3D));
+lv_style_set_bg_opa(&ui->style.category_btn, LV_OPA_COVER);
 
   // Шрифты
   lv_style_set_text_color(&ui->font.medium_32, lv_color_hex(0xE6EDF3));
@@ -3552,18 +3642,22 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->style.bot_right, 1);
   lv_style_set_radius(&ui->style.bot_right, 12);
 
-lv_style_reset(&ui->style.chart_co2);
-lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
-lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0xEEF2F7));
-lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_NONE);
-lv_style_set_border_color(&ui->style.chart_co2, lv_color_hex(0xB0BEC5));
-lv_style_set_border_width(&ui->style.chart_co2, 1);
-lv_style_set_radius(&ui->style.chart_co2, 8);
+  lv_style_reset(&ui->style.chart_co2);
+  lv_style_set_bg_opa(&ui->style.chart_co2, LV_OPA_COVER);
+  lv_style_set_bg_color(&ui->style.chart_co2, lv_color_hex(0xEEF2F7));
+  lv_style_set_bg_grad_dir(&ui->style.chart_co2, LV_GRAD_DIR_NONE);
+  lv_style_set_border_color(&ui->style.chart_co2, lv_color_hex(0xB0BEC5));
+  lv_style_set_border_width(&ui->style.chart_co2, 1);
+  lv_style_set_radius(&ui->style.chart_co2, 8);
 
   lv_style_reset(&ui->style.meter_co2);
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0xEDE9FF));
   lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x5E4E90));
   lv_style_set_border_width(&ui->style.meter_co2, 1);
+  
+  lv_style_reset(&ui->style.category_btn);
+lv_style_set_bg_color(&ui->style.category_btn, lv_color_hex(0xD0DCE8));
+lv_style_set_bg_opa(&ui->style.category_btn, LV_OPA_COVER);
 
   // Шрифты — только text_color, font не трогаем
   lv_style_set_text_color(&ui->font.very_small_20, lv_color_hex(0x1A1A2A));
@@ -3585,6 +3679,7 @@ static void init_styles(ui_main_menu_t *ui) {
   lv_style_init(&ui->style.bot_right);
   lv_style_init(&ui->style.meter_co2);
   lv_style_init(&ui->style.chart_co2);
+  lv_style_init(&ui->style.category_btn);
 
   ui_apply_theme(ui); // применяем нужную тему
 }
@@ -3595,12 +3690,11 @@ void init_lv_objects() {
   ui.weather.settings_popup.cities_de = cities_de;
   ui.weather.settings_popup.city_count = CITY_COUNT;
 
-main_settings_load(&ui.settings.switch_.standby_mode,
-                   &ui.settings.switch_.backlight_pct,
-                   &ui.settings.switch_.backlight_mode,
-                   &ui.settings.switch_.theme_mode,
-                   &ui.settings.switch_.co2_mode);
-backlight_set(ui.settings.switch_.backlight_pct);
+  main_settings_load(
+      &ui.settings.switch_.standby_mode, &ui.settings.switch_.backlight_pct,
+      &ui.settings.switch_.backlight_mode, &ui.settings.switch_.theme_mode,
+      &ui.settings.switch_.co2_mode);
+  backlight_set(ui.settings.switch_.backlight_pct);
   ui.settings.switch_.theme_last_is_day = get_is_day(); // ← инициализируем кэш
   weather_settings_load(&ui.weather.settings_popup.saved_city);
   build_weather_url(ui.weather.settings_popup.saved_city);
@@ -3612,10 +3706,10 @@ backlight_set(ui.settings.switch_.backlight_pct);
   lv_timer_create(timer_1000, 1000, NULL);
   lv_timer_create(timer_200, 200, NULL);
   lv_timer_create(co2_meter_anim_cb, 33, &ui);
-  
-   // SGP30 калибровка
+
+  // SGP30 калибровка
   ui.co2.calib_start_tick = xTaskGetTickCount();
   ui_create_sgp30_calib_popup(&ui);
   lv_obj_clear_flag(ui.co2.calib_popup, LV_OBJ_FLAG_HIDDEN); // попап при старте
-  lv_timer_create(sgp30_calib_timer_cb, 60000, &ui);         // проверка раз в минуту
+  lv_timer_create(sgp30_calib_timer_cb, 60000, &ui); // проверка раз в минуту
 }
