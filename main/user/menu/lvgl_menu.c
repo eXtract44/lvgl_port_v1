@@ -2218,7 +2218,6 @@ static void ota_progress_cb(ota_state_t state, int progress_pct) {
 static void ota_start_timer_cb(lv_timer_t *t) {
     lv_timer_del(t);
     backlight_set(0);
-    lvgl_port_suspend();
     ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
 }
 
