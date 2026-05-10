@@ -11,6 +11,8 @@
 
 static const char *TAG = "OTA";
 
+volatile bool ota_in_progress = false;
+
 typedef struct {
     char url[256];
     ota_progress_cb_t cb;
@@ -21,7 +23,7 @@ typedef struct {
 static void ota_task(void *pvParameters)
 {
     ota_task_args_t *args = (ota_task_args_t *)pvParameters;
-    
+    ota_in_progress = true;
     if (args->cb) args->cb(OTA_STATE_CHECKING, 0);
     ESP_LOGI(TAG, "Starte OTA von: %s", args->url);
 

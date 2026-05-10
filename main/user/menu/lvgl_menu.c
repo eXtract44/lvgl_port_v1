@@ -13,7 +13,8 @@ extern forecast_data_t forecast_data;
 ui_main_menu_t ui = {0};
 ui_main_menu_t *g_ui = &ui;
 
-int standby_touched = 0; // callback for extern touch driver
+extern volatile bool ota_in_progress;
+volatile int standby_touched = 0; // callback for extern touch driver
 
 #define FEELS_LIKE_MIN_DIFF 1.5f
 #define CO2_CALIB_TIME (12UL * 3600UL * configTICK_RATE_HZ)
@@ -3399,6 +3400,7 @@ static uint8_t backlight_get_current_pct(ui_main_menu_t *ui) {
 }
 
 static void standby_handle(ui_main_menu_t *ui) {
+	if (ota_in_progress) return;
   static uint32_t timer_standby_sec = 0;
 
   uint8_t mode = ui->settings.switch_.standby_mode;
