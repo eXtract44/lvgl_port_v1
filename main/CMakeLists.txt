@@ -1,13 +1,13 @@
 idf_component_register(
     SRCS "waveshare_rgb_lcd_port.c" "main.c" "lvgl_port.c" 
     
-    "user/periphery/wifi.c"
+    "user/periphery/wifi_user.c"
     "user/periphery/open_meteo.c"
     "user/periphery/time_user.c"
     "user/periphery/sd_card.c"
      "user/periphery/nvs_user.c"
      "user/periphery/i2c_bus.c"
-     "user/periphery/periphery.c" 
+     "user/periphery/sensors.c" 
      "user/periphery/backlight.c"
      "user/periphery/ota.c"
     

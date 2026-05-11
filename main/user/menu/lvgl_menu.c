@@ -1,6 +1,8 @@
 
-#include "user/menu/lvgl_menu.h"
-#include "user/periphery/ota.h"
+#include "lvgl_menu.h"
+#include "backlight.h"
+#include "ota.h"
+#include "time_user.h"
 
 extern const city_t cities_de[];
 extern lv_font_t my_symbols;
@@ -714,7 +716,7 @@ lv_obj_t *create_snow_anim(const lv_img_dsc_t *img_src, lv_obj_t *parent,
   return img;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void sensor_history_push(sensor_history_t *h) {
+void sensor_temperature_history_push(sensor_history_t *h) {
   // Записываем температуру с одним знаком после запятой (×10)
   // get_temperature_aht10() возвращает float — умножаем и округляем
   float t = get_temperature_sht41();
@@ -727,8 +729,9 @@ void sensor_history_push(sensor_history_t *h) {
   if (h->count < SENSOR_HISTORY_POINTS)
     h->count++;
 }
-static void sensor_history_get(const sensor_history_t *h, uint16_t idx,
-                               int16_t *temp_x10, uint8_t *hum) {
+static void sensor_temperature_history_get(const sensor_history_t *h,
+                                           uint16_t idx, int16_t *temp_x10,
+                                           uint8_t *hum) {
   // Вычисляем реальный индекс в кольцевом буфере
   // head указывает на следующую ячейку для записи
   // старейшая точка: (head - count + POINTS) % POINTS
@@ -882,7 +885,7 @@ static void block_top_left_open_popup_event_handler(lv_event_t *e) {
     return;
 
   hide_all_blocks(ui);
-  ui_create_sensor_history_popup(ui);
+  ui_create_sensor_temperature_history_popup(ui);
 }
 static void btn_sensor_close_history_popup_event_handler(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
@@ -912,7 +915,7 @@ static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e) {
 
 /////////////////////////////////////////////////temperature inside events
 
-static void ui_create_sensor_history_popup(ui_main_menu_t *ui) {
+static void ui_create_sensor_temperature_history_popup(ui_main_menu_t *ui) {
   // --- Фон popup ---
   int16_t popup_width = LVGL_PORT_H_RES - 10;
   int16_t popup_height = LVGL_PORT_V_RES - 10;
@@ -1011,7 +1014,8 @@ static void ui_create_sensor_history_popup(ui_main_menu_t *ui) {
     for (uint16_t i = 0; i < n; i++) {
       int16_t temp_x10;
       uint8_t hum;
-      sensor_history_get(&ui->sensor.popup.history, i, &temp_x10, &hum);
+      sensor_temperature_history_get(&ui->sensor.popup.history, i, &temp_x10,
+                                     &hum);
       int16_t current_temperaure = temp_x10;
       if (current_temperaure < temperatur_range_min * 10) {
         current_temperaure = temperatur_range_min * 10;
@@ -1406,17 +1410,17 @@ static void create_block_top_right(ui_main_menu_t *ui) {
   ui->time.holiday_label = lbl;
 
   // --- WiFi статус индикатор ---
-  //TODO
-//  lbl = create_label(ui->time.screen, LV_SYMBOL_WARNING,
-//                     BLOCK_TOP_RIGHT_WDAY_COL_ALIGN,
-//                     BLOCK_TOP_RIGHT_WDAY_COL_X_START,
-//                     BLOCK_TOP_RIGHT_WDAY_COL_Y_START - 22);
-//  if (!lbl)
-//    return;
-//  lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
-//  lv_obj_set_width(lbl, BLOCK_TOP_RIGHT_WDAY_COL_WIDTH);
-//  lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
-//  ui->time.wifi_status_icon = lbl;
+  // TODO
+  //  lbl = create_label(ui->time.screen, LV_SYMBOL_WARNING,
+  //                     BLOCK_TOP_RIGHT_WDAY_COL_ALIGN,
+  //                     BLOCK_TOP_RIGHT_WDAY_COL_X_START,
+  //                     BLOCK_TOP_RIGHT_WDAY_COL_Y_START - 22);
+  //  if (!lbl)
+  //    return;
+  //  lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
+  //  lv_obj_set_width(lbl, BLOCK_TOP_RIGHT_WDAY_COL_WIDTH);
+  //  lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+  //  ui->time.wifi_status_icon = lbl;
 
   /*BLOCK TOP RIGHT*/
 }
@@ -1579,81 +1583,308 @@ static void create_block_bot_left(ui_main_menu_t *ui) {
   /*BLOCK BOT LEFT*/
 }
 /////////////////////////////////////////////////wifi events
+// ---------------------------------------------------------------------------
+// WiFi scan page — helpers
+// ---------------------------------------------------------------------------
 
-static void btn_keyboard_open_ssid_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (!ui)
-    return;
-
-  // [FIX] Проверяем валидность перед использованием
-  if (!lv_obj_is_valid(ui->wifi.keyboard) || !lv_obj_is_valid(ui->wifi.ta_ssid))
-    return;
-
-  lv_keyboard_set_textarea(ui->wifi.keyboard, ui->wifi.ta_ssid);
-  set_visible(ui->wifi.keyboard, true);
-  set_visible(ui->wifi.ta_ssid, true);
-  set_visible(ui->wifi.ta_pass, false); // скрываем pass если был открыт
+static uint8_t rssi_to_bars(int16_t rssi) {
+    if (rssi >= -55) return 4;
+    if (rssi >= -67) return 3;
+    if (rssi >= -78) return 2;
+    return 1;
 }
-static void btn_keyboard_open_pass_event_handler(lv_event_t *e) {
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (!ui)
-    return;
 
-  // [FIX] Проверяем валидность перед использованием
-  if (!lv_obj_is_valid(ui->wifi.keyboard) || !lv_obj_is_valid(ui->wifi.ta_pass))
-    return;
-
-  lv_keyboard_set_textarea(ui->wifi.keyboard, ui->wifi.ta_pass);
-  set_visible(ui->wifi.keyboard, true);
-  set_visible(ui->wifi.ta_pass, true);
-  set_visible(ui->wifi.ta_ssid, false); // скрываем ssid если был открыт
+static void wifi_update_signal_bars(ui_main_menu_t *ui, uint8_t bars) {
+    for (int i = 0; i < 4; i++) {
+        if (!lv_obj_is_valid(ui->wifi.signal_bars[i])) continue;
+        bool active = (i < bars);
+        lv_obj_set_style_bg_color(ui->wifi.signal_bars[i],
+            active ? lv_color_hex(0x4CAF50) : lv_color_hex(0x444444), 0);
+    }
 }
-static void ta_wifi_event_cb(lv_event_t *e) {
-  // [FIX] Было &ui (адрес локального параметра!) — теперь ui
-  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-  if (!ui)
-    return;
 
-  lv_event_code_t code = lv_event_get_code(e);
-  lv_obj_t *kb = lv_event_get_target(e);
+// ---------------------------------------------------------------------------
+// Password popup
+// ---------------------------------------------------------------------------
 
-  if (code == LV_EVENT_READY) {
-    if (!lv_obj_is_valid(ui->wifi.ta_ssid) ||
-        !lv_obj_is_valid(ui->wifi.ta_pass))
-      return;
+static void wifi_pass_popup_connect_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
 
-    const char *ssid = lv_textarea_get_text(ui->wifi.ta_ssid);
-    const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
+    lv_event_code_t code = lv_event_get_code(e);
 
-    if (lv_obj_is_valid(ui->wifi.ssid_label)) {
-      lv_label_set_text(ui->wifi.ssid_label, (char *)ssid);
-    }
+    if (code == LV_EVENT_READY) {
+      const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
+    wifi_connect(ui->wifi.pending_ssid, pass);
 
-    if (strlen(ssid) < 4) {
-      return;
-    }
+    if (lv_obj_is_valid(ui->wifi.connected_ssid_label))
+        lv_label_set_text(ui->wifi.connected_ssid_label, "verbinde...");
 
-    wifi_connect(ssid, pass);
-    // Показываем что идёт подключение
-    if (lv_obj_is_valid(ui->wifi.ssid_label))
-      lv_label_set_text(ui->wifi.ssid_label, "verbinde...");
-
-    // Запускаем таймер проверки
     lv_timer_t *t = lv_timer_create(wifi_check_timer_cb, 500, ui);
-    lv_timer_set_repeat_count(t, 10); // максимум 10 попыток
+    lv_timer_set_repeat_count(t, 10);
 
-    set_visible(kb, false);
-    set_visible(ui->wifi.ta_ssid, false);
-    set_visible(ui->wifi.ta_pass, false);
-  }
+    if (lv_obj_is_valid(ui->wifi.keyboard))
+        lv_obj_del(ui->wifi.keyboard);
 
-  if (code == LV_EVENT_CANCEL) {
-    set_visible(kb, false);
-    if (lv_obj_is_valid(ui->wifi.ta_ssid))
-      set_visible(ui->wifi.ta_ssid, false);
-    if (lv_obj_is_valid(ui->wifi.ta_pass))
-      set_visible(ui->wifi.ta_pass, false);
-  }
+    if (lv_obj_is_valid(ui->wifi.pass_popup))
+        lv_obj_del(ui->wifi.pass_popup);
+
+    ui->wifi.pass_popup            = NULL;
+    ui->wifi.pass_popup_ssid_label = NULL;
+    ui->wifi.ta_pass               = NULL;
+    ui->wifi.keyboard              = NULL;
+    }
+
+    if (code == LV_EVENT_CANCEL) {
+        if (lv_obj_is_valid(ui->wifi.pass_popup)) {
+            lv_obj_del(ui->wifi.pass_popup);
+            ui->wifi.pass_popup           = NULL;
+            ui->wifi.pass_popup_ssid_label = NULL;
+            ui->wifi.ta_pass              = NULL;
+            ui->wifi.keyboard             = NULL;
+        }
+    }
+}
+
+static void wifi_open_pass_popup(ui_main_menu_t *ui, const char *ssid) {
+    // guard от двойного открытия
+    if (ui->wifi.pass_popup != NULL &&
+        lv_obj_is_valid(ui->wifi.pass_popup)) return;
+
+    strncpy(ui->wifi.pending_ssid, ssid, sizeof(ui->wifi.pending_ssid) - 1);
+    ui->wifi.pending_ssid[sizeof(ui->wifi.pending_ssid) - 1] = '\0';
+
+    lv_obj_t *p = ui->settings.page_content;
+
+    lv_obj_t *popup = lv_obj_create(p);
+    lv_obj_set_size(popup, 560, 280);
+    lv_obj_align(popup, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_style(popup, &ui->style.popup, 0);
+    lv_obj_set_style_radius(popup, 12, 0);
+    lv_obj_set_style_border_width(popup, 1, 0);
+    lv_obj_set_style_border_color(popup, lv_color_hex(0x2D5A8E), 0);
+    ui->wifi.pass_popup = popup;
+
+    // заголовок — название сети
+    ui->wifi.pass_popup_ssid_label = lv_label_create(popup);
+    lv_obj_add_style(ui->wifi.pass_popup_ssid_label, &ui->font.medium_32, 0);
+    lv_label_set_text(ui->wifi.pass_popup_ssid_label, ssid);
+    lv_obj_align(ui->wifi.pass_popup_ssid_label, LV_ALIGN_TOP_MID, 0, 8);
+
+    // поле пароля
+    ui->wifi.ta_pass = lv_textarea_create(popup);
+    lv_obj_set_size(ui->wifi.ta_pass, 520, 60);
+    lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 50);
+    lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "Passwort");
+    lv_textarea_set_password_mode(ui->wifi.ta_pass, true);
+    lv_textarea_set_one_line(ui->wifi.ta_pass, true);
+
+    // клавиатура
+    ui->wifi.keyboard = lv_keyboard_create(p); // на page_content, не на popup
+    lv_obj_set_size(ui->wifi.keyboard,
+                    lv_obj_get_width(p),
+                    lv_obj_get_height(p) / 2);
+    lv_obj_align(ui->wifi.keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_keyboard_set_textarea(ui->wifi.keyboard, ui->wifi.ta_pass);
+    lv_obj_add_event_cb(ui->wifi.keyboard,
+                        wifi_pass_popup_connect_cb, LV_EVENT_ALL, ui);
+}
+
+// ---------------------------------------------------------------------------
+// Scan list — tap on AP
+// ---------------------------------------------------------------------------
+
+static void wifi_ap_item_click_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
+
+    lv_obj_t *btn = lv_event_get_target(e);
+    const char *btn_text = lv_list_get_btn_text(ui->wifi.scan_list, btn);
+    if (!btn_text || strlen(btn_text) == 0) return;
+
+    // пропускаем префикс "[N] "
+    const char *ssid = btn_text;
+    if (btn_text[0] == '[') {
+        const char *p = strchr(btn_text, ' ');
+        if (p) ssid = p + 1;
+    }
+
+    ESP_LOGI(TAG, "AP clicked, ssid='%s'", ssid);
+
+    bool open = true;
+    for (int i = 0; i < ui->wifi.scan_count; i++) {
+        if (strcmp((char *)ui->wifi.scan_results[i].ssid, ssid) == 0) {
+            open = (ui->wifi.scan_results[i].authmode == WIFI_AUTH_OPEN);
+            break;
+        }
+    }
+
+    ESP_LOGI(TAG, "open=%d", open);
+
+    if (open) {
+        strncpy(ui->wifi.pending_ssid, ssid, sizeof(ui->wifi.pending_ssid) - 1);
+        wifi_connect(ui->wifi.pending_ssid, "");
+        if (lv_obj_is_valid(ui->wifi.connected_ssid_label))
+            lv_label_set_text(ui->wifi.connected_ssid_label, "verbinde...");
+        lv_timer_t *t = lv_timer_create(wifi_check_timer_cb, 500, ui);
+        lv_timer_set_repeat_count(t, 10);
+    } else {
+        wifi_open_pass_popup(ui, ssid);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Scan timer
+// ---------------------------------------------------------------------------
+static void wifi_manual_keyboard_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
+
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_READY) {
+        // если фокус на SSID — переключаем на пароль
+        if (lv_keyboard_get_textarea(ui->wifi.keyboard) ==
+            ui->wifi.pass_popup_ssid_label) {
+            lv_keyboard_set_textarea(ui->wifi.keyboard, ui->wifi.ta_pass);
+            return;
+        }
+
+        // фокус на пароле — подключаемся
+        const char *ssid = lv_textarea_get_text(ui->wifi.pass_popup_ssid_label);
+        const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
+
+        if (!ssid || strlen(ssid) < 1) return;
+
+        strncpy(ui->wifi.pending_ssid, ssid, sizeof(ui->wifi.pending_ssid) - 1);
+        wifi_connect(ui->wifi.pending_ssid, pass);
+
+        if (lv_obj_is_valid(ui->wifi.connected_ssid_label))
+            lv_label_set_text(ui->wifi.connected_ssid_label, "verbinde...");
+
+        lv_timer_t *t = lv_timer_create(wifi_check_timer_cb, 500, ui);
+        lv_timer_set_repeat_count(t, 10);
+
+        if (lv_obj_is_valid(ui->wifi.keyboard))
+            lv_obj_del(ui->wifi.keyboard);
+        if (lv_obj_is_valid(ui->wifi.pass_popup))
+            lv_obj_del(ui->wifi.pass_popup);
+
+        ui->wifi.pass_popup            = NULL;
+        ui->wifi.pass_popup_ssid_label = NULL;
+        ui->wifi.ta_pass               = NULL;
+        ui->wifi.keyboard              = NULL;
+    }
+
+    if (code == LV_EVENT_CANCEL) {
+        if (lv_obj_is_valid(ui->wifi.keyboard))
+            lv_obj_del(ui->wifi.keyboard);
+        if (lv_obj_is_valid(ui->wifi.pass_popup))
+            lv_obj_del(ui->wifi.pass_popup);
+
+        ui->wifi.pass_popup            = NULL;
+        ui->wifi.pass_popup_ssid_label = NULL;
+        ui->wifi.ta_pass               = NULL;
+        ui->wifi.keyboard              = NULL;
+    }
+}
+
+static void wifi_manual_entry_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
+
+    // guard от двойного открытия
+    if (ui->wifi.pass_popup != NULL &&
+        lv_obj_is_valid(ui->wifi.pass_popup)) return;
+
+    lv_obj_t *p = ui->settings.page_content;
+
+    lv_obj_t *popup = lv_obj_create(p);
+    lv_obj_set_size(popup, 560, 160);
+    lv_obj_align(popup, LV_ALIGN_TOP_MID, 0, 5);
+    lv_obj_add_style(popup, &ui->style.popup, 0);
+    lv_obj_set_style_radius(popup, 12, 0);
+    lv_obj_set_style_border_width(popup, 1, 0);
+    lv_obj_set_style_border_color(popup, lv_color_hex(0x2D5A8E), 0);
+    lv_obj_clear_flag(popup, LV_OBJ_FLAG_SCROLLABLE);
+    ui->wifi.pass_popup = popup;
+
+    // поле SSID
+    ui->wifi.pass_popup_ssid_label = lv_textarea_create(popup);
+    lv_obj_set_size(ui->wifi.pass_popup_ssid_label, 520, 55);
+    lv_obj_align(ui->wifi.pass_popup_ssid_label, LV_ALIGN_TOP_MID, 0, 5);
+    lv_textarea_set_placeholder_text(ui->wifi.pass_popup_ssid_label, "Netzwerkname (SSID)");
+    lv_textarea_set_one_line(ui->wifi.pass_popup_ssid_label, true);
+
+    // поле пароля
+    ui->wifi.ta_pass = lv_textarea_create(popup);
+    lv_obj_set_size(ui->wifi.ta_pass, 520, 55);
+    lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "Passwort");
+    lv_textarea_set_password_mode(ui->wifi.ta_pass, true);
+    lv_textarea_set_one_line(ui->wifi.ta_pass, true);
+
+    // клавиатура
+    ui->wifi.keyboard = lv_keyboard_create(p);
+    lv_obj_set_size(ui->wifi.keyboard,
+                    lv_obj_get_width(p),
+                    lv_obj_get_height(p) / 2);
+    lv_obj_align(ui->wifi.keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_keyboard_set_textarea(ui->wifi.keyboard, ui->wifi.pass_popup_ssid_label);
+    lv_obj_add_event_cb(ui->wifi.keyboard, wifi_manual_keyboard_cb, LV_EVENT_ALL, ui);
+}
+
+static void wifi_scan_timer_cb(lv_timer_t *timer) {
+	
+    ui_main_menu_t *ui = (ui_main_menu_t *)timer->user_data;
+    if (!ui) return;
+ESP_LOGI(TAG, "scan timer tick, done=%d", wifi_scan_is_done());
+    if (!wifi_scan_is_done()) return;
+
+    lv_timer_del(timer);
+
+    ui->wifi.scan_count = WIFI_SCAN_MAX_AP;
+    wifi_scan_get_results(ui->wifi.scan_results, &ui->wifi.scan_count);
+
+    // очищаем список
+    if (!lv_obj_is_valid(ui->wifi.scan_list)) return;
+    lv_obj_clean(ui->wifi.scan_list);
+
+    if (ui->wifi.scan_count == 0) {
+        if (lv_obj_is_valid(ui->wifi.scan_status_label))
+            lv_label_set_text(ui->wifi.scan_status_label, "Keine Netze gefunden");
+        return;
+    }
+
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%d Netze gefunden", ui->wifi.scan_count);
+    if (lv_obj_is_valid(ui->wifi.scan_status_label))
+        lv_label_set_text(ui->wifi.scan_status_label, buf);
+
+    for (int i = 0; i < ui->wifi.scan_count; i++) {
+        uint8_t bars = rssi_to_bars(ui->wifi.scan_results[i].rssi);
+
+        // формируем строку: "████░░  NetworkName"
+        char bars_str[8];
+        snprintf(bars_str, sizeof(bars_str), "[%d] ", bars);
+
+        char label[64];
+        snprintf(label, sizeof(label), "%s%s",
+                 bars_str, (char *)ui->wifi.scan_results[i].ssid);
+
+        lv_obj_t *btn = lv_list_add_btn(ui->wifi.scan_list, NULL, label);
+        lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(btn, wifi_ap_item_click_cb, LV_EVENT_SHORT_CLICKED, ui);
+        lv_obj_set_style_text_font(btn, &lv_font_montserrat_20, 0);
+    ESP_LOGI(TAG, "added btn: %s", label);
+    }
+    // кнопка ручного ввода
+    lv_obj_t *manual_btn = lv_list_add_btn(ui->wifi.scan_list, LV_SYMBOL_EDIT, "Manuell eingeben");
+    lv_obj_add_flag(manual_btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_text_font(manual_btn, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(manual_btn, lv_color_hex(0x60A5FA), 0);
+    lv_obj_add_event_cb(manual_btn, wifi_manual_entry_cb, LV_EVENT_SHORT_CLICKED, ui);
+    
 }
 /////////////////////////////////////////////////wifi events
 
@@ -1696,15 +1927,18 @@ static void btn_settings_close_popup_event_handler(lv_event_t *e) {
   ui->settings.current_page = SETTINGS_PAGE_HOME;
   ui->settings.ota_btn = NULL;
   ui->settings.ota_status_label = NULL;
-  ui->wifi.ssid_label = NULL;
-  ui->wifi.pass_label = NULL;
-  ui->wifi.rssi_label = NULL;
-  ui->wifi.btn_keyboard_ssid = NULL;
-  ui->wifi.btn_keyboard_pass = NULL;
   ui->wifi.keyboard = NULL;
-  ui->wifi.ta_ssid = NULL;
+  ui->wifi.connected_ssid_label = NULL;
+  ui->wifi.scan_list = NULL;
+  ui->wifi.scan_status_label = NULL;
+  ui->wifi.pass_popup = NULL;
+  ui->wifi.pass_popup_ssid_label = NULL;
   ui->wifi.ta_pass = NULL;
-   ui->weather.settings_popup.city_label = NULL;
+  ui->wifi.keyboard = NULL;
+  ui->wifi.scan_count = 0;
+  ui->wifi.pending_ssid[0] = '\0';
+  ui->wifi.ta_pass = NULL;
+  ui->weather.settings_popup.city_label = NULL;
   ui->weather.settings_popup.btn_open_city_list = NULL;
   ui->weather.settings_popup.citys_list = NULL;
 
@@ -1857,7 +2091,6 @@ static void ui_create_city_list_weather(ui_main_menu_t *ui) {
   set_visible(ui->weather.settings_popup.citys_list, false);
 }
 
-
 static void ui_create_settings_popup_btns(ui_main_menu_t *ui) {
   ui->settings.btn_open = create_btn_icon(
       ui->screen, BLOCK_BOT_MID_WIDTH_SYMBOL, BLOCK_BOT_MID_HEIGHT_SYMBOL,
@@ -1896,6 +2129,7 @@ void ui_apply_theme(ui_main_menu_t *ui) {
 }
 
 static void backlight_btnmatrix_event_cb(lv_event_t *e) {
+  char buf[16];
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   lv_obj_t *obj = lv_event_get_target(e);
   uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
@@ -1905,11 +2139,16 @@ static void backlight_btnmatrix_event_cb(lv_event_t *e) {
   if (btn_id == 0) {
     lv_obj_clear_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
     backlight_set(ui->settings.switch_.backlight_pct);
+
+    snprintf(buf, sizeof(buf), "%d%%", ui->settings.switch_.backlight_pct);
+    lv_label_set_text(ui->settings.backlight_pct_label, buf);
   } else {
     lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
     uint8_t pct =
         (btn_id == 1) ? backlight_get_auto_pct() : backlight_get_zeitplan_pct();
     backlight_set(pct);
+    snprintf(buf, sizeof(buf), "%d%%", pct);
+    lv_label_set_text(ui->settings.backlight_pct_label, buf);
   }
   static const char *bl_descs[] = {
       "Feste Helligkeit per Schieberegler.", "Tagsueber 80%, nachts 5%.",
@@ -2046,7 +2285,13 @@ static void ota_progress_cb(ota_state_t state, int progress_pct) {
 
 static void ota_start_timer_cb(lv_timer_t *t) {
   lv_timer_del(t);
-  backlight_deinit();
+  lv_obj_t *overlay = lv_obj_create(lv_scr_act());
+  lv_obj_set_size(overlay, LV_HOR_RES, LV_VER_RES);
+  lv_obj_align(overlay, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
+  lv_obj_set_style_border_width(overlay, 0, 0);
+  lv_obj_set_style_radius(overlay, 0, 0);
+  lv_obj_set_style_pad_all(overlay, 0, 0);
   ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
 }
 
@@ -2077,7 +2322,7 @@ static void ota_btn_event_cb(lv_event_t *e) {
 
 static void ui_create_settigs_display(ui_main_menu_t *ui) {
   const lv_coord_t W = LVGL_PORT_H_RES - 60; // ширина элементов
-  const lv_coord_t X = 20;                    // отступ слева
+  const lv_coord_t X = 20;                   // отступ слева
 
   // --- Заголовок ---
   create_text("Display", ui->settings.page_content, STYLE_TEXT_SMALL,
@@ -2103,11 +2348,12 @@ static void ui_create_settigs_display(ui_main_menu_t *ui) {
 
   ui->settings.backlight_desc_label =
       create_label(ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, X, 200);
-  lv_obj_add_style(ui->settings.backlight_desc_label, &ui->font.very_small_20, 0);
+  lv_obj_add_style(ui->settings.backlight_desc_label, &ui->font.very_small_20,
+                   0);
 
   ui->settings.backlight_slider = lv_slider_create(ui->settings.page_content);
-  lv_obj_set_size(ui->settings.backlight_slider, W - 80, 40);
-  lv_obj_align(ui->settings.backlight_slider, LV_ALIGN_TOP_LEFT, X, 240);
+  lv_obj_set_size(ui->settings.backlight_slider, W - 120, 40);
+  lv_obj_align(ui->settings.backlight_slider, LV_ALIGN_TOP_LEFT, 40, 240);
   lv_slider_set_range(ui->settings.backlight_slider, 5, 100);
   lv_slider_set_value(ui->settings.backlight_slider,
                       ui->settings.switch_.backlight_pct, LV_ANIM_OFF);
@@ -2116,12 +2362,14 @@ static void ui_create_settigs_display(ui_main_menu_t *ui) {
 
   // disabled стиль слайдера
   lv_obj_set_style_bg_color(ui->settings.backlight_slider,
-                            lv_color_hex(0x555555), LV_PART_INDICATOR | LV_STATE_DISABLED);
+                            lv_color_hex(0x555555),
+                            LV_PART_INDICATOR | LV_STATE_DISABLED);
   lv_obj_set_style_bg_color(ui->settings.backlight_slider,
-                            lv_color_hex(0x555555), LV_PART_KNOB | LV_STATE_DISABLED);
+                            lv_color_hex(0x555555),
+                            LV_PART_KNOB | LV_STATE_DISABLED);
 
-  ui->settings.backlight_pct_label =
-      create_label(ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, W - 50, 248);
+  ui->settings.backlight_pct_label = create_label(
+      ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, W - 50, 248);
   lv_obj_add_style(ui->settings.backlight_pct_label, &ui->font.small_24, 0);
 
   // --- Standby ---
@@ -2180,8 +2428,7 @@ static void ui_create_settigs_display(ui_main_menu_t *ui) {
     lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
 
   static const char *bl_descs[] = {
-      "Feste Helligkeit per Schieberegler.",
-      "Tagsueber 80%, nachts 5%.",
+      "Feste Helligkeit per Schieberegler.", "Tagsueber 80%, nachts 5%.",
       "Sanfter Verlauf: Morgen, Tag, Abend, Nacht."};
   lv_label_set_text(ui->settings.backlight_desc_label,
                     bl_descs[ui->settings.switch_.backlight_mode]);
@@ -2195,9 +2442,7 @@ static void ui_create_settigs_display(ui_main_menu_t *ui) {
                             LV_BTNMATRIX_CTRL_CHECKED);
 
   static const char *standby_descs[] = {
-      "Immer eingeschaltet.",
-      "Aus nach 180 Sek.",
-      "Aus Nachts nach 180 Sek."};
+      "Immer eingeschaltet.", "Aus nach 180 Sek.", "Aus Nachts nach 180 Sek."};
   lv_label_set_text(ui->settings.standby_desc_label,
                     standby_descs[ui->settings.switch_.standby_mode]);
 
@@ -2206,8 +2451,7 @@ static void ui_create_settigs_display(ui_main_menu_t *ui) {
                             LV_BTNMATRIX_CTRL_CHECKED);
 
   static const char *theme_descs[] = {
-      "Automatisch: Tagsueber hell, nachts dunkel.",
-      "Immer helles Design.",
+      "Automatisch: Tagsueber hell, nachts dunkel.", "Immer helles Design.",
       "Immer dunkles Design."};
   lv_label_set_text(ui->settings.theme_desc_label,
                     theme_descs[ui->settings.switch_.theme_mode]);
@@ -2232,13 +2476,16 @@ static void btn_settings_back_event_handler(lv_event_t *e) {
   ui->settings.backlight_pct_label = NULL;
   ui->settings.ota_btn = NULL;
   ui->settings.ota_status_label = NULL;
-  ui->wifi.ssid_label = NULL;
-  ui->wifi.pass_label = NULL;
-  ui->wifi.rssi_label = NULL;
-  ui->wifi.btn_keyboard_ssid = NULL;
-  ui->wifi.btn_keyboard_pass = NULL;
+  ui->wifi.connected_ssid_label = NULL;
+  ui->wifi.scan_list = NULL;
+  ui->wifi.scan_status_label = NULL;
+  ui->wifi.pass_popup = NULL;
+  ui->wifi.pass_popup_ssid_label = NULL;
+  ui->wifi.ta_pass = NULL;
   ui->wifi.keyboard = NULL;
-  ui->wifi.ta_ssid = NULL;
+  ui->wifi.scan_count = 0;
+  ui->wifi.pending_ssid[0] = '\0';
+  ui->wifi.keyboard = NULL;
   ui->wifi.ta_pass = NULL;
   ui->weather.settings_popup.city_label = NULL;
   ui->weather.settings_popup.btn_open_city_list = NULL;
@@ -2252,48 +2499,83 @@ static void btn_settings_back_event_handler(lv_event_t *e) {
 }
 
 static void ui_create_settigs_wifi(ui_main_menu_t *ui) {
+	
+if (get_wifi_status() != WIFI_CONNECTED) {
+    wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(300));
+}
+esp_err_t err = wifi_scan_start();
+ESP_LOGI(TAG, "wifi_scan_start ret=%d", err);
+    
   lv_obj_t *p = ui->settings.page_content;
 
-  create_text("Name:",     p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15,  10, ui);
-  create_text("Passwort:", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15, 100, ui);
-  create_text("Signal:",   p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15, 190, ui);
+    // -----------------------------------------------------------------------
+    // Верхний блок — текущее подключение
+    // -----------------------------------------------------------------------
+    lv_obj_t *conn_block = lv_obj_create(p);
+    lv_obj_set_size(conn_block, lv_obj_get_width(p) - 20, 60);
+    lv_obj_align(conn_block, LV_ALIGN_TOP_MID, 0, 5);
+    lv_obj_add_style(conn_block, &ui->style.popup, 0);
+    lv_obj_set_style_radius(conn_block, 10, 0);
+    lv_obj_set_style_border_width(conn_block, 1, 0);
+    lv_obj_set_style_border_color(conn_block, lv_color_hex(0x2D5A8E), 0);
+    lv_obj_set_style_pad_all(conn_block, 8, 0);
+    lv_obj_clear_flag(conn_block, LV_OBJ_FLAG_SCROLLABLE);
 
-  ui->wifi.ssid_label = create_label(p, (char *)ap_info.ssid, LV_ALIGN_TOP_LEFT, 220, 10);
-  lv_obj_add_style(ui->wifi.ssid_label, &ui->font.medium_32, 0);
+    // SSID текущей сети
+    ui->wifi.connected_ssid_label = lv_label_create(conn_block);
+    lv_obj_add_style(ui->wifi.connected_ssid_label, &ui->font.medium_32, 0);
+    const char *cur_ssid = get_wifi_ssid();
+    lv_label_set_text(ui->wifi.connected_ssid_label,
+                      cur_ssid ? cur_ssid : "Nicht verbunden");
+    lv_obj_align(ui->wifi.connected_ssid_label, LV_ALIGN_LEFT_MID, 5, 0);
 
-  ui->wifi.pass_label = create_label(p, "*********", LV_ALIGN_TOP_LEFT, 220, 100);
-  lv_obj_add_style(ui->wifi.pass_label, &ui->font.medium_32, 0);
+    // 4 бара сигнала — справа
+    int16_t rssi = get_wifi_rssi();
+    uint8_t bars = (cur_ssid != NULL) ? rssi_to_bars(rssi) : 0;
+    for (int i = 0; i < 4; i++) {
+        lv_obj_t *bar = lv_obj_create(conn_block);
+        lv_coord_t bar_h = 8 + i * 7;  // 8, 15, 22, 29
+        lv_obj_set_size(bar, 10, bar_h);
+        lv_obj_align(bar, LV_ALIGN_RIGHT_MID,
+                     -5 - (3 - i) * 16,          // правый → левый
+                     (29 - bar_h) / 2);           // выравниваем по низу
+        lv_obj_set_style_radius(bar, 2, 0);
+        lv_obj_set_style_border_width(bar, 0, 0);
+        lv_obj_set_style_bg_color(bar,
+            (i < bars) ? lv_color_hex(0x4CAF50) : lv_color_hex(0x444444), 0);
+        lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+        ui->wifi.signal_bars[i] = bar;
+    }
 
-  ui->wifi.rssi_label = create_label(p, "-- dBm", LV_ALIGN_TOP_LEFT, 220, 190);
-  lv_obj_add_style(ui->wifi.rssi_label, &ui->font.medium_32, 0);
+    // -----------------------------------------------------------------------
+    // Статус сканирования
+    // -----------------------------------------------------------------------
+    ui->wifi.scan_status_label = lv_label_create(p);
+    lv_obj_add_style(ui->wifi.scan_status_label, &ui->font.very_small_20, 0);
+    lv_label_set_text(ui->wifi.scan_status_label, "Suche...");
+    lv_obj_align(ui->wifi.scan_status_label, LV_ALIGN_TOP_MID, 0, 75);
 
-  if (ap_info.rssi != 0)
-    lv_label_set_text_fmt(ui->wifi.rssi_label, "%d dBm", ap_info.rssi);
+    // -----------------------------------------------------------------------
+    // Список сетей
+    // -----------------------------------------------------------------------
+    ui->wifi.scan_list = lv_list_create(p);
+    lv_obj_set_size(ui->wifi.scan_list,
+                    lv_obj_get_width(p) - 20,
+                    lv_obj_get_height(p) - 145);
+    lv_obj_align(ui->wifi.scan_list, LV_ALIGN_TOP_MID, 0, 100);
+    lv_obj_add_style(ui->wifi.scan_list, &ui->style.popup, 0);
+    lv_obj_set_style_radius(ui->wifi.scan_list, 10, 0);
+    lv_obj_set_style_border_width(ui->wifi.scan_list, 1, 0);
+    lv_obj_set_style_border_color(ui->wifi.scan_list,
+                                  lv_color_hex(0x2D5A8E), 0);
 
-  ui->wifi.btn_keyboard_ssid = create_btn_cb(p, 50, 50, LV_ALIGN_TOP_LEFT,
-      500, 10, btn_keyboard_open_ssid_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_ssid, LV_SYMBOL_KEYBOARD, 0);
-
-  ui->wifi.btn_keyboard_pass = create_btn_cb(p, 50, 50, LV_ALIGN_TOP_LEFT,
-      500, 100, btn_keyboard_open_pass_event_handler, ui);
-  lv_obj_set_style_bg_img_src(ui->wifi.btn_keyboard_pass, LV_SYMBOL_KEYBOARD, 0);
-
-  ui->wifi.keyboard = lv_keyboard_create(p);
-  lv_obj_add_event_cb(ui->wifi.keyboard, ta_wifi_event_cb, LV_EVENT_ALL, ui);
-
-  ui->wifi.ta_ssid = lv_textarea_create(p);
-  lv_obj_align(ui->wifi.ta_ssid, LV_ALIGN_TOP_MID, 0, 0);
-  lv_textarea_set_placeholder_text(ui->wifi.ta_ssid, "WiFi Name");
-  lv_obj_set_size(ui->wifi.ta_ssid, 550, 70);
-
-  ui->wifi.ta_pass = lv_textarea_create(p);
-  lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 0);
-  lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "WiFi Passwort");
-  lv_obj_set_size(ui->wifi.ta_pass, 550, 70);
-
-  set_visible(ui->wifi.ta_ssid, false);
-  set_visible(ui->wifi.ta_pass, false);
-  set_visible(ui->wifi.keyboard, false);
+    // -----------------------------------------------------------------------
+    // Запуск сканирования + таймер проверки
+    // -----------------------------------------------------------------------
+    wifi_scan_start();
+    lv_timer_t *t = lv_timer_create(wifi_scan_timer_cb, 500, ui);
+    lv_timer_set_repeat_count(t, 40); // 20 сек максимум
 }
 
 static void ui_create_settigs_weather(ui_main_menu_t *ui) {
@@ -2301,25 +2583,29 @@ static void ui_create_settigs_weather(ui_main_menu_t *ui) {
 
   create_text("Stadt:", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 15, 10, ui);
 
-  ui->weather.settings_popup.city_label = create_label(
-      p, ui->weather.settings_popup.cities_de[ui->weather.settings_popup.saved_city].name,
-      LV_ALIGN_TOP_LEFT, 220, 10);
-  lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32, 0);
+  ui->weather.settings_popup.city_label =
+      create_label(p,
+                   ui->weather.settings_popup
+                       .cities_de[ui->weather.settings_popup.saved_city]
+                       .name,
+                   LV_ALIGN_TOP_LEFT, 220, 10);
+  lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32,
+                   0);
 
-  ui->weather.settings_popup.btn_open_city_list = create_btn_cb(
-      p, 50, 50, LV_ALIGN_TOP_LEFT, 500, 10,
-      btn_weather_open_list_city_event_handler, ui);
+  ui->weather.settings_popup.btn_open_city_list =
+      create_btn_cb(p, 50, 50, LV_ALIGN_TOP_LEFT, 500, 10,
+                    btn_weather_open_list_city_event_handler, ui);
   lv_obj_set_style_bg_img_src(ui->weather.settings_popup.btn_open_city_list,
                               LV_SYMBOL_GPS, 0);
 
   ui_create_city_list_weather(ui);
 
-  lv_obj_t *info_label = create_label(
-      p,
-      "Datenquelle: Open-Meteo (open-meteo.com)\n"
-      "Aktuelle Werte sind berechnet, keine Echtzeitmessung.\n"
-      "Vorhersagen koennen von der Realitaet abweichen.",
-      LV_ALIGN_BOTTOM_MID, 0, -10);
+  lv_obj_t *info_label =
+      create_label(p,
+                   "Datenquelle: Open-Meteo (open-meteo.com)\n"
+                   "Aktuelle Werte sind berechnet, keine Echtzeitmessung.\n"
+                   "Vorhersagen koennen von der Realitaet abweichen.",
+                   LV_ALIGN_BOTTOM_MID, 0, -10);
   lv_obj_set_style_text_font(info_label, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_color(info_label, lv_color_hex(0x888888), 0);
   lv_obj_set_style_text_align(info_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -2330,24 +2616,23 @@ static void ui_create_settigs_weather(ui_main_menu_t *ui) {
 static void ui_create_settigs_sensors(ui_main_menu_t *ui) {
   lv_obj_t *p = ui->settings.page_content;
 
-  create_text("Luftqualitaetssensor:", p, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, 15, 10, ui);
+  create_text("Luftqualitaetssensor:", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
+              15, 10, ui);
 
   static const char *co2_map[] = {"Sensitiv", "Normal", "Robust", ""};
   ui->settings.co2_btnmatrix = lv_btnmatrix_create(p);
   lv_obj_set_size(ui->settings.co2_btnmatrix, 540, 90);
   lv_obj_align(ui->settings.co2_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 50);
   lv_btnmatrix_set_map(ui->settings.co2_btnmatrix, co2_map);
-  lv_obj_set_style_text_font(ui->settings.co2_btnmatrix,
-                             &lv_font_montserrat_20, LV_PART_ITEMS);
+  lv_obj_set_style_text_font(ui->settings.co2_btnmatrix, &lv_font_montserrat_20,
+                             LV_PART_ITEMS);
   lv_btnmatrix_set_btn_ctrl_all(ui->settings.co2_btnmatrix,
                                 LV_BTNMATRIX_CTRL_CHECKABLE);
   lv_btnmatrix_set_one_checked(ui->settings.co2_btnmatrix, true);
   lv_obj_add_event_cb(ui->settings.co2_btnmatrix, co2_btnmatrix_event_cb,
                       LV_EVENT_VALUE_CHANGED, ui);
 
-  ui->settings.co2_desc_label =
-      create_label(p, "", LV_ALIGN_TOP_LEFT, 15, 145);
+  ui->settings.co2_desc_label = create_label(p, "", LV_ALIGN_TOP_LEFT, 15, 145);
   lv_obj_add_style(ui->settings.co2_desc_label, &ui->font.very_small_20, 0);
 
   lv_btnmatrix_set_btn_ctrl(ui->settings.co2_btnmatrix,
@@ -2389,22 +2674,22 @@ static void btn_settings_category_event_handler(lv_event_t *e) {
     ui_create_settigs_display(ui);
     break;
   case SETTINGS_PAGE_WIFI:
-        lv_obj_del(lbl);
-      ui_create_settigs_wifi(ui);
+    lv_obj_del(lbl);
+    ui_create_settigs_wifi(ui);
     break;
   case SETTINGS_PAGE_BLUETOOTH:
-     lv_label_set_text(lbl, LV_SYMBOL_BLUETOOTH " Bluetooth");
-      lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 20);
-      create_text("In Entwicklung...", ui->settings.page_content,
-                  STYLE_TEXT_SMALL, LV_ALIGN_CENTER, 0, 0, ui);
+    lv_label_set_text(lbl, LV_SYMBOL_BLUETOOTH " Bluetooth");
+    lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 20);
+    create_text("In Entwicklung...", ui->settings.page_content,
+                STYLE_TEXT_SMALL, LV_ALIGN_CENTER, 0, 0, ui);
     break;
   case SETTINGS_PAGE_WEATHER:
-      lv_obj_del(lbl);
-      ui_create_settigs_weather(ui);
+    lv_obj_del(lbl);
+    ui_create_settigs_weather(ui);
     break;
   case SETTINGS_PAGE_SENSORS:
     lv_obj_del(lbl);
-      ui_create_settigs_sensors(ui);
+    ui_create_settigs_sensors(ui);
     break;
   case SETTINGS_PAGE_UPDATE:
     lv_obj_del(lbl);
@@ -2421,15 +2706,15 @@ static void btn_settings_category_event_handler(lv_event_t *e) {
     lv_obj_add_style(ui->settings.ota_status_label, &ui->font.very_small_20, 0);
     break;
   case SETTINGS_PAGE_INFO:
-     lv_label_set_text(lbl, LV_SYMBOL_LIST " Info");
-      lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 20);
-      create_text("Geraet: ESP32-S3\n"
-                  "Display: 7\"\n"
-                  "Framework: ESP-IDF / LVGL 8.4\n"
-                  "Wetter: Open-Meteo\n"
-                  "Software Version: " CURRENT_SOFT_VERSION,
-                  ui->settings.page_content,
-                  STYLE_TEXT_SMALL, LV_ALIGN_CENTER, 0, 0, ui);
+    lv_label_set_text(lbl, LV_SYMBOL_LIST " Info");
+    lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 20);
+    create_text("Geraet: ESP32-S3\n"
+                "Display: 7\"\n"
+                "Framework: ESP-IDF / LVGL 8.4\n"
+                "Wetter: Open-Meteo\n"
+                "Software Version: " CURRENT_SOFT_VERSION,
+                ui->settings.page_content, STYLE_TEXT_SMALL, LV_ALIGN_CENTER, 0,
+                0, ui);
     break;
   default:
     break;
@@ -2906,27 +3191,27 @@ void draw_weather(ui_main_menu_t *ui) {
 }
 
 void draw_symbol_wifi(ui_main_menu_t *ui) {
-//  static uint8_t status_wifi_old = 254;
-//  uint8_t current_status = get_wifi_status();
-//  if (current_status == status_wifi_old)
-//    return;
-//
-//  if (!ui->time.wifi_status_icon)
-//    return;
-//
-//  switch (current_status) {
-//  case WIFI_RECONNECT:
-//    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_REFRESH);
-//    break;
-//  case WIFI_CONNECTED:
-//    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_WIFI);
-//    break;
-//  case WIFI_DISCONNECTED:
-//  default:
-//    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_WARNING);
-//    break;
-//  }
-//  status_wifi_old = current_status;
+  //  static uint8_t status_wifi_old = 254;
+  //  uint8_t current_status = get_wifi_status();
+  //  if (current_status == status_wifi_old)
+  //    return;
+  //
+  //  if (!ui->time.wifi_status_icon)
+  //    return;
+  //
+  //  switch (current_status) {
+  //  case WIFI_RECONNECT:
+  //    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_REFRESH);
+  //    break;
+  //  case WIFI_CONNECTED:
+  //    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_WIFI);
+  //    break;
+  //  case WIFI_DISCONNECTED:
+  //  default:
+  //    lv_label_set_text(ui->time.wifi_status_icon, LV_SYMBOL_WARNING);
+  //    break;
+  //  }
+  //  status_wifi_old = current_status;
 }
 
 void hide_all_blocks(ui_main_menu_t *ui) {
@@ -3127,7 +3412,7 @@ void update_block_top_left(ui_main_menu_t *ui) {
 
   // ── запись истории ────────────────────────────────────
   if (sht41_ok) {
-    sensor_record_values(ui);
+    sensor_temperature_record_values(ui);
   }
 }
 
@@ -3336,16 +3621,21 @@ static void wifi_check_timer_cb(lv_timer_t *timer) {
   attempts++;
 
   if (get_wifi_status() == WIFI_CONNECTED) {
-    if (lv_obj_is_valid(ui->wifi.ssid_label))
-      lv_label_set_text(ui->wifi.ssid_label, LV_SYMBOL_OK " verbunden");
+    if (lv_obj_is_valid(ui->wifi.connected_ssid_label)) {
+      const char *ssid = get_wifi_ssid();
+      lv_label_set_text(ui->wifi.connected_ssid_label,
+                        ssid ? ssid : LV_SYMBOL_OK " verbunden");
+      wifi_update_signal_bars(ui, rssi_to_bars(get_wifi_rssi()));
+    }
     attempts = 0;
     lv_timer_del(timer);
     return;
   }
 
   if (attempts >= 10) {
-    if (lv_obj_is_valid(ui->wifi.ssid_label))
-      lv_label_set_text(ui->wifi.ssid_label, LV_SYMBOL_CLOSE " Fehler");
+    if (lv_obj_is_valid(ui->wifi.connected_ssid_label))
+      lv_label_set_text(ui->wifi.connected_ssid_label,
+                        LV_SYMBOL_CLOSE " Fehler");
     attempts = 0;
     lv_timer_del(timer);
   }
@@ -3399,7 +3689,7 @@ static uint8_t backlight_get_current_pct(ui_main_menu_t *ui) {
   }
 }
 
-static void standby_handle(ui_main_menu_t *ui) {
+static void display_standby_handle(ui_main_menu_t *ui) {
   static uint32_t timer_standby_sec = 0;
 
   uint8_t mode = ui->settings.switch_.standby_mode;
@@ -3465,11 +3755,11 @@ static void timer_10000(lv_timer_t *timer) {
   }
 }
 
-static void sensor_record_values(ui_main_menu_t *ui) {
+static void sensor_temperature_record_values(ui_main_menu_t *ui) {
   static uint16_t cnt_sensor_history = 0;
   cnt_sensor_history++;
   if (cnt_sensor_history >= SENSOR_RECORD_INTERVAL) {
-    sensor_history_push(&ui->sensor.popup.history);
+    sensor_temperature_history_push(&ui->sensor.popup.history);
     cnt_sensor_history = 0;
   }
 }
@@ -3506,7 +3796,7 @@ static void timer_1000(lv_timer_t *timer) {
 }
 static void timer_200(lv_timer_t *timer) {
   LV_UNUSED(timer);
-  standby_handle(&ui);
+  display_standby_handle(&ui);
 }
 
 static void init_fonts(ui_main_menu_t *ui) {
@@ -3589,10 +3879,10 @@ static void apply_theme_dark(ui_main_menu_t *ui) {
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0x1A2E22));
   lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x2EA843));
   lv_style_set_border_width(&ui->style.meter_co2, 1);
-  
+
   lv_style_reset(&ui->style.category_btn);
-lv_style_set_bg_color(&ui->style.category_btn, lv_color_hex(0x1E2D3D));
-lv_style_set_bg_opa(&ui->style.category_btn, LV_OPA_COVER);
+  lv_style_set_bg_color(&ui->style.category_btn, lv_color_hex(0x1E2D3D));
+  lv_style_set_bg_opa(&ui->style.category_btn, LV_OPA_COVER);
 
   // Шрифты
   lv_style_set_text_color(&ui->font.medium_32, lv_color_hex(0xE6EDF3));
@@ -3655,10 +3945,10 @@ static void apply_theme_light(ui_main_menu_t *ui) {
   lv_style_set_bg_color(&ui->style.meter_co2, lv_color_hex(0xEDE9FF));
   lv_style_set_border_color(&ui->style.meter_co2, lv_color_hex(0x5E4E90));
   lv_style_set_border_width(&ui->style.meter_co2, 1);
-  
+
   lv_style_reset(&ui->style.category_btn);
-lv_style_set_bg_color(&ui->style.category_btn, lv_color_hex(0xD0DCE8));
-lv_style_set_bg_opa(&ui->style.category_btn, LV_OPA_COVER);
+  lv_style_set_bg_color(&ui->style.category_btn, lv_color_hex(0xD0DCE8));
+  lv_style_set_bg_opa(&ui->style.category_btn, LV_OPA_COVER);
 
   // Шрифты — только text_color, font не трогаем
   lv_style_set_text_color(&ui->font.very_small_20, lv_color_hex(0x1A1A2A));

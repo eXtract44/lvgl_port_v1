@@ -4,7 +4,6 @@
 
 static const char *TAG = "NTP_TIME";
 struct tm timeinfo_user;
-
 // Инициализация SNTP (NTP клиент)
 void user_initialize_sntp(void)
 {
@@ -13,11 +12,6 @@ void user_initialize_sntp(void)
      esp_sntp_setservername(0, "pool.ntp.org");
      esp_sntp_setservername(1, "time.google.com");
      esp_sntp_init();
-     
-  
-     
-     
-     
 } else {
     ESP_LOGI(TAG, "SNTP already initialized");
 }
@@ -71,4 +65,66 @@ void start_ntp_time_task(void)
     //initialize_sntp();
     // Запускаем задачу обновления времени
     xTaskCreate(update_time_task, "update_time_task", 4096, NULL, 5, NULL);
+}
+// ---------------------------------------------------------------------------
+// Time helpers (unchanged)
+// ---------------------------------------------------------------------------
+uint8_t get_time_mday(void) {
+    static uint8_t v = 1;
+#if SIMULATE_TIME_VALUES
+    if (++v > 31) v = 1;
+#else
+    v = timeinfo_user.tm_mday;
+#endif
+    return v;
+}
+
+uint16_t get_time_year(void) {
+    static uint16_t v = 2025;
+#if SIMULATE_TIME_VALUES
+    if (++v > 2050) v = 2025;
+#else
+    v = (uint16_t)(timeinfo_user.tm_year + 1900);
+#endif
+    return v;
+}
+
+uint8_t get_time_month(void) {
+    static uint8_t v = 1;
+#if SIMULATE_TIME_VALUES
+    if (++v > 12) v = 1;
+#else
+    v = (uint8_t)(timeinfo_user.tm_mon + 1);
+#endif
+    return v;
+}
+
+uint8_t get_time_hour(void) {
+    static uint8_t v = 0;
+#if SIMULATE_TIME_VALUES
+    if (++v > 23) v = 0;
+#else
+    v = timeinfo_user.tm_hour;
+#endif
+    return v;
+}
+
+uint8_t get_time_minute(void) {
+    static uint8_t v = 0;
+#if SIMULATE_TIME_VALUES
+    if (++v > 59) v = 0;
+#else
+    v = timeinfo_user.tm_min;
+#endif
+    return v;
+}
+
+uint8_t get_time_wday(void) {
+    static uint8_t v = 0;
+#if SIMULATE_TIME_VALUES
+    if (++v > 6) v = 0;
+#else
+    v = timeinfo_user.tm_wday;
+#endif
+    return v;
 }

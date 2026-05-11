@@ -2,9 +2,9 @@
 #include "backlight.h"
 #include "driver/ledc.h"
 #include <math.h>
-#include "../periphery/periphery.h"
-
+#include "../periphery/time_user.h"
 #include "../periphery/open_meteo.h"
+#include "sensors.h"
 
 
 #define BACKLIGHT_GPIO      GPIO_NUM_6
@@ -43,8 +43,6 @@ void backlight_deinit(void) {
 
 void backlight_set(uint8_t percent) {
        if (percent > 100) percent = 100;
-    if (percent < 0)   percent = 0;
-
     // маппинг 1–100% → 20–100%
     uint8_t mapped = 20 + (percent * 80) / 100;
 

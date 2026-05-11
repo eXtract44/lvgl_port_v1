@@ -30,10 +30,10 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include "../periphery/sensors.h"
+#include "../periphery/wifi_user.h"
 #include "user/periphery/nvs_user.h"
 #include "user/periphery/open_meteo.h"
-#include "user/periphery/periphery.h"
-#include "user/periphery/wifi.h"
 
 #define constrain(input, min, max)                                             \
   ({                                                                           \
@@ -178,20 +178,27 @@ typedef struct {
 	 bool standby_screen_off;
 } ui_switchs_t;
 
+#define WIFI_SCAN_MAX_AP 15
+
 typedef struct {
-  lv_obj_t *btn_close;
+    // текущее подключение (верхний блок)
+    lv_obj_t *connected_ssid_label;
+    lv_obj_t *signal_bars[4];
 
-  lv_obj_t *ssid_label;
-  lv_obj_t *pass_label;
-  lv_obj_t *rssi_label;
+    // список сетей
+    lv_obj_t *scan_list;          // lv_list контейнер
+    lv_obj_t *scan_status_label;  // "Suche..." / "X Netze gefunden"
 
-  lv_obj_t *btn_keyboard_ssid;
-  lv_obj_t *btn_keyboard_pass;
+    // popup пароля (появляется по тапу на сеть)
+    lv_obj_t *pass_popup;
+    lv_obj_t *pass_popup_ssid_label;
+    lv_obj_t *ta_pass;
+    lv_obj_t *keyboard;
 
-  lv_obj_t *keyboard;
-  lv_obj_t *ta_ssid;
-  lv_obj_t *ta_pass;
-
+    // внутреннее состояние
+    wifi_ap_record_t scan_results[WIFI_SCAN_MAX_AP];
+    uint16_t         scan_count;
+    char             pending_ssid[33]; // сеть выбранная пользователем
 } ui_wifi_t;
 
 typedef struct {
@@ -385,7 +392,7 @@ static void apply_theme_light(ui_main_menu_t *ui);
 void hide_all_blocks(ui_main_menu_t *ui);
 void show_all_blocks(ui_main_menu_t *ui);
 static void ui_create_settings_popup(ui_main_menu_t *ui);
-static void ui_create_sensor_history_popup(ui_main_menu_t *ui);
+static void ui_create_sensor_temperature_history_popup(ui_main_menu_t *ui);
 
 void set_visible(lv_obj_t *parent, bool visible);
 
@@ -426,7 +433,7 @@ static lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 
 static void anim_sun_moon_orbit(void *var, int32_t angle);
 
-static void sensor_record_values(ui_main_menu_t *ui);
+static void sensor_temperature_record_values(ui_main_menu_t *ui);
 static void wifi_check_timer_cb(lv_timer_t *timer);
 static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e);
 void print_holiday(uint8_t day, uint8_t month, uint16_t year, ui_main_menu_t *ui);

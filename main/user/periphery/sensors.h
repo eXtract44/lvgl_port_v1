@@ -89,28 +89,5 @@ void sgp30_set_humidity_compensation(float temperature_c, float relative_humidit
 // ---------------------------------------------------------------------------
 void read_sensors(void);
 
-// ---------------------------------------------------------------------------
-// WiFi helpers
-// ---------------------------------------------------------------------------
-enum namesOfWiFiStatus {
-    WIFI_RECONNECT,
-    WIFI_CONNECTED,
-    WIFI_DISCONNECTED
-};
-
-uint8_t     get_wifi_status(void);
-const char *get_wifi_ssid(void);
-const char *get_wifi_pass(void);
-int16_t     get_wifi_rssi(void);
-
-// ---------------------------------------------------------------------------
-// Time helpers
-// ---------------------------------------------------------------------------
-uint8_t  get_time_mday(void);
-uint16_t get_time_year(void);
-uint8_t  get_time_month(void);
-uint8_t  get_time_hour(void);
-uint8_t  get_time_minute(void);
-uint8_t  get_time_wday(void);
 
 #endif /* MAIN_PERIPHERY_H_ */

@@ -14,21 +14,15 @@
  *    - CRC algorithm unchanged (CRC-8, poly 0x31, init 0xFF)
  */
 
-#include "periphery.h"
+#include "sensors.h"
+
 #include "driver/i2c.h"
 #include "esp_timer.h"
-#include "esp_wifi.h"
 #include "i2c_bus.h"
-#include "time_user.h"
 #include "user/menu/lvgl_user_config.h"
 #include "waveshare_rgb_lcd_port.h"
 #include <math.h>
 #include <stdint.h>
-
-extern struct tm        timeinfo_user;
-extern wifi_ap_record_t ap_info;
-extern uint8_t          wifi_ssid[];
-extern uint8_t          wifi_password[];
 
 sgp30_data_t sgp30_data = {0};
 
@@ -386,91 +380,6 @@ void read_sensors(void) {
     sgp30_read();
 }
 
-// ---------------------------------------------------------------------------
-// WiFi helpers (unchanged)
-// ---------------------------------------------------------------------------
-uint8_t get_wifi_status(void) {
-    static uint8_t current_wifi_status = WIFI_DISCONNECTED;
-#if SIMULATE_INET_VALUES
-    current_wifi_status = WIFI_CONNECTED;
-#else
-    current_wifi_status = (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK)
-                          ? WIFI_CONNECTED : WIFI_DISCONNECTED;
-#endif
-    return current_wifi_status;
-}
 
-const char *get_wifi_ssid(void) {
-    return (get_wifi_status() == WIFI_CONNECTED) ? (const char *)ap_info.ssid : NULL;
-}
 
-const char *get_wifi_pass(void) {
-    return (get_wifi_status() == WIFI_CONNECTED) ? (const char *)wifi_password : NULL;
-}
 
-int16_t get_wifi_rssi(void) {
-    return (get_wifi_status() == WIFI_CONNECTED) ? ap_info.rssi : 0;
-}
-
-// ---------------------------------------------------------------------------
-// Time helpers (unchanged)
-// ---------------------------------------------------------------------------
-uint8_t get_time_mday(void) {
-    static uint8_t v = 1;
-#if SIMULATE_TIME_VALUES
-    if (++v > 31) v = 1;
-#else
-    v = timeinfo_user.tm_mday;
-#endif
-    return v;
-}
-
-uint16_t get_time_year(void) {
-    static uint16_t v = 2025;
-#if SIMULATE_TIME_VALUES
-    if (++v > 2050) v = 2025;
-#else
-    v = (uint16_t)(timeinfo_user.tm_year + 1900);
-#endif
-    return v;
-}
-
-uint8_t get_time_month(void) {
-    static uint8_t v = 1;
-#if SIMULATE_TIME_VALUES
-    if (++v > 12) v = 1;
-#else
-    v = (uint8_t)(timeinfo_user.tm_mon + 1);
-#endif
-    return v;
-}
-
-uint8_t get_time_hour(void) {
-    static uint8_t v = 0;
-#if SIMULATE_TIME_VALUES
-    if (++v > 23) v = 0;
-#else
-    v = timeinfo_user.tm_hour;
-#endif
-    return v;
-}
-
-uint8_t get_time_minute(void) {
-    static uint8_t v = 0;
-#if SIMULATE_TIME_VALUES
-    if (++v > 59) v = 0;
-#else
-    v = timeinfo_user.tm_min;
-#endif
-    return v;
-}
-
-uint8_t get_time_wday(void) {
-    static uint8_t v = 0;
-#if SIMULATE_TIME_VALUES
-    if (++v > 6) v = 0;
-#else
-    v = timeinfo_user.tm_wday;
-#endif
-    return v;
-}

@@ -13,11 +13,11 @@
 
 
 #include "user/periphery/open_meteo.h"
-#include "user/periphery/wifi.h"
 #include "user/periphery/nvs_user.h"
-#include "user/periphery/periphery.h"
 #include "user/periphery/time_user.h"
 #include "user/periphery/backlight.h"
+#include "user/periphery/sensors.h"
+#include "user/periphery/wifi_user.h"
 
 //#include "user/periphery/sd_card.h"
 

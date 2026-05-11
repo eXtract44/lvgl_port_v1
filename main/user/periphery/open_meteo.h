@@ -10,7 +10,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "user/periphery/periphery.h"
+
+#include "sensors.h"
 
 typedef struct {
     int8_t   temp_max;      // °C

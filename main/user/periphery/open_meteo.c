@@ -5,16 +5,16 @@
  *      Author: toose
  */
 #include "cJSON.h"
-#include "wifi.h"
-
 #include "esp_crt_bundle.h"
 #include "esp_event.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "open_meteo.h"
 #include "user/menu/lvgl_menu.h"
-#include "user/periphery/periphery.h"
 #include <stdint.h>
+
+#include "sensors.h"
+#include "wifi_user.h"
 
 //static const char *TAG = "WEATHER_APP";
 forecast_data_t forecast_data;

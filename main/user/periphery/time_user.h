@@ -17,5 +17,15 @@ void start_ntp_time_task(void);
 void user_initialize_sntp(void);
 void user_sntp_stop(void);
 
+// ---------------------------------------------------------------------------
+// Time helpers
+// ---------------------------------------------------------------------------
+uint8_t  get_time_mday(void);
+uint16_t get_time_year(void);
+uint8_t  get_time_month(void);
+uint8_t  get_time_hour(void);
+uint8_t  get_time_minute(void);
+uint8_t  get_time_wday(void);
+
 
 #endif /* MAIN_USER_PERIPHERY_TIME_USER_H_ */
