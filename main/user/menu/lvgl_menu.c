@@ -1614,41 +1614,39 @@ static void wifi_pass_popup_connect_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_READY) {
-      const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
-    wifi_connect(ui->wifi.pending_ssid, pass);
+        const char *pass = lv_textarea_get_text(ui->wifi.ta_pass);
+        wifi_connect(ui->wifi.pending_ssid, pass);
 
-    if (lv_obj_is_valid(ui->wifi.connected_ssid_label))
-        lv_label_set_text(ui->wifi.connected_ssid_label, "verbinde...");
+        if (lv_obj_is_valid(ui->wifi.connected_ssid_label))
+            lv_label_set_text(ui->wifi.connected_ssid_label, "verbinde...");
 
-    lv_timer_t *t = lv_timer_create(wifi_check_timer_cb, 500, ui);
-    lv_timer_set_repeat_count(t, 10);
+        lv_timer_t *t = lv_timer_create(wifi_check_timer_cb, 500, ui);
+        lv_timer_set_repeat_count(t, 10);
 
-    if (lv_obj_is_valid(ui->wifi.keyboard))
-        lv_obj_del(ui->wifi.keyboard);
+        if (lv_obj_is_valid(ui->wifi.keyboard))   lv_obj_del(ui->wifi.keyboard);
+        if (lv_obj_is_valid(ui->wifi.ta_pass))    lv_obj_del(ui->wifi.ta_pass);
+        if (lv_obj_is_valid(ui->wifi.pass_popup)) lv_obj_del(ui->wifi.pass_popup);
 
-    if (lv_obj_is_valid(ui->wifi.pass_popup))
-        lv_obj_del(ui->wifi.pass_popup);
-
-    ui->wifi.pass_popup            = NULL;
-    ui->wifi.pass_popup_ssid_label = NULL;
-    ui->wifi.ta_pass               = NULL;
-    ui->wifi.keyboard              = NULL;
+        ui->wifi.keyboard              = NULL;
+        ui->wifi.ta_pass               = NULL;
+        ui->wifi.pass_popup            = NULL;
+        ui->wifi.pass_popup_ssid_label = NULL;
     }
 
     if (code == LV_EVENT_CANCEL) {
-        if (lv_obj_is_valid(ui->wifi.pass_popup)) {
-            lv_obj_del(ui->wifi.pass_popup);
-            ui->wifi.pass_popup           = NULL;
-            ui->wifi.pass_popup_ssid_label = NULL;
-            ui->wifi.ta_pass              = NULL;
-            ui->wifi.keyboard             = NULL;
-        }
+        if (lv_obj_is_valid(ui->wifi.keyboard))   lv_obj_del(ui->wifi.keyboard);
+        if (lv_obj_is_valid(ui->wifi.ta_pass))    lv_obj_del(ui->wifi.ta_pass);
+        if (lv_obj_is_valid(ui->wifi.pass_popup)) lv_obj_del(ui->wifi.pass_popup);
+
+        ui->wifi.keyboard              = NULL;
+        ui->wifi.ta_pass               = NULL;
+        ui->wifi.pass_popup            = NULL;
+        ui->wifi.pass_popup_ssid_label = NULL;
     }
 }
 
 static void wifi_open_pass_popup(ui_main_menu_t *ui, const char *ssid) {
-    // guard от двойного открытия
-    if (ui->wifi.pass_popup != NULL &&
+     if (ui->wifi.pass_popup != NULL &&
         lv_obj_is_valid(ui->wifi.pass_popup)) return;
 
     strncpy(ui->wifi.pending_ssid, ssid, sizeof(ui->wifi.pending_ssid) - 1);
@@ -1656,31 +1654,33 @@ static void wifi_open_pass_popup(ui_main_menu_t *ui, const char *ssid) {
 
     lv_obj_t *p = ui->settings.page_content;
 
+    // popup — только заголовок
     lv_obj_t *popup = lv_obj_create(p);
-    lv_obj_set_size(popup, 560, 280);
-    lv_obj_align(popup, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_size(popup, 560, 60);
+    lv_obj_align(popup, LV_ALIGN_TOP_MID, 0, 30);
     lv_obj_add_style(popup, &ui->style.popup, 0);
     lv_obj_set_style_radius(popup, 12, 0);
     lv_obj_set_style_border_width(popup, 1, 0);
     lv_obj_set_style_border_color(popup, lv_color_hex(0x2D5A8E), 0);
+    lv_obj_clear_flag(popup, LV_OBJ_FLAG_SCROLLABLE);
     ui->wifi.pass_popup = popup;
 
     // заголовок — название сети
     ui->wifi.pass_popup_ssid_label = lv_label_create(popup);
     lv_obj_add_style(ui->wifi.pass_popup_ssid_label, &ui->font.medium_32, 0);
     lv_label_set_text(ui->wifi.pass_popup_ssid_label, ssid);
-    lv_obj_align(ui->wifi.pass_popup_ssid_label, LV_ALIGN_TOP_MID, 0, 8);
+    lv_obj_align(ui->wifi.pass_popup_ssid_label, LV_ALIGN_CENTER, 0, 0);
 
-    // поле пароля
-    ui->wifi.ta_pass = lv_textarea_create(popup);
-    lv_obj_set_size(ui->wifi.ta_pass, 520, 60);
-    lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 50);
+    // поле пароля — на page_content
+    ui->wifi.ta_pass = lv_textarea_create(p);
+    lv_obj_set_size(ui->wifi.ta_pass, 560, 60);
+    lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_TOP_MID, 0, 90);
     lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "Passwort");
     lv_textarea_set_password_mode(ui->wifi.ta_pass, true);
     lv_textarea_set_one_line(ui->wifi.ta_pass, true);
 
-    // клавиатура
-    ui->wifi.keyboard = lv_keyboard_create(p); // на page_content, не на popup
+    // клавиатура — на page_content
+    ui->wifi.keyboard = lv_keyboard_create(p);
     lv_obj_set_size(ui->wifi.keyboard,
                     lv_obj_get_width(p),
                     lv_obj_get_height(p) / 2);
@@ -1688,6 +1688,7 @@ static void wifi_open_pass_popup(ui_main_menu_t *ui, const char *ssid) {
     lv_keyboard_set_textarea(ui->wifi.keyboard, ui->wifi.ta_pass);
     lv_obj_add_event_cb(ui->wifi.keyboard,
                         wifi_pass_popup_connect_cb, LV_EVENT_ALL, ui);
+
 }
 
 // ---------------------------------------------------------------------------
