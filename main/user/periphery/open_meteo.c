@@ -77,6 +77,28 @@ const city_t cities_de[CITY_COUNT] = {
     {"DO-Mengede", 51.5667, 7.3833},
     {"DO-Innenstadt-W", 51.5136, 7.4500},
     {"DO-Innenstadt-O", 51.5136, 7.4800},
+       // Dortmund — ключевые Stadtteile
+    {"DO-Innenstadt-N",    51.5250, 7.4600},
+    {"DO-Borsigplatz",     51.5350, 7.4850},
+    {"DO-Dorstfeld",       51.5100, 7.4100},
+    {"DO-Marten",          51.5000, 7.3800},
+    {"DO-Kirchlinde",      51.5200, 7.3600},
+    {"DO-Derne",           51.5700, 7.5100},
+    {"DO-Grevel",          51.5600, 7.5400},
+    {"DO-Alt-Scharnhorst", 51.5500, 7.5450},
+    {"DO-Asseln",          51.5050, 7.5800},
+    {"DO-Wambel",          51.5150, 7.5200},
+    {"DO-Wickede",         51.5000, 7.6000},
+    {"DO-Berghofen",       51.4700, 7.5200},
+    {"DO-Kirchhörde",      51.4600, 7.4600},
+    {"DO-Barop",           51.4750, 7.4100},
+    {"DO-Eichlinghofen",   51.4800, 7.4000},
+    {"DO-Bodelschwingh",   51.5600, 7.3500},
+    {"DO-Brechten",        51.5750, 7.4400},
+    {"DO-Lindenhorst",     51.5650, 7.4200},
+    {"DO-Husen",           51.5450, 7.5300},
+    {"DO-Körne",           51.5050, 7.5050},
+    {"DO-Oespel",          51.5000, 7.4000},
 };
 
 char url[512];

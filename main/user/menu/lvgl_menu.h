@@ -445,5 +445,6 @@ static void ui_create_sgp30_calib_popup(ui_main_menu_t *ui);
 static void sgp30_calib_timer_cb(lv_timer_t *t);
 static void btn_settings_back_event_handler(lv_event_t *e);
 static void btn_settings_category_event_handler(lv_event_t *e);
+static void wifi_scan_timer_cb(lv_timer_t *timer);
 
 #endif /* INC_LVGL_MENU_H_ */

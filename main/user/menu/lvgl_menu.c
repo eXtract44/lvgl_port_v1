@@ -1789,6 +1789,15 @@ static void wifi_manual_keyboard_cb(lv_event_t *e) {
     }
 }
 
+static void wifi_manual_ta_focus_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
+    if (!lv_obj_is_valid(ui->wifi.keyboard)) return;
+
+    lv_obj_t *ta = lv_event_get_target(e);
+    lv_keyboard_set_textarea(ui->wifi.keyboard, ta);
+}
+
 static void wifi_manual_entry_cb(lv_event_t *e) {
     ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
     if (!ui) return;
@@ -1811,18 +1820,21 @@ static void wifi_manual_entry_cb(lv_event_t *e) {
 
     // поле SSID
     ui->wifi.pass_popup_ssid_label = lv_textarea_create(popup);
-    lv_obj_set_size(ui->wifi.pass_popup_ssid_label, 520, 55);
-    lv_obj_align(ui->wifi.pass_popup_ssid_label, LV_ALIGN_TOP_MID, 0, 5);
+    lv_obj_set_size(ui->wifi.pass_popup_ssid_label, 520, 45);
+    lv_obj_align(ui->wifi.pass_popup_ssid_label, LV_ALIGN_TOP_MID, 0, -10);
     lv_textarea_set_placeholder_text(ui->wifi.pass_popup_ssid_label, "Netzwerkname (SSID)");
     lv_textarea_set_one_line(ui->wifi.pass_popup_ssid_label, true);
 
     // поле пароля
     ui->wifi.ta_pass = lv_textarea_create(popup);
-    lv_obj_set_size(ui->wifi.ta_pass, 520, 55);
-    lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_set_size(ui->wifi.ta_pass, 520, 45);
+    lv_obj_align(ui->wifi.ta_pass, LV_ALIGN_BOTTOM_MID, 0, 10);
     lv_textarea_set_placeholder_text(ui->wifi.ta_pass, "Passwort");
     lv_textarea_set_password_mode(ui->wifi.ta_pass, true);
     lv_textarea_set_one_line(ui->wifi.ta_pass, true);
+    
+    lv_obj_add_event_cb(ui->wifi.ta_pass, wifi_manual_ta_focus_cb, LV_EVENT_CLICKED, ui);
+lv_obj_add_event_cb(ui->wifi.pass_popup_ssid_label, wifi_manual_ta_focus_cb, LV_EVENT_CLICKED, ui);
 
     // клавиатура
     ui->wifi.keyboard = lv_keyboard_create(p);
@@ -1834,11 +1846,30 @@ static void wifi_manual_entry_cb(lv_event_t *e) {
     lv_obj_add_event_cb(ui->wifi.keyboard, wifi_manual_keyboard_cb, LV_EVENT_ALL, ui);
 }
 
+static void wifi_refresh_cb(lv_event_t *e) {
+    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+    if (!ui) return;
+
+    if (!lv_obj_is_valid(ui->wifi.scan_status_label)) return;
+    lv_label_set_text(ui->wifi.scan_status_label, "Suche...");
+
+    lv_obj_clean(ui->wifi.scan_list);
+
+    if (get_wifi_status() != WIFI_CONNECTED) {
+        wifi_disconnect();
+        vTaskDelay(pdMS_TO_TICKS(300));
+    }
+
+    wifi_scan_start();
+    lv_timer_t *t = lv_timer_create(wifi_scan_timer_cb, 500, ui);
+    lv_timer_set_repeat_count(t, 40);
+}
+
 static void wifi_scan_timer_cb(lv_timer_t *timer) {
 	
     ui_main_menu_t *ui = (ui_main_menu_t *)timer->user_data;
     if (!ui) return;
-ESP_LOGI(TAG, "scan timer tick, done=%d", wifi_scan_is_done());
+   ESP_LOGI(TAG, "scan timer tick, done=%d", wifi_scan_is_done());
     if (!wifi_scan_is_done()) return;
 
     lv_timer_del(timer);
@@ -1849,10 +1880,22 @@ ESP_LOGI(TAG, "scan timer tick, done=%d", wifi_scan_is_done());
     // очищаем список
     if (!lv_obj_is_valid(ui->wifi.scan_list)) return;
     lv_obj_clean(ui->wifi.scan_list);
-
-    if (ui->wifi.scan_count == 0) {
+    // кнопка обновления — всегда первая
+    lv_obj_t *refresh_btn = lv_list_add_btn(ui->wifi.scan_list, LV_SYMBOL_REFRESH, "Suche wiederholen");
+    lv_obj_add_flag(refresh_btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_text_font(refresh_btn, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(refresh_btn, lv_color_hex(0x60A5FA), 0);
+    lv_obj_add_event_cb(refresh_btn, wifi_refresh_cb, LV_EVENT_SHORT_CLICKED, ui);
+    
+     if (ui->wifi.scan_count == 0) {
         if (lv_obj_is_valid(ui->wifi.scan_status_label))
             lv_label_set_text(ui->wifi.scan_status_label, "Keine Netze gefunden");
+        // добавляем кнопку и выходим
+        lv_obj_t *manual_btn = lv_list_add_btn(ui->wifi.scan_list, LV_SYMBOL_EDIT, "Manuell eingeben");
+        lv_obj_add_flag(manual_btn, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_style_text_font(manual_btn, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_color(manual_btn, lv_color_hex(0x60A5FA), 0);
+        lv_obj_add_event_cb(manual_btn, wifi_manual_entry_cb, LV_EVENT_SHORT_CLICKED, ui);
         return;
     }
 
