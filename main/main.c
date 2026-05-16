@@ -1,13 +1,13 @@
 
 #include "../components/lvgl__lvgl/lvgl.h"
 #include "esp_ota_ops.h"
-#include "user/menu/lvgl_menu.h"
-#include "user/menu/lvgl_user_config.h"
 #include "waveshare_rgb_lcd_port.h"
 
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "freertos/event_groups.h"
+#include "user/menu/ui_core.h"
+#include "user/menu/ui_user_config.h"
 #include "user/periphery/i2c_bus.h"
 //#include "nvs_flash.h"
 

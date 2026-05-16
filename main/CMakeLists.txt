@@ -11,7 +11,15 @@ idf_component_register(
      "user/periphery/backlight.c"
      "user/periphery/ota.c"
     
-    "user/menu/lvgl_menu.c" 
+    "user/menu/ui_core.c" 
+    "user/menu/ui_blocks.c" 
+    "user/menu/ui_popup_settings.c" 
+    "user/menu/ui_theme.c" 
+    "user/menu/ui_timers.c" 
+    "user/menu/ui_weather_anim.c" 
+    "user/menu/ui_widgets.c" 
+    "user/menu/ui_wifi.c" 
+    "user/menu/ui_time.c" 
     
     "user/fonts/my_symbols.c" 
     "user/fonts/my_time_font.c"

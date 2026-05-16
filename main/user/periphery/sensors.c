@@ -19,10 +19,10 @@
 #include "driver/i2c.h"
 #include "esp_timer.h"
 #include "i2c_bus.h"
-#include "user/menu/lvgl_user_config.h"
 #include "waveshare_rgb_lcd_port.h"
 #include <math.h>
 #include <stdint.h>
+#include "../menu/ui_user_config.h"
 
 sgp30_data_t sgp30_data = {0};
 

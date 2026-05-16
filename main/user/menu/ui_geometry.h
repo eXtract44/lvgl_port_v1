@@ -1,55 +1,13 @@
 /*
- * lvgl_user_config.h
+ * ui_geometry.h
  *
- *  Created on: 10.02.2026
+ *  Created on: 16.05.2026
  *      Author: toose
- Главная ошибка сборки (из-за неё нет build.ninja)
- The "path" field in idf_component.yml does not point to a directory
- Решение (правильное)
- Открой:
- C:\Espressif\Workspace\lvgl_port_v1\components\espressif__esp_lcd_touch\idf_component.yml
- И удали строку
- path: ...
  */
 
-#ifndef MAIN_LVGL_USER_CONFIG_H_
-#define MAIN_LVGL_USER_CONFIG_H_
+#ifndef MAIN_USER_MENU_UI_GEOMETRY_H_
+#define MAIN_USER_MENU_UI_GEOMETRY_H_
 
-#define CURRENT_SOFT_VERSION "11.05.26"
-
-#define ACTIVATE_BLOCK_TOP_LEFT 1  
-#define ACTIVATE_BLOCK_TOP_MID 	1 
-#define ACTIVATE_BLOCK_TOP_RIGHT 1 
-#define ACTIVATE_BLOCK_BOT_LEFT 1  
-#define ACTIVATE_BLOCK_BOT_MID 1
-#define ACTIVATE_BLOCK_BOT_RIGHT 1
-
-#define ACTIVATE_ANIM_SUN_MOON 1
-#define ACTIVATE_ANIM_CLOUD 1
-#define ACTIVATE_ANIM_WIND 1
-#define ACTIVATE_ANIM_RAIN 1
-#define ACTIVATE_ANIM_SNOW 1
-
-#define SIMULATE_ANIM_SUN 0
-#define SIMULATE_ANIM_CLOUD 0
-#define SIMULATE_ANIM_WIND 0
-#define SIMULATE_ANIM_RAIN 0
-#define SIMULATE_ANIM_SNOW 0
-
-#define SIMULATE_SHT31_VALUES 0
-#define SIMULATE_SGP30_VALUES 0
-#define SIMULATE_INET_VALUES 0
-#define SIMULATE_TIME_VALUES 0
-
-#define UPDATE_WEATHER_SEC 60
-
-
-#define STRING_MAX_LENGHT 20
-
-#define DAY_START_HOUR 7
-#define DAY_END_HOUR 20
-
-#define MAX_STANDBY_TIME 180 // sec
 /////////////////////////////////////////////////////////////////////////BLOCK_TOP_LEFT
 #define BLOCK_TOP_LEFT_WIDTH 250
 #define BLOCK_TOP_LEFT_HEIGHT 195
@@ -285,4 +243,6 @@
 
 
 
-#endif /* MAIN_LVGL_USER_CONFIG_H_ */
+
+
+#endif /* MAIN_USER_MENU_UI_GEOMETRY_H_ */

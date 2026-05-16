@@ -1,39 +1,25 @@
-/*
- * lvgl_menu.h
- *
- *  Created on: Oct 20, 2023
- *      Author: Alex
- */
 
-#ifndef INC_LVGL_MENU_H_
-#define INC_LVGL_MENU_H_
 
-#include "../components/lvgl__lvgl/lvgl.h"
-#include "lvgl_port.h"
-#include "esp_wifi.h"
-#include "user/menu/lvgl_user_config.h"
-#include "user/periphery/open_meteo.h"
-#include "user/periphery/backlight.h"
-#include <stdio.h>
-#include "esp_heap_caps.h"
-// #include "esp_log_timestamp.h"
-#include "font/lv_symbol_def.h"
-
-#include "lvgl_user_config.h"
-#include "misc/lv_area.h"
-#include "misc/lv_color.h"
+#ifndef INC_UI_CORE_H_
+#define INC_UI_CORE_H_
 
 
 #include "waveshare_rgb_lcd_port.h"
-#include <esp_log.h>
-#include <math.h>
-#include <stdbool.h>
-#include <time.h>
 
-#include "../periphery/sensors.h"
-#include "../periphery/wifi_user.h"
-#include "user/periphery/nvs_user.h"
-#include "user/periphery/open_meteo.h"
+
+#include "../components/lvgl__lvgl/lvgl.h"
+#include "font/lv_symbol_def.h"
+#include "open_meteo.h"
+#include "user/menu/ui_geometry.h"
+
+#include "misc/lv_area.h"
+#include "misc/lv_color.h"
+#include "stdio.h"
+#include "math.h"
+#include "stdbool.h"
+#include "time.h"
+#include "lvgl_port.h"
+#include "wifi_user.h"
 
 #define constrain(input, min, max)                                             \
   ({                                                                           \
@@ -384,67 +370,11 @@ typedef struct {
   int32_t phase; // индивидуальный сдвиг
 } rain_snow_anim_t;
 
+
+
 void init_lv_objects();
-
-static void apply_theme_dark(ui_main_menu_t *ui);
-static void apply_theme_light(ui_main_menu_t *ui);
-
-void hide_all_blocks(ui_main_menu_t *ui);
-void show_all_blocks(ui_main_menu_t *ui);
-static void ui_create_settings_popup(ui_main_menu_t *ui);
-static void ui_create_sensor_temperature_history_popup(ui_main_menu_t *ui);
-
 void set_visible(lv_obj_t *parent, bool visible);
-
+void show_all_blocks(ui_main_menu_t *ui);
+void hide_all_blocks(ui_main_menu_t *ui);
 void print_value(const char *flags, float value, lv_obj_t *parent);
-void print_wday(uint8_t wday, ui_main_menu_t *ui);
-void print_time(uint8_t time_hour, uint8_t time_minute, ui_main_menu_t *ui);
-void print_mday(uint8_t date_day, uint8_t date_month, ui_main_menu_t *ui);
-
-static void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
-                        lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
-                        ui_main_menu_t *ui);
-static lv_obj_t *create_label(lv_obj_t *parent, const char *text,
-                              lv_align_t align, lv_coord_t x_ofs,
-                              lv_coord_t y_ofs);
-static lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                              lv_align_t align, lv_coord_t x_ofs,
-                              lv_coord_t y_ofs, ui_main_menu_t *ui);
-static lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                              lv_align_t align, lv_coord_t x_ofs,
-                              lv_coord_t y_ofs);
-static lv_obj_t *create_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                             lv_align_t align, lv_coord_t x_ofs,
-                             lv_coord_t y_ofs, const char *symbol,
-                             ui_main_menu_t *ui);
-static lv_obj_t *create_btn_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                                 lv_align_t align, lv_coord_t x_ofs,
-                                 lv_coord_t y_ofs, lv_event_cb_t event_cb,
-                                 void *user_data, const char *symbol,
-                                 lv_style_t *icon_style, const lv_font_t *font,
-                                 const char *label_text, ui_main_menu_t *ui_ptr);
-static lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                               lv_align_t align, lv_coord_t x_ofs,
-                               lv_coord_t y_ofs, lv_event_cb_t event_cb,
-                               void *user_data);
-static lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                                   lv_align_t align, lv_coord_t x_ofs,
-                                   lv_coord_t y_ofs);
-
-static void anim_sun_moon_orbit(void *var, int32_t angle);
-
-static void sensor_temperature_record_values(ui_main_menu_t *ui);
-static void wifi_check_timer_cb(lv_timer_t *timer);
-static void btn_weather_close_forecast_popup_event_handler(lv_event_t *e);
-void print_holiday(uint8_t day, uint8_t month, uint16_t year, ui_main_menu_t *ui);
-void update_co2_chart_labels(ui_main_menu_t *ui);
-void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm);
-static void co2_calib_popup_close_cb(lv_event_t *e);
-static void co2_meter_click_event_cb(lv_event_t *e);
-static void ui_create_sgp30_calib_popup(ui_main_menu_t *ui);
-static void sgp30_calib_timer_cb(lv_timer_t *t);
-static void btn_settings_back_event_handler(lv_event_t *e);
-static void btn_settings_category_event_handler(lv_event_t *e);
-static void wifi_scan_timer_cb(lv_timer_t *timer);
-
-#endif /* INC_LVGL_MENU_H_ */
+#endif /* INC_UI_CORE_H_ */

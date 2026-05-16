@@ -10,9 +10,9 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "open_meteo.h"
-#include "user/menu/lvgl_menu.h"
 #include <stdint.h>
 
+#include "../menu/ui_core.h"
 #include "sensors.h"
 #include "wifi_user.h"
 
