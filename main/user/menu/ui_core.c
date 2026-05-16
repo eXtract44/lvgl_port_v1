@@ -32,8 +32,6 @@ extern wifi_ap_record_t ap_info;
 
 ui_main_menu_t ui = {0};
 
-
-
 void set_visible(lv_obj_t *parent, bool visible) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR set_visible");

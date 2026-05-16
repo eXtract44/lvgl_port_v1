@@ -3,7 +3,6 @@
 
 extern lv_font_t my_symbols;
 extern lv_font_t my_time_font;
-//extern ui_main_menu_t ui;
 
 void init_fonts(ui_main_menu_t *ui) {
   lv_style_init(&ui->font.very_small_20);
@@ -32,6 +31,20 @@ void init_fonts(ui_main_menu_t *ui) {
   lv_style_set_border_width(&ui->font.nav_btn, 0);
   lv_style_set_shadow_width(&ui->font.nav_btn, 0);
   lv_style_set_text_font(&ui->font.nav_btn, &my_symbols);
+}
+
+void init_styles(ui_main_menu_t *ui) {
+  lv_style_init(&ui->style.main);
+  lv_style_init(&ui->style.popup);
+  lv_style_init(&ui->style.top_left);
+  lv_style_init(&ui->style.bot_left);
+  lv_style_init(&ui->style.top_right);
+  lv_style_init(&ui->style.bot_right);
+  lv_style_init(&ui->style.meter_co2);
+  lv_style_init(&ui->style.chart_co2);
+  lv_style_init(&ui->style.category_btn);
+
+  ui_apply_theme(ui); // применяем нужную тему
 }
 
 void apply_theme_dark(ui_main_menu_t *ui) {
@@ -197,16 +210,3 @@ void ui_apply_theme(ui_main_menu_t *ui) {
   lv_obj_report_style_change(&ui->font.icon);
 }
 
-void init_styles(ui_main_menu_t *ui) {
-  lv_style_init(&ui->style.main);
-  lv_style_init(&ui->style.popup);
-  lv_style_init(&ui->style.top_left);
-  lv_style_init(&ui->style.bot_left);
-  lv_style_init(&ui->style.top_right);
-  lv_style_init(&ui->style.bot_right);
-  lv_style_init(&ui->style.meter_co2);
-  lv_style_init(&ui->style.chart_co2);
-  lv_style_init(&ui->style.category_btn);
-
-  ui_apply_theme(ui); // применяем нужную тему
-}

@@ -10,7 +10,8 @@
 #include "../components/lvgl__lvgl/lvgl.h"
 #include "font/lv_symbol_def.h"
 #include "open_meteo.h"
-#include "user/menu/ui_geometry.h"
+#include "ui_geometry.h"
+#include "ui_user_config.h"
 
 #include "misc/lv_area.h"
 #include "misc/lv_color.h"
@@ -20,6 +21,8 @@
 #include "time.h"
 #include "lvgl_port.h"
 #include "wifi_user.h"
+
+
 
 #define constrain(input, min, max)                                             \
   ({                                                                           \
@@ -45,9 +48,6 @@
 #define MY_PRESSURE_SYMBOL   "\xEF\x8F\xBD"  //        
 #define MY_BELL_SYMBOL       "\xEF\x83\xB3"  // 🔔 праздник                 
 
-
-#define SENSOR_HISTORY_POINTS 144 // 12 часов × 12 точек/час
-#define SENSOR_RECORD_INTERVAL 300 //300 тиков (секунд) между записями
 
 enum namesOfStyles {
   STYLE_TEXT_TITLE,
@@ -371,6 +371,7 @@ typedef struct {
 } rain_snow_anim_t;
 
 
+extern ui_main_menu_t ui;
 
 void init_lv_objects();
 void set_visible(lv_obj_t *parent, bool visible);

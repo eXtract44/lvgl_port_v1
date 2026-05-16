@@ -1,11 +1,10 @@
 
 #include "ui_widgets.h"
 #include "ui_core.h"
-//extern ui_main_menu_t ui;
 
 void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
-                        lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
-                        ui_main_menu_t *ui) {
+                 lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
+                 ui_main_menu_t *ui) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_text");
     return;
@@ -25,9 +24,8 @@ void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
   lv_obj_align(cont, align, x_ofs, y_ofs);
 }
 
-lv_obj_t *create_label(lv_obj_t *parent, const char *text,
-                              lv_align_t align, lv_coord_t x_ofs,
-                              lv_coord_t y_ofs) {
+lv_obj_t *create_label(lv_obj_t *parent, const char *text, lv_align_t align,
+                       lv_coord_t x_ofs, lv_coord_t y_ofs) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_label");
     return NULL;
@@ -40,8 +38,8 @@ lv_obj_t *create_label(lv_obj_t *parent, const char *text,
 }
 
 lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                              lv_align_t align, lv_coord_t x_ofs,
-                              lv_coord_t y_ofs, ui_main_menu_t *ui) {
+                       lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
+                       ui_main_menu_t *ui) {
   const int16_t start_value = BLOCK_TOP_MID_START_CO2_LEFT_PART;
   const int16_t start_value_1 = BLOCK_TOP_MID_END_CO2_LEFT_PART;
   const int16_t end_value = BLOCK_TOP_MID_START_CO2_RIGHT_PART;
@@ -112,8 +110,8 @@ lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 }
 
 lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                              lv_align_t align, lv_coord_t x_ofs,
-                              lv_coord_t y_ofs,ui_main_menu_t *ui) {
+                       lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
+                       ui_main_menu_t *ui) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_meter");
     return NULL;
@@ -128,17 +126,15 @@ lv_obj_t *create_chart(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, MIN_VALUE_CO2,
                      MAX_VALUE_CO2);
 
-
   ui->co2.series_co2 = lv_chart_add_series(chart, lv_color_hex(0x2E86C1),
-                                          LV_CHART_AXIS_PRIMARY_Y);
+                                           LV_CHART_AXIS_PRIMARY_Y);
 
   return chart;
 }
 
 lv_obj_t *create_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                             lv_align_t align, lv_coord_t x_ofs,
-                             lv_coord_t y_ofs, const char *symbol,
-                             ui_main_menu_t *ui) {
+                      lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
+                      const char *symbol, ui_main_menu_t *ui) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_icon");
     return NULL;
@@ -157,12 +153,11 @@ lv_obj_t *create_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   return cont;
 }
 lv_obj_t *create_btn_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                                 lv_align_t align, lv_coord_t x_ofs,
-                                 lv_coord_t y_ofs, lv_event_cb_t event_cb,
-                                 void *user_data, const char *symbol,
-                                 lv_style_t *icon_style, const lv_font_t *font,
-                                 const char *label_text,
-                                 ui_main_menu_t *ui_ptr) {
+                          lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
+                          lv_event_cb_t event_cb, void *user_data,
+                          const char *symbol, lv_style_t *icon_style,
+                          const lv_font_t *font, const char *label_text,
+                          ui_main_menu_t *ui_ptr) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_btn_icon");
     return NULL;
@@ -206,9 +201,8 @@ lv_obj_t *create_btn_icon(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 }
 
 lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                               lv_align_t align, lv_coord_t x_ofs,
-                               lv_coord_t y_ofs, lv_event_cb_t event_cb,
-                               void *user_data) {
+                        lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
+                        lv_event_cb_t event_cb, void *user_data) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_btn_cb");
     // return;
@@ -222,8 +216,8 @@ lv_obj_t *create_btn_cb(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 }
 
 lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
-                                   lv_align_t align, lv_coord_t x_ofs,
-                                   lv_coord_t y_ofs) {
+                            lv_align_t align, lv_coord_t x_ofs,
+                            lv_coord_t y_ofs) {
   if (parent == NULL) {
     ESP_LOGE(TAG, "ERROR create_button");
     // return;

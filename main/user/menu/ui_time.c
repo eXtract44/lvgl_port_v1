@@ -98,8 +98,7 @@ void get_easter(uint16_t year, uint8_t *out_day, uint8_t *out_month) {
 }
 
 // Возвращает название федерального праздника Германии или NULL
-const char *get_german_holiday(uint8_t day, uint8_t month,
-                                      uint16_t year) {
+const char *get_german_holiday(uint8_t day, uint8_t month, uint16_t year) {
   // Фиксированные праздники
   if (day == 1 && month == 1)
     return "Neujahr"; // 7  ✓
