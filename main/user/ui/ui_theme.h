@@ -5,12 +5,12 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_THEME_H_
-#define MAIN_USER_MENU_UI_THEME_H_
+#ifndef MAIN_USER_UI_UI_THEME_H_
+#define MAIN_USER_UI_UI_THEME_H_
 
 
 
-#include "user/menu/ui_core.h"
+#include "ui_core.h"
 
 void init_fonts(ui_main_menu_t *ui);
 void init_styles(ui_main_menu_t *ui);
@@ -20,4 +20,4 @@ void apply_theme_light(ui_main_menu_t *ui);
 void ui_apply_theme(ui_main_menu_t *ui);
 
 
-#endif /* MAIN_USER_MENU_UI_THEME_H_ */
+#endif /* MAIN_USER_UI_UI_THEME_H_ */

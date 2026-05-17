@@ -2,13 +2,13 @@
 #include "ui_popup_settings.h"
 #include "backlight.h"
 #include "nvs_user.h"
-#include "ui_core.h"
 #include "ui_blocks.h"
+#include "ui_core.h"
 #include "ui_theme.h"
-#include "ui_widgets.h"
-#include "wifi_user.h"
-#include "ui_wifi.h"
 #include "ui_user_config.h"
+#include "ui_widgets.h"
+#include "ui_wifi.h"
+#include "wifi_user.h"
 
 extern volatile bool ota_in_progress;
 
@@ -46,7 +46,8 @@ void ui_create_settings_popup(ui_main_menu_t *ui) {
   // --- page_home: список категорий ---
   ui->settings.page_home = lv_obj_create(ui->settings.popup);
   lv_obj_remove_style_all(ui->settings.page_home);
-  lv_obj_set_size(ui->settings.page_home, LVGL_PORT_H_RES, LVGL_PORT_V_RES - 80);
+  lv_obj_set_size(ui->settings.page_home, LVGL_PORT_H_RES,
+                  LVGL_PORT_V_RES - 80);
   lv_obj_align(ui->settings.page_home, LV_ALIGN_BOTTOM_MID, 0, 30);
   lv_obj_set_scroll_dir(ui->settings.page_home, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(ui->settings.page_home, LV_SCROLLBAR_MODE_AUTO);
@@ -69,7 +70,8 @@ void ui_create_settings_popup(ui_main_menu_t *ui) {
   static const char *cat_labels[] = {
       LV_SYMBOL_IMAGE " Display",
       LV_SYMBOL_WIFI " WLAN",
-      "\xEF\x82\x93" " Bluetooth",
+      "\xEF\x82\x93"
+      " Bluetooth",
       LV_SYMBOL_GPS " Wetter",
       LV_SYMBOL_HOME " Sensoren",
       LV_SYMBOL_DOWNLOAD " Update",
@@ -318,7 +320,8 @@ void ui_create_settigs_display(ui_main_menu_t *ui) {
 
   ui->settings.backlight_desc_label =
       create_label(ui->settings.page_content, "", LV_ALIGN_TOP_LEFT, X, 200);
-  lv_obj_add_style(ui->settings.backlight_desc_label, &ui->font.very_small_20, 0);
+  lv_obj_add_style(ui->settings.backlight_desc_label, &ui->font.very_small_20,
+                   0);
 
   ui->settings.backlight_slider = lv_slider_create(ui->settings.page_content);
   lv_obj_set_size(ui->settings.backlight_slider, W - 120, 40);
@@ -572,12 +575,11 @@ void ui_create_settigs_wifi(ui_main_menu_t *ui) {
     lv_obj_t *bar = lv_obj_create(conn_block);
     lv_coord_t bar_h = 8 + i * 7;
     lv_obj_set_size(bar, 10, bar_h);
-    lv_obj_align(bar, LV_ALIGN_RIGHT_MID, -5 - (3 - i) * 16,
-                 (29 - bar_h) / 2);
+    lv_obj_align(bar, LV_ALIGN_RIGHT_MID, -5 - (3 - i) * 16, (29 - bar_h) / 2);
     lv_obj_set_style_radius(bar, 2, 0);
     lv_obj_set_style_border_width(bar, 0, 0);
-    lv_obj_set_style_bg_color(bar,
-        (i < bars) ? lv_color_hex(0x4CAF50) : lv_color_hex(0x444444), 0);
+    lv_obj_set_style_bg_color(
+        bar, (i < bars) ? lv_color_hex(0x4CAF50) : lv_color_hex(0x444444), 0);
     lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
     ui->wifi.signal_bars[i] = bar;
   }
@@ -616,7 +618,8 @@ void ui_create_settigs_weather(ui_main_menu_t *ui) {
                        .cities_de[ui->weather.settings_popup.saved_city]
                        .name,
                    LV_ALIGN_TOP_LEFT, 220, 10);
-  lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32, 0);
+  lv_obj_add_style(ui->weather.settings_popup.city_label, &ui->font.medium_32,
+                   0);
 
   ui->weather.settings_popup.btn_open_city_list =
       create_btn_cb(p, 50, 50, LV_ALIGN_TOP_LEFT, 500, 10,
@@ -702,15 +705,22 @@ void set_current_city_weather_event_handler(lv_event_t *e) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ui_create_settigs_sensors(ui_main_menu_t *ui) {
+	 const lv_coord_t W = LVGL_PORT_H_RES - 60;
+  const lv_coord_t X = 20;
+	
   lv_obj_t *p = ui->settings.page_content;
+  
+  create_text("Luftqualitaetssensor:", ui->settings.page_content, STYLE_TEXT_SMALL,
+              LV_ALIGN_TOP_LEFT, X, 60, ui);
 
-  create_text("Luftqualitaetssensor:", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT,
-              15, 10, ui);
+
+  create_text("Sensoren", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID,
+              0, 10, ui);
 
   static const char *co2_map[] = {"Sensitiv", "Normal", "Robust", ""};
   ui->settings.co2_btnmatrix = lv_btnmatrix_create(p);
-  lv_obj_set_size(ui->settings.co2_btnmatrix, 540, 90);
-  lv_obj_align(ui->settings.co2_btnmatrix, LV_ALIGN_TOP_LEFT, 10, 50);
+  lv_obj_set_size(ui->settings.co2_btnmatrix, W, 90);
+  lv_obj_align(ui->settings.co2_btnmatrix, LV_ALIGN_TOP_LEFT, X, 100);
   lv_btnmatrix_set_map(ui->settings.co2_btnmatrix, co2_map);
   lv_obj_set_style_text_font(ui->settings.co2_btnmatrix, &lv_font_montserrat_20,
                              LV_PART_ITEMS);
@@ -720,7 +730,7 @@ void ui_create_settigs_sensors(ui_main_menu_t *ui) {
   lv_obj_add_event_cb(ui->settings.co2_btnmatrix, co2_btnmatrix_event_cb,
                       LV_EVENT_VALUE_CHANGED, ui);
 
-  ui->settings.co2_desc_label = create_label(p, "", LV_ALIGN_TOP_LEFT, 15, 145);
+  ui->settings.co2_desc_label = create_label(p, "", LV_ALIGN_TOP_LEFT, X, 200);
   lv_obj_add_style(ui->settings.co2_desc_label, &ui->font.very_small_20, 0);
 
   lv_btnmatrix_set_btn_ctrl(ui->settings.co2_btnmatrix,
@@ -733,6 +743,19 @@ void ui_create_settigs_sensors(ui_main_menu_t *ui) {
       "400-6000 ppm: fuer Industrie und Lager."};
   lv_label_set_text(ui->settings.co2_desc_label,
                     co2_descs[ui->settings.switch_.co2_mode]);
+
+  lv_obj_t *info_label = create_label(
+      p,
+
+      "Der Luftqualitaetssensor erfasst fluechtige organische Verbindungen (VOCs)\n"
+      "und berechnet daraus einen geschaetzten CO2-Aequivalentwert (eCO2)\n"
+      "- keine direkte CO2-Messung.",
+      LV_ALIGN_BOTTOM_MID, 0, -10);
+  lv_obj_set_style_text_font(info_label, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_color(info_label, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_text_align(info_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_label_set_long_mode(info_label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(info_label, LVGL_PORT_H_RES - 40);
 }
 
 void co2_btnmatrix_event_cb(lv_event_t *e) {

@@ -5,11 +5,11 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_WIDGETS_H_
-#define MAIN_USER_MENU_UI_WIDGETS_H_
+#ifndef MAIN_USER_UI_UI_WIDGETS_H_
+#define MAIN_USER_UI_UI_WIDGETS_H_
 
-#include "ui_core.h"
 #include <stdint.h>
+#include "ui_core.h"
 
 void create_text(const char *text, lv_obj_t *parent, uint16_t theme,
                  lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs,
@@ -38,4 +38,4 @@ lv_obj_t *create_background(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 lv_obj_t *create_label(lv_obj_t *parent, const char *text, lv_align_t align,
                        lv_coord_t x_ofs, lv_coord_t y_ofs);
 
-#endif /* MAIN_USER_MENU_UI_WIDGETS_H_ */
+#endif /* MAIN_USER_UI_UI_WIDGETS_H_ */

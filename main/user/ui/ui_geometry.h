@@ -5,8 +5,8 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_GEOMETRY_H_
-#define MAIN_USER_MENU_UI_GEOMETRY_H_
+#ifndef MAIN_USER_UI_UI_GEOMETRY_H_
+#define MAIN_USER_UI_UI_GEOMETRY_H_
 
 /////////////////////////////////////////////////////////////////////////BLOCK_TOP_LEFT
 #define BLOCK_TOP_LEFT_WIDTH 250
@@ -241,4 +241,4 @@
 #define BLOCK_BOT_RIGHT_MULT_FACTOR_WEATHER_ANIM_SNOWS 2
 #define BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_RAIN_SNOW 60000
 
-#endif /* MAIN_USER_MENU_UI_GEOMETRY_H_ */
+#endif /* MAIN_USER_UI_UI_GEOMETRY_H_ */

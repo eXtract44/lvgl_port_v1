@@ -5,8 +5,8 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_WEATHER_ANIM_H_
-#define MAIN_USER_MENU_UI_WEATHER_ANIM_H_
+#ifndef MAIN_USER_UI_UI_WEATHER_ANIM_H_
+#define MAIN_USER_UI_UI_WEATHER_ANIM_H_
 
 #include "ui_core.h"
 
@@ -45,4 +45,4 @@ void draw_weather_snow(ui_main_menu_t *ui);
 // All
 void draw_weather(ui_main_menu_t *ui);
 
-#endif /* MAIN_USER_MENU_UI_WEATHER_ANIM_H_ */
+#endif /* MAIN_USER_UI_UI_WEATHER_ANIM_H_ */

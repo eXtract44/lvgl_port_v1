@@ -5,10 +5,10 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_TIMERS_H_
-#define MAIN_USER_MENU_UI_TIMERS_H_
+#ifndef MAIN_USER_UI_UI_TIMERS_H_
+#define MAIN_USER_UI_UI_TIMERS_H_
 
-#include "user/menu/ui_core.h"
+#include "ui_core.h"
 
 void create_timers();
 void timer_60000(lv_timer_t *timer);
@@ -21,4 +21,4 @@ void display_standby_handle(ui_main_menu_t *ui);
 uint8_t backlight_get_current_pct(ui_main_menu_t *ui);
 bool is_screen_pressed(void);
 
-#endif /* MAIN_USER_MENU_UI_TIMERS_H_ */
+#endif /* MAIN_USER_UI_UI_TIMERS_H_ */

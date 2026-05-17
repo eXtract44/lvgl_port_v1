@@ -6,8 +6,8 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "freertos/event_groups.h"
-#include "user/menu/ui_core.h"
-#include "user/menu/ui_user_config.h"
+#include "user/ui/ui_core.h"
+#include "user/ui/ui_user_config.h"
 #include "user/periphery/i2c_bus.h"
 //#include "nvs_flash.h"
 

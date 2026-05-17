@@ -10,15 +10,15 @@
 #include "../components/lvgl__lvgl/lvgl.h"
 #include "font/lv_symbol_def.h"
 #include "open_meteo.h"
-#include "ui_geometry.h"
-#include "ui_user_config.h"
-
 #include "misc/lv_area.h"
 #include "misc/lv_color.h"
 #include "stdio.h"
 #include "math.h"
 #include "stdbool.h"
 #include "time.h"
+
+#include "ui_geometry.h"
+#include "ui_user_config.h"
 #include "lvgl_port.h"
 #include "wifi_user.h"
 

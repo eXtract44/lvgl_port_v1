@@ -5,11 +5,11 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_POPUP_SETTINGS_H_
-#define MAIN_USER_MENU_UI_POPUP_SETTINGS_H_
+#ifndef MAIN_USER_UI_UI_POPUP_SETTINGS_H_
+#define MAIN_USER_UI_UI_POPUP_SETTINGS_H_
 
-#include "user/menu/ui_core.h"
 #include "../periphery/ota.h"
+#include "ui_core.h"
 
 //UI Settings Popup
 void ui_create_settings_popup(ui_main_menu_t *ui);
@@ -45,4 +45,4 @@ void ota_start_timer_cb(lv_timer_t *t);
 void ota_btn_event_cb(lv_event_t *e);
 
 
-#endif /* MAIN_USER_MENU_UI_POPUP_SETTINGS_H_ */
+#endif /* MAIN_USER_UI_UI_POPUP_SETTINGS_H_ */

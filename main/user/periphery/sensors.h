@@ -70,6 +70,7 @@ typedef struct sgp30_data_st {
     uint16_t      co2;
     uint16_t      tvoc;
     sgp30_state_t state;
+    uint8_t init_ok;
 } sgp30_data_t;
 
 typedef enum sgp30_cmd_en {

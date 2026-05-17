@@ -12,7 +12,7 @@
 #include "open_meteo.h"
 #include <stdint.h>
 
-#include "../menu/ui_core.h"
+#include "../ui/ui_core.h"
 #include "sensors.h"
 #include "wifi_user.h"
 

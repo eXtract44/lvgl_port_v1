@@ -22,7 +22,7 @@
 #include "waveshare_rgb_lcd_port.h"
 #include <math.h>
 #include <stdint.h>
-#include "../menu/ui_user_config.h"
+#include "../ui/ui_user_config.h"
 
 sgp30_data_t sgp30_data = {0};
 
@@ -223,12 +223,19 @@ static int sgp30_soft_reset(void) {
 
 int sgp30_init(void) {
     xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
-    int status;
-    status = sgp30_soft_reset();
+    int status = -1;
+    status = sgp30_soft_reset(); 
     vTaskDelay(pdMS_TO_TICKS(100));
-    status = sgp30_send_cmd(INIT_AIR_QUALITY);
+    status = sgp30_send_cmd(INIT_AIR_QUALITY);//0 ok -1 fail
     vTaskDelay(pdMS_TO_TICKS(100));
-    xSemaphoreGive(i2c_bus_mutex);
+    xSemaphoreGive(i2c_bus_mutex);       
+    if(status == 0){
+		sgp30_data.init_ok = 1;
+	}
+    else{
+		sgp30_data.init_ok = 0;
+    } 
+    
     return status == 0 ? 0 : -1;
 }
 

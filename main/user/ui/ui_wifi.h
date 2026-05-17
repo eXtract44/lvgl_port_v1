@@ -5,8 +5,8 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_WIFI_H_
-#define MAIN_USER_MENU_UI_WIFI_H_
+#ifndef MAIN_USER_UI_UI_WIFI_H_
+#define MAIN_USER_UI_UI_WIFI_H_
 
 #include "ui_core.h"
 
@@ -21,4 +21,4 @@ void wifi_manual_entry_cb(lv_event_t *e);
 void wifi_refresh_cb(lv_event_t *e);
 void wifi_scan_timer_cb(lv_timer_t *timer);
 void wifi_check_timer_cb(lv_timer_t *timer);
-#endif /* MAIN_USER_MENU_UI_WIFI_H_ */
+#endif /* MAIN_USER_UI_UI_WIFI_H_ */

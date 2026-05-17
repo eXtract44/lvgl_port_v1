@@ -5,13 +5,13 @@
  *      Author: toose
  */
 
-#ifndef MAIN_USER_MENU_UI_BLOCKS_H_
-#define MAIN_USER_MENU_UI_BLOCKS_H_
+#ifndef MAIN_USER_UI_UI_BLOCKS_H_
+#define MAIN_USER_UI_UI_BLOCKS_H_
 
 
 
 
-#include "user/menu/ui_core.h"
+#include "ui_core.h"
 
 //Block All
 void create_menu(ui_main_menu_t *ui);
@@ -65,4 +65,4 @@ void update_co2_chart_labels(ui_main_menu_t *ui);
 void create_block_bot_right(ui_main_menu_t *ui);
 void update_block_bot_right(ui_main_menu_t *ui);
         
-#endif /* MAIN_USER_MENU_UI_BLOCKS_H_ */
+#endif /* MAIN_USER_UI_UI_BLOCKS_H_ */

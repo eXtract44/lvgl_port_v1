@@ -6,7 +6,7 @@
 #include "ui_theme.h"
 #include "ui_time.h"
 #include "ui_weather_anim.h"
-#include "user/menu/ui_user_config.h"
+#include "ui_user_config.h"
 #include "wifi_user.h"
 
 volatile int standby_touched = 0; // callback for extern touch driver

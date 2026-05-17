@@ -1,11 +1,11 @@
 
 #include "ui_blocks.h"
 #include "ui_core.h"
+#include "ui_popup_settings.h"
+#include "ui_time.h"
+#include "ui_user_config.h"
+#include "ui_weather_anim.h"
 #include "ui_widgets.h"
-#include "user/menu/ui_time.h"
-#include "user/menu/ui_user_config.h"
-#include "user/menu/ui_popup_settings.h"
-#include "user/menu/ui_weather_anim.h"
 #include "user/periphery/time_user.h"
 
 extern forecast_data_t forecast_data;
@@ -568,9 +568,8 @@ void sensor_temperature_record_values(ui_main_menu_t *ui) {
   }
 }
 
-void sensor_temperature_history_get(const sensor_history_t *h,
-                                           uint16_t idx, int16_t *temp_x10,
-                                           uint8_t *hum) {
+void sensor_temperature_history_get(const sensor_history_t *h, uint16_t idx,
+                                    int16_t *temp_x10, uint8_t *hum) {
   uint16_t real_idx = (h->head - h->count + idx + SENSOR_HISTORY_POINTS) %
                       SENSOR_HISTORY_POINTS;
   *temp_x10 = h->temperature[real_idx];
@@ -617,7 +616,8 @@ void create_block_top_middle(ui_main_menu_t *ui) {
   if (!ui->co2.co2_status_label)
     return;
   lv_obj_add_style(ui->co2.co2_status_label, &ui->font.very_small_20, 0);
-  lv_obj_set_style_text_align(ui->co2.co2_status_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_status_label, LV_TEXT_ALIGN_CENTER,
+                              0);
   lv_obj_set_style_text_color(ui->co2.co2_status_label,
                               lv_palette_main(LV_PALETTE_GREEN), 0);
   lv_obj_set_style_bg_opa(ui->co2.co2_status_label, LV_OPA_20, 0);
@@ -633,12 +633,15 @@ void create_block_top_middle(ui_main_menu_t *ui) {
 
   // --- футер "CO₂ | Air Quality" ---
   ui->co2.co2_footer_label = create_label(
-      ui->screen, "CO2 | Air Quality", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      ui->screen, "eCO2 | Air Quality", BLOCK_TOP_MID_ALIGN_CO2_CHART,
       BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 60);
-  lv_obj_set_style_text_font(ui->co2.co2_footer_label, &lv_font_montserrat_12, 0);
-  lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_font(ui->co2.co2_footer_label, &lv_font_montserrat_12,
+                             0);
+  lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER,
+                              0);
   lv_obj_add_style(ui->co2.co2_footer_label, &ui->font.very_small_20, 0);
-  lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_align(ui->co2.co2_footer_label, LV_TEXT_ALIGN_CENTER,
+                              0);
 
   // центральный кружок поверх иглы
   lv_obj_t *center_dot = lv_obj_create(ui->screen);
@@ -657,7 +660,8 @@ void create_block_top_middle(ui_main_menu_t *ui) {
                    0, BLOCK_TOP_MID_Y_START + 40);
   lv_obj_set_style_text_color(ui->co2.calib_icon_label,
                               lv_palette_main(LV_PALETTE_ORANGE), 0);
-  lv_obj_set_style_text_font(ui->co2.calib_icon_label, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_font(ui->co2.calib_icon_label, &lv_font_montserrat_20,
+                             0);
 
   // --- метр кликабельный ---
   lv_obj_add_flag(ui->co2.meter, LV_OBJ_FLAG_CLICKABLE);
@@ -684,27 +688,30 @@ void co2_calib_popup_close_cb(lv_event_t *e) {
 }
 
 void co2_meter_click_event_cb(lv_event_t *e) {
-  ui_main_menu_t *ui = lv_event_get_user_data(e);
+  if (sgp30_data.init_ok) {
+    ui_main_menu_t *ui = lv_event_get_user_data(e);
 
-  TickType_t elapsed = xTaskGetTickCount() - ui->co2.calib_start_tick;
-  TickType_t total = CO2_CALIB_TIME;
+    TickType_t elapsed = xTaskGetTickCount() - ui->co2.calib_start_tick;
+    TickType_t total = CO2_CALIB_TIME;
 
-  if (elapsed < total) {
-    uint32_t remaining_sec = (total - elapsed) / configTICK_RATE_HZ;
-    uint32_t h = remaining_sec / 3600;
-    uint32_t m = (remaining_sec % 3600) / 60;
-    lv_label_set_text_fmt(ui->co2.calib_popup_text,
-                          "Der CO2-Sensor befindet sich in der Lernphase.\n"
-                          "Die Werte sind noch ungenau.\n\n"
-                          "Verbleibende Zeit: %02u:%02u Std.",
-                          (unsigned int)h, (unsigned int)m);
-  } else {
-    lv_label_set_text(ui->co2.calib_popup_text,
-                      "Der CO2-Sensor ist kalibriert.\n"
-                      "Die angezeigten Werte sind zuverlaessig.");
-  }
+    if (elapsed < total) {
+      uint32_t remaining_sec = (total - elapsed) / configTICK_RATE_HZ;
+      uint32_t h = remaining_sec / 3600;
+      uint32_t m = (remaining_sec % 3600) / 60;
+      lv_label_set_text_fmt(ui->co2.calib_popup_text,
+                            "Der eCO2-Sensor befindet sich in der Lernphase.\n"
+                            "Die Werte sind noch ungenau.\n\n"
+                            "Verbleibende Zeit: %02u:%02u Std.",
+                            (unsigned int)h, (unsigned int)m);
+    } else {
+      lv_label_set_text(ui->co2.calib_popup_text,
+                        "Der eCO2-Sensor ist kalibriert.\n"
+                        "Die angezeigten Werte sind zuverlaessig.");
+    }
 
-  lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+  } else
+    return;
 }
 
 void ui_create_sgp30_calib_popup(ui_main_menu_t *ui) {
@@ -715,11 +722,12 @@ void ui_create_sgp30_calib_popup(ui_main_menu_t *ui) {
 
   ui->co2.calib_popup_text =
       create_label(ui->co2.calib_popup,
-                   "Der CO2-Sensor befindet sich in der Lernphase.\n"
+                   "Der eCO2-Sensor befindet sich in der Lernphase.\n"
                    "Die Werte sind noch ungenau.\n"
                    "Die Genauigkeit verbessert sich nach ~12 Stunden.",
                    LV_ALIGN_TOP_MID, 0, 30);
-  lv_obj_set_style_text_align(ui->co2.calib_popup_text, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_align(ui->co2.calib_popup_text, LV_TEXT_ALIGN_CENTER,
+                              0);
   lv_obj_add_style(ui->co2.calib_popup_text, &ui->font.very_small_20, 0);
   lv_obj_set_width(ui->co2.calib_popup_text, POPUP_WINDOW_WIDTH - 40);
 
@@ -1071,7 +1079,8 @@ void update_block_bot_left(ui_main_menu_t *ui) {
     lv_obj_set_style_text_color(ui->weather.uv_label, calc_uv_color(uv), 0);
   } else {
     lv_label_set_text(ui->weather.uv_label, "UV -");
-    lv_obj_remove_local_style_prop(ui->weather.uv_label, LV_STYLE_TEXT_COLOR, 0);
+    lv_obj_remove_local_style_prop(ui->weather.uv_label, LV_STYLE_TEXT_COLOR,
+                                   0);
   }
 
   float rain_prob = (float)get_precipitation_probability();
@@ -1272,17 +1281,20 @@ void ui_create_co2_chart_bot_mid(ui_main_menu_t *ui) {
   ui->co2.chart_lbl_max = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_max, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_max, LV_OPA_50, 0);
-  lv_obj_align_to(ui->co2.chart_lbl_max, ui->co2.chart, LV_ALIGN_TOP_LEFT, 4, 2);
+  lv_obj_align_to(ui->co2.chart_lbl_max, ui->co2.chart, LV_ALIGN_TOP_LEFT, 4,
+                  2);
 
   ui->co2.chart_lbl_mid = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_mid, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_mid, LV_OPA_50, 0);
-  lv_obj_align_to(ui->co2.chart_lbl_mid, ui->co2.chart, LV_ALIGN_LEFT_MID, 4, 0);
+  lv_obj_align_to(ui->co2.chart_lbl_mid, ui->co2.chart, LV_ALIGN_LEFT_MID, 4,
+                  0);
 
   ui->co2.chart_lbl_min = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_min, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_opa(ui->co2.chart_lbl_min, LV_OPA_50, 0);
-  lv_obj_align_to(ui->co2.chart_lbl_min, ui->co2.chart, LV_ALIGN_BOTTOM_LEFT, 4, -2);
+  lv_obj_align_to(ui->co2.chart_lbl_min, ui->co2.chart, LV_ALIGN_BOTTOM_LEFT, 4,
+                  -2);
 
   ui->co2.chart_lbl_t24 = lv_label_create(ui->screen);
   lv_obj_add_style(ui->co2.chart_lbl_t24, &ui->font.very_small_20, 0);
@@ -1417,8 +1429,7 @@ void create_block_bot_right(ui_main_menu_t *ui) {
 #if ACTIVATE_ANIM_RAIN
   for (uint8_t i = 0; i < BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_RAINS; i++) {
     ui->animation.rain[i] =
-        create_rain_anim(&rain_drop_heavy_9_22, ui->animation.screen,
-                         2,
+        create_rain_anim(&rain_drop_heavy_9_22, ui->animation.screen, 2,
                          BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_RAIN_SNOW);
     set_visible(ui->animation.rain[i], false);
   }
@@ -1427,8 +1438,7 @@ void create_block_bot_right(ui_main_menu_t *ui) {
 #if ACTIVATE_ANIM_SNOW
   for (uint8_t i = 0; i < BLOCK_BOT_RIGHT_MAX_WEATHER_ANIM_SNOWS; i++) {
     ui->animation.snow[i] =
-        create_snow_anim(&snow_flake_2_15_15, ui->animation.screen,
-                         0,
+        create_snow_anim(&snow_flake_2_15_15, ui->animation.screen, 0,
                          BLOCK_BOT_RIGHT_SPEED_WEATHER_ANIM_RAIN_SNOW);
     set_visible(ui->animation.snow[i], false);
   }
