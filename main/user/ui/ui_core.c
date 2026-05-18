@@ -16,6 +16,7 @@
 #include "ui_weather_anim.h"
 #include "ui_widgets.h"
 #include "ui_wifi.h"
+#include "esp_log.h"
 
 #include "../periphery/sensors.h"
 #include "../periphery/wifi_user.h"
@@ -29,7 +30,7 @@
 
 extern const city_t cities_de[];
 extern wifi_ap_record_t ap_info;
-extern sgp30_data_t sgp30_data;
+
 
 ui_main_menu_t ui = {0};
 
@@ -93,9 +94,6 @@ void init_lv_objects() {
   
   // SGP30 калибровка
    ui.co2.calib_start_tick = xTaskGetTickCount();
-  if(sgp30_data.init_ok){
-  	ui_create_sgp30_calib_popup(&ui); 
-  	lv_obj_clear_flag(ui.co2.calib_popup, LV_OBJ_FLAG_HIDDEN); // попап при старте
-  } 
-  
+   ui_create_sgp30_calib_popup(&ui); 	
+   set_visible(ui.co2.calib_popup,true);  	
 }

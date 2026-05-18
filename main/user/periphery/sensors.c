@@ -231,8 +231,10 @@ int sgp30_init(void) {
     xSemaphoreGive(i2c_bus_mutex);       
     if(status == 0){
 		sgp30_data.init_ok = 1;
+		ESP_LOGI("SGP30", "Init OK");
 	}
     else{
+		ESP_LOGE("SGP30", "Init Fail");
 		sgp30_data.init_ok = 0;
     } 
     
@@ -300,9 +302,9 @@ int sgp30_read(void) {
 
     int status = sgp30_start();
     if (status != 0) {
-        ESP_LOGE("SGP30", "Start failed");
+        //ESP_LOGE("SGP30", "Start failed");
         try_to_read_cnt++;
-        sgp30_data.state = SGP30_STATE_FAIL;
+        //sgp30_data.state = SGP30_STATE_FAIL;
         xSemaphoreGive(i2c_bus_mutex);
         return -1;
     }
@@ -316,7 +318,7 @@ int sgp30_read(void) {
     xSemaphoreGive(i2c_bus_mutex);
 
     if (status != 0) {
-        ESP_LOGE("SGP30", "Read failed");
+        //ESP_LOGE("SGP30", "Read failed");
         try_to_read_cnt++;
         return -1;
     }
@@ -330,6 +332,7 @@ int sgp30_read(void) {
     if (try_to_read_cnt > number_of_try) {
         try_to_read_cnt  = number_of_try + 1;
         sgp30_data.state = SGP30_STATE_FAIL;
+        ESP_LOGE("SGP30", "Read failed");
     } else {
         try_to_read_cnt  = 0;
         sgp30_data.state = SGP30_STATE_OK;

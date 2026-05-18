@@ -66,6 +66,7 @@ void weather_task(void *arg) {
 }
 void app_main() {
 	esp_ota_mark_app_valid_cancel_rollback();
+	 
 	backlight_init();
 	backlight_set(30);
 	i2c_bus_mutex_init();
@@ -85,6 +86,7 @@ nvs_user_init();
   // --- LCD + LVGL ---
   waveshare_esp32_s3_rgb_lcd_init(); // Initialize the Waveshare ESP32-S3 RGB
   wavesahre_rgb_lcd_bl_off();
+ 
   //i2c_scan();                    
   if (lvgl_port_lock(-1)) {
     init_lv_objects();
