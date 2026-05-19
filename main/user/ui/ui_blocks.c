@@ -677,7 +677,7 @@ void update_block_top_middle(ui_main_menu_t *ui) {
     print_value("%.f", (float)raw, ui->co2.co2_label);
     update_co2_status_label(ui, raw);
   } else {
-    lv_label_set_text(ui->co2.co2_label, "KS");
+    lv_label_set_text(ui->co2.co2_label, "K.S");
     lv_label_set_text(ui->co2.co2_status_label, "---");
   }
 }
@@ -989,7 +989,7 @@ void create_block_bot_left(ui_main_menu_t *ui) {
     return;
   ui->weather.icon_rain = icon;
 
-  value = create_label(ui->weather.screen, "0mm", BLOCK_BOT_LEFT_ALIGN_VALUES,
+  value = create_label(ui->weather.screen, "---", BLOCK_BOT_LEFT_ALIGN_VALUES,
                        BLOCK_BOT_LEFT_X_START_VALUES,
                        BLOCK_BOT_LEFT_Y_START_VALUE_3);
   if (!value)
@@ -1040,13 +1040,13 @@ void update_block_bot_left(ui_main_menu_t *ui) {
   bool wifi_ok = (get_wifi_status() == WIFI_CONNECTED);
 
   if (!wifi_ok) {
-    lv_label_set_text(ui->weather.temperature_label, "K.W");
-    lv_label_set_text(ui->weather.humidity_label, "K.W");
-    lv_label_set_text(ui->weather.feels_like_label, "K.W");
-    lv_label_set_text(ui->weather.uv_label, "UV -");
-    lv_label_set_text(ui->weather.rain_label, "unwahrscheinli.");
-    lv_label_set_text(ui->weather.wind_label, "- m/s");
-    lv_label_set_text(ui->weather.pressure_label, "- hPa");
+    lv_label_set_text(ui->weather.temperature_label, "---");
+    lv_label_set_text(ui->weather.humidity_label, "---");
+    lv_label_set_text(ui->weather.feels_like_label, "---");
+    lv_label_set_text(ui->weather.uv_label, "---");
+    lv_label_set_text(ui->weather.rain_label, "---");
+    lv_label_set_text(ui->weather.wind_label, "---");
+    lv_label_set_text(ui->weather.pressure_label, "---");
     return;
   }
 
@@ -1086,13 +1086,13 @@ void update_block_bot_left(ui_main_menu_t *ui) {
   float rain_prob = (float)get_precipitation_probability();
   const char *precip_text;
   if (rain_prob < 30.0f) {
-    precip_text = "unwahrscheinli.";
+    precip_text = "  kaum";
   } else if (rain_prob < 60.0f) {
-    precip_text = "moeglich";
+    precip_text = "  moeglich";
   } else if (rain_prob < 80.0f) {
-    precip_text = "wahrscheinlich";
+    precip_text = "  wahrsch.";
   } else {
-    precip_text = "erwartet";
+    precip_text = "  sicher";
   }
   lv_label_set_text(ui->weather.rain_label, precip_text);
 

@@ -202,8 +202,13 @@ typedef struct {
 lv_obj_t *backlight_desc_label;
 lv_obj_t *backlight_slider;
 lv_obj_t *backlight_pct_label; 
+
 lv_obj_t *ota_btn;
 lv_obj_t *ota_status_label;
+lv_obj_t *ota_local_ver_label;      // "Aktuelle Version: 1.0.0"
+lv_obj_t *ota_remote_ver_label;     // "Verfuegbar: 1.1.0"
+lv_obj_t *ota_check_btn;            // кнопка "Pruefen"
+
  lv_obj_t *page_home;
     lv_obj_t *page_content;
     lv_obj_t *btn_back;

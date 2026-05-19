@@ -43,6 +43,7 @@ void co2_btnmatrix_event_cb(lv_event_t *e);
 void ota_progress_cb(ota_state_t state, int progress_pct);
 void ota_start_timer_cb(lv_timer_t *t);
 void ota_btn_event_cb(lv_event_t *e);
+void ota_check_btn_event_cb(lv_event_t *e);
 
 
 #endif /* MAIN_USER_UI_UI_POPUP_SETTINGS_H_ */

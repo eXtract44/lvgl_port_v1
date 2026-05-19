@@ -1,6 +1,7 @@
 
 #include "../components/lvgl__lvgl/lvgl.h"
 #include "esp_ota_ops.h"
+
 #include "waveshare_rgb_lcd_port.h"
 
 #include "esp_event.h"
@@ -18,8 +19,31 @@
 #include "user/periphery/backlight.h"
 #include "user/periphery/sensors.h"
 #include "user/periphery/wifi_user.h"
+#include "user/periphery/ota.h"
 
 //#include "user/periphery/sd_card.h"
+
+void ota_log_current_version(void)
+{
+    const char *ver = ota_get_current_version();
+    ESP_LOGI(TAG, "Current firmware version: '%s'", ver);
+}
+
+static void version_check_test_cb(ota_version_status_t status, const char *remote_version)
+{
+    switch (status) {
+        case OTA_VERSION_UP_TO_DATE:
+            ESP_LOGI("OTA_TEST", "Up to date: '%s'", remote_version);
+            break;
+        case OTA_VERSION_UPDATE_AVAILABLE:
+            ESP_LOGI("OTA_TEST", "Update available: local='%s' remote='%s'",
+                     ota_get_current_version(), remote_version);
+            break;
+        case OTA_VERSION_CHECK_FAILED:
+            ESP_LOGE("OTA_TEST", "Check failed");
+            break;
+    }
+}
 
 static void sensors_task(void *arg) {
      vTaskDelay(pdMS_TO_TICKS(1000));
@@ -73,6 +97,7 @@ void app_main() {
 	
 nvs_user_init();
   wifi_init_sta(); // ← ДО запуска weather_task
+  // ota_check_version(version_check_test_cb);
   #if ACTIVATE_BLOCK_TOP_RIGHT
   setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
    tzset();
@@ -98,4 +123,5 @@ nvs_user_init();
 
   xTaskCreate(weather_task, "weather_task", 16384, NULL, 5, NULL);
   #endif
+ 
 }
