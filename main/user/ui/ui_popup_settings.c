@@ -1,6 +1,7 @@
 
 #include "ui_popup_settings.h"
 #include "backlight.h"
+#include "esp_sntp.h"
 #include "nvs_user.h"
 #include "ui_blocks.h"
 #include "ui_core.h"
@@ -156,17 +157,15 @@ void btn_settings_close_popup_event_handler(lv_event_t *e) {
   ui->settings.page_content = NULL;
   ui->settings.btn_back = NULL;
   ui->settings.current_page = SETTINGS_PAGE_HOME;
-  
-  
-   ui->settings.ota_local_ver_label = NULL;     // "Aktuelle Version: 1.0.0"
-ui->settings.ota_remote_ver_label = NULL;     // "Verfuegbar: 1.1.0"
-ui->settings.ota_check_btn = NULL;           // кнопка "Pruefen"
+
+  ui->settings.ota_local_ver_label = NULL;  // "Aktuelle Version: 1.0.0"
+  ui->settings.ota_remote_ver_label = NULL; // "Verfuegbar: 1.1.0"
+  ui->settings.ota_check_btn = NULL;        // кнопка "Pruefen"
+  ui->settings.ota_last_update_label = NULL;
   ui->settings.ota_btn = NULL;
   ui->settings.ota_status_label = NULL;
-  
-  
-  
-  
+
+
   ui->wifi.keyboard = NULL;
   ui->wifi.connected_ssid_label = NULL;
   ui->wifi.scan_list = NULL;
@@ -181,8 +180,6 @@ ui->settings.ota_check_btn = NULL;           // кнопка "Pruefen"
   ui->weather.settings_popup.city_label = NULL;
   ui->weather.settings_popup.btn_open_city_list = NULL;
   ui->weather.settings_popup.citys_list = NULL;
-  
- 
 
   show_all_blocks(ui);
 }
@@ -206,9 +203,10 @@ void btn_settings_back_event_handler(lv_event_t *e) {
   ui->settings.backlight_pct_label = NULL;
   ui->settings.ota_btn = NULL;
   ui->settings.ota_status_label = NULL;
-    ui->settings.ota_local_ver_label = NULL;     // "Aktuelle Version: 1.0.0"
-ui->settings.ota_remote_ver_label = NULL;     // "Verfuegbar: 1.1.0"
-ui->settings.ota_check_btn = NULL;           // кнопка "Pruefen"
+  ui->settings.ota_local_ver_label = NULL;  // "Aktuelle Version: 1.0.0"
+  ui->settings.ota_remote_ver_label = NULL; // "Verfuegbar: 1.1.0"
+  ui->settings.ota_last_update_label = NULL; 
+  ui->settings.ota_check_btn = NULL;        // кнопка "Pruefen"
   ui->wifi.connected_ssid_label = NULL;
   ui->wifi.scan_list = NULL;
   ui->wifi.scan_status_label = NULL;
@@ -274,52 +272,52 @@ void btn_settings_category_event_handler(lv_event_t *e) {
     ui_create_settigs_sensors(ui);
     break;
   case SETTINGS_PAGE_UPDATE:
-   lv_obj_del(lbl); 
-     // --- Заголовок (оставляем на месте) ---
+    lv_obj_del(lbl);
+    // --- Заголовок (оставляем на месте) ---
     create_text("Firmware Update", ui->settings.page_content, STYLE_TEXT_SMALL,
                 LV_ALIGN_TOP_MID, 0, 10, ui);
 
     // --- Текущая версия ---
-    create_text("Aktuelle Version:", ui->settings.page_content, STYLE_TEXT_SMALL,
-                LV_ALIGN_TOP_LEFT, 10, 60, ui);
-    ui->settings.ota_local_ver_label = create_label(
-        ui->settings.page_content, ota_get_current_version(),
-        LV_ALIGN_TOP_LEFT, 300, 68);
-    lv_obj_add_style(ui->settings.ota_local_ver_label, &ui->font.small_24, 0);
+    create_text("Aktuelle Version:", ui->settings.page_content,
+                STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, 10, 60, ui);
+    ui->settings.ota_local_ver_label =
+        create_label(ui->settings.page_content, ota_get_current_version(),
+                     LV_ALIGN_TOP_LEFT, 300, 60);
+    lv_obj_add_style(ui->settings.ota_local_ver_label, &ui->font.medium_32, 0);
 
     // --- Доступная версия ---
     create_text("Verfuegbar:", ui->settings.page_content, STYLE_TEXT_SMALL,
                 LV_ALIGN_TOP_LEFT, 10, 110, ui);
     ui->settings.ota_remote_ver_label = create_label(
-        ui->settings.page_content, "---",
-        LV_ALIGN_TOP_LEFT, 300, 118);
-    lv_obj_add_style(ui->settings.ota_remote_ver_label, &ui->font.small_24, 0);
+        ui->settings.page_content, "---", LV_ALIGN_TOP_LEFT, 300, 110);
+    lv_obj_add_style(ui->settings.ota_remote_ver_label, &ui->font.medium_32, 0);
 
     // --- Кнопка Pruefen ---
     ui->settings.ota_check_btn =
-        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT,
-                      10, 180, ota_check_btn_event_cb, ui);
+        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT, 450,
+                      60, ota_check_btn_event_cb, ui);
     {
-        lv_obj_t *check_lbl = lv_label_create(ui->settings.ota_check_btn);
-        lv_label_set_text(check_lbl, LV_SYMBOL_REFRESH " Pruefen");
-        lv_obj_center(check_lbl);
+      lv_obj_t *check_lbl = lv_label_create(ui->settings.ota_check_btn);
+      lv_label_set_text(check_lbl, LV_SYMBOL_REFRESH " Pruefen");
+      lv_obj_center(check_lbl);
     }
 
     // --- Кнопка Update (неактивна до проверки) ---
     ui->settings.ota_btn =
-        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT,
-                      10, 260, ota_btn_event_cb, NULL);
+        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT, 450,
+                      180, ota_btn_event_cb, NULL);
     {
-        lv_obj_t *ota_lbl = lv_label_create(ui->settings.ota_btn);
-        lv_label_set_text(ota_lbl, LV_SYMBOL_DOWNLOAD " Update");
-        lv_obj_center(ota_lbl);
+      lv_obj_t *ota_lbl = lv_label_create(ui->settings.ota_btn);
+      lv_label_set_text(ota_lbl, LV_SYMBOL_DOWNLOAD " Update");
+      lv_obj_center(ota_lbl);
     }
     lv_obj_add_state(ui->settings.ota_btn, LV_STATE_DISABLED);
 
     // --- Статус ---
     ui->settings.ota_status_label = create_label(
-        ui->settings.page_content, "Bereit", LV_ALIGN_TOP_LEFT, 10, 340);
+        ui->settings.page_content, "Bereit", LV_ALIGN_TOP_LEFT, 10, 390);
     lv_obj_add_style(ui->settings.ota_status_label, &ui->font.very_small_20, 0);
+    ota_check_version(ota_version_check_result_cb);
     break;
   case SETTINGS_PAGE_INFO:
     lv_label_set_text(lbl, LV_SYMBOL_LIST " Info");
@@ -753,17 +751,15 @@ void set_current_city_weather_event_handler(lv_event_t *e) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ui_create_settigs_sensors(ui_main_menu_t *ui) {
-	 const lv_coord_t W = LVGL_PORT_H_RES - 60;
+  const lv_coord_t W = LVGL_PORT_H_RES - 60;
   const lv_coord_t X = 20;
-	
+
   lv_obj_t *p = ui->settings.page_content;
-  
-  create_text("Luftqualitaetssensor:", ui->settings.page_content, STYLE_TEXT_SMALL,
-              LV_ALIGN_TOP_LEFT, X, 60, ui);
 
+  create_text("Luftqualitaetssensor:", ui->settings.page_content,
+              STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, X, 60, ui);
 
-  create_text("Sensoren", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID,
-              0, 10, ui);
+  create_text("Sensoren", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 10, ui);
 
   static const char *co2_map[] = {"Sensitiv", "Normal", "Robust", ""};
   ui->settings.co2_btnmatrix = lv_btnmatrix_create(p);
@@ -795,7 +791,8 @@ void ui_create_settigs_sensors(ui_main_menu_t *ui) {
   lv_obj_t *info_label = create_label(
       p,
 
-      "Der Luftqualitaetssensor erfasst fluechtige organische Verbindungen (VOCs)\n"
+      "Der Luftqualitaetssensor erfasst fluechtige organische Verbindungen "
+      "(VOCs)\n"
       "und berechnet daraus einen geschaetzten CO2-Aequivalentwert (eCO2)\n"
       "- keine direkte CO2-Messung.",
       LV_ALIGN_BOTTOM_MID, 0, -10);
@@ -843,7 +840,13 @@ void ota_progress_cb(ota_state_t state, int progress_pct) {
     snprintf(buf, sizeof(buf), "Lade... %d%%", progress_pct);
     break;
   case OTA_STATE_SUCCESS:
+
     snprintf(buf, sizeof(buf), "Fertig! Neustart...");
+    time_t now = time(NULL);
+    if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED &&
+        now > 1700000000) {
+      ota_last_update_save((uint32_t)now);
+    }
     break;
   case OTA_STATE_FAILED:
     snprintf(buf, sizeof(buf), "Fehler!");
@@ -889,53 +892,77 @@ void ota_btn_event_cb(lv_event_t *e) {
   lv_timer_create(ota_start_timer_cb, 3000, NULL);
 }
 
-static void ota_version_check_result_cb(ota_version_status_t status,
-                                         const char *remote_version)
-{
-    if (!g_ui) return;
+void ota_version_check_result_cb(ota_version_status_t status,
+                                        const char *remote_version) {
+  if (!g_ui)
+    return;
 
-    // обновляем remote label
-    if (lv_obj_is_valid(g_ui->settings.ota_remote_ver_label)) {
-        if (remote_version)
-            lv_label_set_text(g_ui->settings.ota_remote_ver_label, remote_version);
-        else
-            lv_label_set_text(g_ui->settings.ota_remote_ver_label, "Fehler");
+  // обновляем remote label
+  if (lv_obj_is_valid(g_ui->settings.ota_remote_ver_label)) {
+    if (remote_version)
+      lv_label_set_text(g_ui->settings.ota_remote_ver_label, remote_version);
+    else
+      lv_label_set_text(g_ui->settings.ota_remote_ver_label, "Fehler");
+  }
+
+  // обновляем статус и кнопку Update
+  if (!lv_obj_is_valid(g_ui->settings.ota_status_label))
+    return;
+
+  switch (status) {
+  case OTA_VERSION_UP_TO_DATE:
+    lv_label_set_text(g_ui->settings.ota_status_label,
+                      "Aktuell. Kein Update noetig.");
+    if (lv_obj_is_valid(g_ui->settings.ota_btn))
+      lv_obj_add_state(g_ui->settings.ota_btn, LV_STATE_DISABLED);
+    break;
+  case OTA_VERSION_UPDATE_AVAILABLE:
+    lv_label_set_text(g_ui->settings.ota_status_label, "Update verfuegbar!");
+    // --- Дата последнего обновления ---
+    create_text("Letztes Update:", g_ui->settings.page_content, STYLE_TEXT_SMALL,
+                LV_ALIGN_TOP_LEFT, 10, 160, g_ui);
+
+    {
+      char date_buf[32];
+      uint32_t ts = ota_last_update_load();
+      if (ts == 0) {
+        snprintf(date_buf, sizeof(date_buf), "---");
+      } else {
+        time_t t = (time_t)ts;
+        struct tm *tm_info = localtime(&t);
+        strftime(date_buf, sizeof(date_buf), "%d.%m.%Y %H:%M", tm_info);
+      }
+      g_ui->settings.ota_last_update_label = create_label(
+          g_ui->settings.page_content, date_buf, LV_ALIGN_TOP_LEFT, 300, 163);
+      lv_obj_add_style(g_ui->settings.ota_last_update_label, &g_ui->font.small_24,
+                       0);
     }
 
-    // обновляем статус и кнопку Update
-    if (!lv_obj_is_valid(g_ui->settings.ota_status_label)) return;
-
-    switch (status) {
-        case OTA_VERSION_UP_TO_DATE:
-            lv_label_set_text(g_ui->settings.ota_status_label, "Aktuell. Kein Update noetig.");
-            if (lv_obj_is_valid(g_ui->settings.ota_btn))
-                lv_obj_add_state(g_ui->settings.ota_btn, LV_STATE_DISABLED);
-            break;
-        case OTA_VERSION_UPDATE_AVAILABLE:
-            lv_label_set_text(g_ui->settings.ota_status_label, "Update verfuegbar!");
-            if (lv_obj_is_valid(g_ui->settings.ota_btn))
-                lv_obj_clear_state(g_ui->settings.ota_btn, LV_STATE_DISABLED);
-            break;
-        case OTA_VERSION_CHECK_FAILED:
-            lv_label_set_text(g_ui->settings.ota_status_label, "Pruefung fehlgeschlagen.");
-            if (lv_obj_is_valid(g_ui->settings.ota_btn))
-                lv_obj_add_state(g_ui->settings.ota_btn, LV_STATE_DISABLED);
-            break;
-    }
+    if (lv_obj_is_valid(g_ui->settings.ota_btn))
+      lv_obj_clear_state(g_ui->settings.ota_btn, LV_STATE_DISABLED);
+    break;
+  case OTA_VERSION_CHECK_FAILED:
+    lv_label_set_text(g_ui->settings.ota_status_label,
+                      "Pruefung fehlgeschlagen.");
+    if (lv_obj_is_valid(g_ui->settings.ota_btn))
+      lv_obj_add_state(g_ui->settings.ota_btn, LV_STATE_DISABLED);
+    break;
+  }
 }
 
-void ota_check_btn_event_cb(lv_event_t *e)
-{
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+void ota_check_btn_event_cb(lv_event_t *e) {
+  if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+    return;
 
-    ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
-    if (!ui) return;
+  ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
+  if (!ui)
+    return;
 
-    if (lv_obj_is_valid(ui->settings.ota_status_label))
-        lv_label_set_text(ui->settings.ota_status_label, "Pruefen...");
+  if (lv_obj_is_valid(ui->settings.ota_status_label))
+    lv_label_set_text(ui->settings.ota_status_label, "Pruefen...");
 
-    if (lv_obj_is_valid(ui->settings.ota_remote_ver_label))
-        lv_label_set_text(ui->settings.ota_remote_ver_label, "...");
+  if (lv_obj_is_valid(ui->settings.ota_remote_ver_label))
+    lv_label_set_text(ui->settings.ota_remote_ver_label, "...");
 
-    ota_check_version(ota_version_check_result_cb);
+  
 }

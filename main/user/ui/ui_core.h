@@ -3,26 +3,22 @@
 #ifndef INC_UI_CORE_H_
 #define INC_UI_CORE_H_
 
-
 #include "waveshare_rgb_lcd_port.h"
-
 
 #include "../components/lvgl__lvgl/lvgl.h"
 #include "font/lv_symbol_def.h"
-#include "open_meteo.h"
+#include "math.h"
 #include "misc/lv_area.h"
 #include "misc/lv_color.h"
-#include "stdio.h"
-#include "math.h"
+#include "open_meteo.h"
 #include "stdbool.h"
+#include "stdio.h"
 #include "time.h"
 
+#include "lvgl_port.h"
 #include "ui_geometry.h"
 #include "ui_user_config.h"
-#include "lvgl_port.h"
 #include "wifi_user.h"
-
-
 
 #define constrain(input, min, max)                                             \
   ({                                                                           \
@@ -41,45 +37,43 @@
 #define MY_TVOC_SYMBOL "\xEF\x86\x8C"
 #define MY_TEMPERATURE_SYMBOL "\xEF\x8B\x89"
 #define MY_CLOUD_SYMBOL "\xEF\x83\x82"
-#define MY_SNOWFLAKE_SYMBOL  "\xEF\x8B\x9C"  //  ❄ точка росы 
-#define MY_FEELS_LIKE_SYMBOL  "\xEF\x8B\x89"  // термометр (тот же что температура)
-#define MY_SUN_SYMBOL        "\xEF\x86\x85"  // 
-#define MY_CLOUD_RAIN_SYMBOL "\xEF\x9C\xBD"  // 
-#define MY_PRESSURE_SYMBOL   "\xEF\x8F\xBD"  //        
-#define MY_BELL_SYMBOL       "\xEF\x83\xB3"  // 🔔 праздник                 
-
+#define MY_SNOWFLAKE_SYMBOL "\xEF\x8B\x9C" //  ❄ точка росы
+#define MY_FEELS_LIKE_SYMBOL                                                   \
+  "\xEF\x8B\x89" // термометр (тот же что температура)
+#define MY_SUN_SYMBOL "\xEF\x86\x85"        //
+#define MY_CLOUD_RAIN_SYMBOL "\xEF\x9C\xBD" //
+#define MY_PRESSURE_SYMBOL "\xEF\x8F\xBD"   //
+#define MY_BELL_SYMBOL "\xEF\x83\xB3"       // 🔔 праздник
 
 enum namesOfStyles {
   STYLE_TEXT_TITLE,
-  STYLE_TEXT_SMALL,
+  STYLE_TEXT_SMALL, //32
   STYLE_TEXT_VERY_LARGE,
   STYLE_SYMBOLS,
 };
 
 enum namesOfwDay {
-WDAY_SONNTAG = 0,
-WDAY_MONTAG,
-WDAY_DIENSTAG,
-WDAY_MITTWOCH,
-WDAY_DONNERSTAG,
-WDAY_FREITAG,
-WDAY_SAMSTAG,
-WDAY_KEIN_WLAN,
+  WDAY_SONNTAG = 0,
+  WDAY_MONTAG,
+  WDAY_DIENSTAG,
+  WDAY_MITTWOCH,
+  WDAY_DONNERSTAG,
+  WDAY_FREITAG,
+  WDAY_SAMSTAG,
+  WDAY_KEIN_WLAN,
 };
 
 typedef enum {
-    SETTINGS_PAGE_HOME = 0,
-    SETTINGS_PAGE_DISPLAY,
-    SETTINGS_PAGE_WIFI,
-    SETTINGS_PAGE_BLUETOOTH,
-    SETTINGS_PAGE_WEATHER,
-    SETTINGS_PAGE_SENSORS,
-    SETTINGS_PAGE_UPDATE,
-    SETTINGS_PAGE_INFO,
-    SETTINGS_PAGE_LAST_ELEMENT,
+  SETTINGS_PAGE_HOME = 0,
+  SETTINGS_PAGE_DISPLAY,
+  SETTINGS_PAGE_WIFI,
+  SETTINGS_PAGE_BLUETOOTH,
+  SETTINGS_PAGE_WEATHER,
+  SETTINGS_PAGE_SENSORS,
+  SETTINGS_PAGE_UPDATE,
+  SETTINGS_PAGE_INFO,
+  SETTINGS_PAGE_LAST_ELEMENT,
 } settings_page_t;
-
-
 
 // Кольцевой буфер для истории датчиков
 typedef struct {
@@ -90,11 +84,11 @@ typedef struct {
 } sensor_history_t;
 
 typedef struct {
-    float temperature;
-    float humidity;
-    float feels_like;
-    float pressure;
-    bool  valid;       // false до первого заполнения
+  float temperature;
+  float humidity;
+  float feels_like;
+  float pressure;
+  bool valid; // false до первого заполнения
 } weather_snapshot_t;
 
 typedef struct {
@@ -129,7 +123,7 @@ typedef struct {
 } ui_sensor_history_popup_t;
 
 typedef struct {
-    ui_weather_settings_popup_t settings_popup;
+  ui_weather_settings_popup_t settings_popup;
   ui_weather_forecast_popup_t forecast_popup;
   lv_obj_t *screen;
   // иконки
@@ -155,73 +149,74 @@ typedef struct {
 } ui_weather_t;
 
 typedef struct {
-	uint8_t standby_mode;
-	 uint8_t theme_mode;        // 0=Auto 1=Hell 2=Dunkel
-	 bool    theme_last_is_day; // кэш — последнее состояние get_is_day()
-	 uint8_t co2_mode;          // 0=Sensitiv 1=Normal 2=Robust
-	 uint8_t backlight_pct;  // ← новое
-	 uint8_t backlight_mode;  // ← добавить: 0=Manuell 1=Auto 2=Zeitplan
-	 bool standby_screen_off;
+  uint8_t standby_mode;
+  uint8_t theme_mode; // 0=Auto 1=Hell 2=Dunkel
+  bool theme_last_is_day; // кэш — последнее состояние get_is_day()
+  uint8_t co2_mode;       // 0=Sensitiv 1=Normal 2=Robust
+  uint8_t backlight_pct;  // ← новое
+  uint8_t backlight_mode; // ← добавить: 0=Manuell 1=Auto 2=Zeitplan
+  bool standby_screen_off;
 } ui_switchs_t;
 
 #define WIFI_SCAN_MAX_AP 15
 
 typedef struct {
-    // текущее подключение (верхний блок)
-    lv_obj_t *connected_ssid_label;
-    lv_obj_t *signal_bars[4];
+  // текущее подключение (верхний блок)
+  lv_obj_t *connected_ssid_label;
+  lv_obj_t *signal_bars[4];
 
-    // список сетей
-    lv_obj_t *scan_list;          // lv_list контейнер
-    lv_obj_t *scan_status_label;  // "Suche..." / "X Netze gefunden"
+  // список сетей
+  lv_obj_t *scan_list;         // lv_list контейнер
+  lv_obj_t *scan_status_label; // "Suche..." / "X Netze gefunden"
 
-    // popup пароля (появляется по тапу на сеть)
-    lv_obj_t *pass_popup;
-    lv_obj_t *pass_popup_ssid_label;
-    lv_obj_t *ta_pass;
-    lv_obj_t *keyboard;
+  // popup пароля (появляется по тапу на сеть)
+  lv_obj_t *pass_popup;
+  lv_obj_t *pass_popup_ssid_label;
+  lv_obj_t *ta_pass;
+  lv_obj_t *keyboard;
 
-    // внутреннее состояние
-    wifi_ap_record_t scan_results[WIFI_SCAN_MAX_AP];
-    uint16_t         scan_count;
-    char             pending_ssid[33]; // сеть выбранная пользователем
+  // внутреннее состояние
+  wifi_ap_record_t scan_results[WIFI_SCAN_MAX_AP];
+  uint16_t scan_count;
+  char pending_ssid[33]; // сеть выбранная пользователем
 } ui_wifi_t;
 
 typedef struct {
-	ui_switchs_t switch_;
-	lv_obj_t *btn_open;
-	lv_obj_t *popup;
-	lv_obj_t *btn_close;
-	lv_obj_t *standby_btnmatrix;
-	lv_obj_t *standby_desc_label;
-	lv_obj_t *theme_btnmatrix;   // Auto / Hell / Dunkel
-	lv_obj_t *theme_desc_label;  
-	 lv_obj_t *co2_btnmatrix;      
-  lv_obj_t *co2_desc_label;     
-   lv_obj_t *backlight_btnmatrix;
-lv_obj_t *backlight_desc_label;
-lv_obj_t *backlight_slider;
-lv_obj_t *backlight_pct_label; 
+  ui_switchs_t switch_;
+  lv_obj_t *btn_open;
+  lv_obj_t *popup;
+  lv_obj_t *btn_close;
+  lv_obj_t *standby_btnmatrix;
+  lv_obj_t *standby_desc_label;
+  lv_obj_t *theme_btnmatrix; // Auto / Hell / Dunkel
+  lv_obj_t *theme_desc_label;
+  lv_obj_t *co2_btnmatrix;
+  lv_obj_t *co2_desc_label;
+  lv_obj_t *backlight_btnmatrix;
+  lv_obj_t *backlight_desc_label;
+  lv_obj_t *backlight_slider;
+  lv_obj_t *backlight_pct_label;
 
-lv_obj_t *ota_btn;
-lv_obj_t *ota_status_label;
-lv_obj_t *ota_local_ver_label;      // "Aktuelle Version: 1.0.0"
-lv_obj_t *ota_remote_ver_label;     // "Verfuegbar: 1.1.0"
-lv_obj_t *ota_check_btn;            // кнопка "Pruefen"
+  lv_obj_t *ota_btn;
+  lv_obj_t *ota_status_label;
+  lv_obj_t *ota_local_ver_label;  // "Aktuelle Version: 1.0.0"
+  lv_obj_t *ota_remote_ver_label; // "Verfuegbar: 1.1.0"
+  lv_obj_t *ota_check_btn;        // кнопка "Pruefen"
+  lv_obj_t *ota_last_update_label;
 
- lv_obj_t *page_home;
-    lv_obj_t *page_content;
-    lv_obj_t *btn_back;
-    settings_page_t current_page;
+  lv_obj_t *page_home;
+  lv_obj_t *page_content;
+  lv_obj_t *btn_back;
+  settings_page_t current_page;
 } ui_settings_t;
 
 typedef struct {
-lv_obj_t *meter;
+  lv_obj_t *meter;
   lv_obj_t *co2_label;
-  lv_obj_t *co2_unit_label;    // "ppm" под значением
-  lv_obj_t *co2_status_label;  // "GUT" / "MITTEL" / "SCHLECHT"
-  lv_obj_t *co2_footer_label;  // "CO₂ | Luftqualität" внизу
-  lv_obj_t *co2_divider;       // горизонтальная линия
+  lv_obj_t *co2_unit_label;   // "ppm" под значением
+  lv_obj_t *co2_status_label; // "GUT" / "MITTEL" / "SCHLECHT"
+  lv_obj_t *co2_footer_label; // "CO₂ | Luftqualität" внизу
+  lv_obj_t *co2_divider;      // горизонтальная линия
   lv_meter_indicator_t *indicator;
   lv_meter_indicator_t *needle_arc;
   lv_obj_t *chart;
@@ -236,10 +231,10 @@ lv_obj_t *meter;
   lv_obj_t *chart_lbl_t12;
   lv_obj_t *chart_lbl_t24;
   lv_obj_t *calib_icon_label;
-lv_obj_t *calib_popup;
-lv_obj_t *calib_popup_text;
-TickType_t calib_start_tick;
-  
+  lv_obj_t *calib_popup;
+  lv_obj_t *calib_popup_text;
+  TickType_t calib_start_tick;
+
 } ui_co2_t;
 
 typedef struct {
@@ -291,43 +286,43 @@ typedef struct {
   lv_obj_t *tvoc_label;
   lv_obj_t *tvoc_dots[5];
   lv_obj_t *feels_like_label;
-  lv_obj_t *dew_point_label;     // точка росы °C
-  
+  lv_obj_t *dew_point_label; // точка росы °C
+
 } ui_sensor_t;
 
 typedef struct {
   lv_obj_t *screen;
   lv_obj_t *hour_minute_label;
   lv_obj_t *mday_month_label;
-   // wday_label убран — заменён колонкой Mo–So
-  lv_obj_t *wday_labels[7];      // Mo Di Mi Do Fr Sa So
-  lv_obj_t *wday_highlight;      // скруглённый прямоугольник за текущим днём
-  lv_obj_t *holiday_label;       // MY_BELL_SYMBOL + название праздника
+  // wday_label убран — заменён колонкой Mo–So
+  lv_obj_t *wday_labels[7]; // Mo Di Mi Do Fr Sa So
+  lv_obj_t *wday_highlight; // скруглённый прямоугольник за текущим днём
+  lv_obj_t *holiday_label; // MY_BELL_SYMBOL + название праздника
   lv_obj_t *wifi_status_icon;
 } ui_time_t;
 
 typedef struct {
-lv_style_t very_small_20;
-lv_style_t small_24;   // ← новый
-lv_style_t medium_32;  
-lv_style_t large_48;
-lv_style_t time;
- 
-lv_style_t icon;
-lv_style_t nav_btn;
+  lv_style_t very_small_20;
+  lv_style_t small_24; // ← новый
+  lv_style_t medium_32;
+  lv_style_t large_48;
+  lv_style_t time;
+
+  lv_style_t icon;
+  lv_style_t nav_btn;
 
 } font_style_t;
 
 typedef struct {
   lv_style_t main;
-  lv_style_t popup;     // плоский фон для попапов, без градиента
+  lv_style_t popup; // плоский фон для попапов, без градиента
   lv_style_t top_left;
   lv_style_t top_right;
   lv_style_t bot_left;
   lv_style_t bot_right;
   lv_style_t chart_co2;
   lv_style_t meter_co2;
- lv_style_t category_btn;
+  lv_style_t category_btn;
 
 } screen_style_t;
 
@@ -346,8 +341,6 @@ typedef struct {
   screen_style_t style;
   char string_buffer[20];
 } ui_main_menu_t;
-
-
 
 typedef struct {
   lv_obj_t *obj;
@@ -374,7 +367,6 @@ typedef struct {
   int16_t slope; // наклон (например 1 = 45°)
   int32_t phase; // индивидуальный сдвиг
 } rain_snow_anim_t;
-
 
 extern ui_main_menu_t ui;
 

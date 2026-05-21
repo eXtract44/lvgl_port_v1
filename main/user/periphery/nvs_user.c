@@ -13,6 +13,23 @@ void nvs_user_init(){
     }
 }
 
+void ota_last_update_save(uint32_t timestamp) {
+    nvs_handle_t handle;
+    if (nvs_open("ota_settings", NVS_READWRITE, &handle) != ESP_OK) return;
+    nvs_set_u32(handle, "last_update", timestamp);
+    nvs_commit(handle);
+    nvs_close(handle);
+}
+
+uint32_t ota_last_update_load(void) {
+    nvs_handle_t handle;
+    if (nvs_open("ota_settings", NVS_READONLY, &handle) != ESP_OK) return 0;
+    uint32_t val = 0;
+    nvs_get_u32(handle, "last_update", &val);
+    nvs_close(handle);
+    return val;
+}
+
 void weather_settings_save(uint16_t city) {
     nvs_handle_t handle;
     esp_err_t err = nvs_open("wea_settings", NVS_READWRITE, &handle);
