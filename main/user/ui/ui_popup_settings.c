@@ -298,7 +298,7 @@ void btn_settings_category_event_handler(lv_event_t *e) {
 
     // --- Кнопка Pruefen ---
     ui->settings.ota_check_btn =
-        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT, 450,
+        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT, 550,
                       60, ota_check_btn_event_cb, ui);
     {
       lv_obj_t *check_lbl = lv_label_create(ui->settings.ota_check_btn);
@@ -308,7 +308,7 @@ void btn_settings_category_event_handler(lv_event_t *e) {
 
     // --- Кнопка Update (неактивна до проверки) ---
     ui->settings.ota_btn =
-        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT, 450,
+        create_btn_cb(ui->settings.page_content, 200, 60, LV_ALIGN_TOP_LEFT, 550,
                       180, ota_btn_event_cb, NULL);
     {
       lv_obj_t *ota_lbl = lv_label_create(ui->settings.ota_btn);
@@ -935,11 +935,11 @@ void ota_version_check_result_cb(ota_version_status_t status,
       } else {
         time_t t = (time_t)ts;
         struct tm *tm_info = localtime(&t);
-        strftime(date_buf, sizeof(date_buf), "%d.%m.%Y %H:%M", tm_info);
+        strftime(date_buf, sizeof(date_buf), "%d.%m.%Y", tm_info);
       }
       g_ui->settings.ota_last_update_label = create_label(
-          g_ui->settings.page_content, date_buf, LV_ALIGN_TOP_LEFT, 300, 163);
-      lv_obj_add_style(g_ui->settings.ota_last_update_label, &g_ui->font.small_24,
+          g_ui->settings.page_content, date_buf, LV_ALIGN_TOP_LEFT, 300, 160);
+      lv_obj_add_style(g_ui->settings.ota_last_update_label, &g_ui->font.medium_32,
                        0);
     }
 
