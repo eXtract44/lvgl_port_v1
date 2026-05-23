@@ -3,6 +3,7 @@
 #include "backlight.h"
 #include "esp_sntp.h"
 #include "nvs_user.h"
+#include "time_user.h"
 #include "ui_blocks.h"
 #include "ui_core.h"
 #include "ui_theme.h"
@@ -291,6 +292,9 @@ void btn_settings_category_event_handler(lv_event_t *e) {
     ui->settings.ota_remote_ver_label = create_label(
         ui->settings.page_content, "---", LV_ALIGN_TOP_LEFT, 300, 110);
     lv_obj_add_style(ui->settings.ota_remote_ver_label, &ui->font.medium_32, 0);
+    
+    create_text("Letztes Update:", ui->settings.page_content, STYLE_TEXT_SMALL,
+                LV_ALIGN_TOP_LEFT, 10, 160, g_ui);
 
     // --- Кнопка Pruefen ---
     ui->settings.ota_check_btn =
@@ -842,11 +846,7 @@ void ota_progress_cb(ota_state_t state, int progress_pct) {
   case OTA_STATE_SUCCESS:
 
     snprintf(buf, sizeof(buf), "Fertig! Neustart...");
-    time_t now = time(NULL);
-    if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED &&
-        now > 1700000000) {
-      ota_last_update_save((uint32_t)now);
-    }
+
     break;
   case OTA_STATE_FAILED:
     snprintf(buf, sizeof(buf), "Fehler!");
@@ -867,6 +867,10 @@ void ota_start_timer_cb(lv_timer_t *t) {
   lv_obj_set_style_border_width(overlay, 0, 0);
   lv_obj_set_style_radius(overlay, 0, 0);
   lv_obj_set_style_pad_all(overlay, 0, 0);
+      time_t now = time(NULL);
+    if (get_time_year() > 2024) {
+      ota_last_update_save((uint32_t)now);
+    }
   ota_start(OTA_FIRMWARE_URL, ota_progress_cb);
 }
 
@@ -908,6 +912,8 @@ void ota_version_check_result_cb(ota_version_status_t status,
   // обновляем статус и кнопку Update
   if (!lv_obj_is_valid(g_ui->settings.ota_status_label))
     return;
+    
+  
 
   switch (status) {
   case OTA_VERSION_UP_TO_DATE:
@@ -919,8 +925,7 @@ void ota_version_check_result_cb(ota_version_status_t status,
   case OTA_VERSION_UPDATE_AVAILABLE:
     lv_label_set_text(g_ui->settings.ota_status_label, "Update verfuegbar!");
     // --- Дата последнего обновления ---
-    create_text("Letztes Update:", g_ui->settings.page_content, STYLE_TEXT_SMALL,
-                LV_ALIGN_TOP_LEFT, 10, 160, g_ui);
+    
 
     {
       char date_buf[32];

@@ -80,7 +80,7 @@ uint8_t get_time_mday(void) {
 }
 
 uint16_t get_time_year(void) {
-    static uint16_t v = 2025;
+    static uint16_t v = 0;
 #if SIMULATE_TIME_VALUES
     if (++v > 2050) v = 2025;
 #else
