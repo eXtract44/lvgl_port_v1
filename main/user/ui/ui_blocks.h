@@ -25,9 +25,6 @@ void update_block_top_left(ui_main_menu_t *ui);
 void ui_create_sensor_temperature_history_popup(ui_main_menu_t *ui);
 void block_top_left_open_popup_event_handler(lv_event_t *e);
 void btn_sensor_close_history_popup_event_handler(lv_event_t *e);
-void update_tvoc_dots(lv_obj_t *dots[5], uint16_t tvoc,
-                             uint8_t theme_mode);
-                             void sensor_temperature_history_push(sensor_history_t *h);
 void sensor_temperature_record_values(ui_main_menu_t *ui);
 void sensor_temperature_history_get(const sensor_history_t *h,
                                            uint16_t idx, int16_t *temp_x10,

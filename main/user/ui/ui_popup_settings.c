@@ -760,7 +760,7 @@ void ui_create_settigs_sensors(ui_main_menu_t *ui) {
 
   lv_obj_t *p = ui->settings.page_content;
 
-  create_text("Luftqualitaetssensor:", ui->settings.page_content,
+  create_text("TVOC Luftqualitaetssensor:", ui->settings.page_content,
               STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, X, 60, ui);
 
   create_text("Sensoren", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 10, ui);
@@ -786,19 +786,17 @@ void ui_create_settigs_sensors(ui_main_menu_t *ui) {
                             LV_BTNMATRIX_CTRL_CHECKED);
 
   static const char *co2_descs[] = {
-      "400-2400 ppm: fuer Schlafraeume und Bueros.",
-      "400-4000 ppm: fuer Wohnraeume.",
-      "400-6000 ppm: fuer Industrie und Lager."};
+       "0-500 ppb: Sensitiv, fuer Schlafraeume und Bueros.",
+    "0-750 ppb: Normal, fuer Wohnraeume.",
+    "0-1000 ppb: Robust, fuer Industrie und Lager."};
   lv_label_set_text(ui->settings.co2_desc_label,
                     co2_descs[ui->settings.switch_.co2_mode]);
 
   lv_obj_t *info_label = create_label(
       p,
 
-      "Der Luftqualitaetssensor erfasst fluechtige organische Verbindungen "
-      "(VOCs)\n"
-      "und berechnet daraus einen geschaetzten CO2-Aequivalentwert (eCO2)\n"
-      "- keine direkte CO2-Messung.",
+      "Der Sensor misst fluechtige organische Verbindungen (TVOC) in ppb.\n"
+"GUT: 0-150 ppb  MITTEL: 151-350 ppb  SCHLECHT: >350 ppb.\n",
       LV_ALIGN_BOTTOM_MID, 0, -10);
   lv_obj_set_style_text_font(info_label, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_color(info_label, lv_color_hex(0x888888), 0);
@@ -813,9 +811,9 @@ void co2_btnmatrix_event_cb(lv_event_t *e) {
   uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
   ui->settings.switch_.co2_mode = (uint8_t)btn_id;
 
-  static const char *descs[] = {"400-2400 ppm: fuer Schlafraeume und Bueros.",
-                                "400-4000 ppm: fuer Wohnraeume.",
-                                "400-6000 ppm: fuer Industrie und Lager."};
+  static const char *descs[] = {"0-500 ppb: Sensitiv, fuer Schlafraeume und Bueros.",
+    "0-750 ppb: Normal, fuer Wohnraeume.",
+    "0-1000 ppb: Robust, fuer Industrie und Lager."};
   lv_label_set_text(ui->settings.co2_desc_label, descs[btn_id]);
 
   main_settings_save(

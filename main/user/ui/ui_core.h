@@ -275,18 +275,15 @@ typedef struct {
 typedef struct {
   ui_sensor_history_popup_t popup;
   lv_obj_t *screen;
+  
   lv_obj_t *icon_temperature;
   lv_obj_t *icon_humidity;
-  lv_obj_t *icon_feels_like;
-  lv_obj_t *icon_dew_point;
-  lv_obj_t *icon_tvoc;
+  lv_obj_t *ventilation_label;
+
   lv_obj_t *icon_wind;
   lv_obj_t *temperature_label;
   lv_obj_t *humidity_label;
-  lv_obj_t *tvoc_label;
-  lv_obj_t *tvoc_dots[5];
-  lv_obj_t *feels_like_label;
-  lv_obj_t *dew_point_label; // точка росы °C
+
 
 } ui_sensor_t;
 
@@ -294,7 +291,6 @@ typedef struct {
   lv_obj_t *screen;
   lv_obj_t *hour_minute_label;
   lv_obj_t *mday_month_label;
-  // wday_label убран — заменён колонкой Mo–So
   lv_obj_t *wday_labels[7]; // Mo Di Mi Do Fr Sa So
   lv_obj_t *wday_highlight; // скруглённый прямоугольник за текущим днём
   lv_obj_t *holiday_label; // MY_BELL_SYMBOL + название праздника
@@ -303,7 +299,7 @@ typedef struct {
 
 typedef struct {
   lv_style_t very_small_20;
-  lv_style_t small_24; // ← новый
+  lv_style_t small_24; 
   lv_style_t medium_32;
   lv_style_t large_48;
   lv_style_t time;
@@ -315,7 +311,7 @@ typedef struct {
 
 typedef struct {
   lv_style_t main;
-  lv_style_t popup; // плоский фон для попапов, без градиента
+  lv_style_t popup; 
   lv_style_t top_left;
   lv_style_t top_right;
   lv_style_t bot_left;

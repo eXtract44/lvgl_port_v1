@@ -167,83 +167,15 @@ void create_block_top_left(ui_main_menu_t *ui) {
   lv_obj_add_style(value, &ui->font.small_24, 0);
   ui->sensor.humidity_label = value;
 
-  // ═══════════════════════════════════════════
-  // СТРОКА 2 — точка росы + индикатор конденсата
-  // ═══════════════════════════════════════════
-
-  // иконка feels like (термометр, левая колонка)
-  icon =
-      create_icon(ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-                  BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-                  BLOCK_TOP_LEFT_X_START_SYMBOLS,
-                  BLOCK_TOP_LEFT_Y_START_SYMBOLS_3, MY_FEELS_LIKE_SYMBOL, ui);
-  if (!icon)
-    return;
-  ui->sensor.icon_feels_like = icon;
-
-  // значение feels like
-  value = create_label(ui->sensor.screen, "0°C", BLOCK_TOP_LEFT_ALIGN_VALUES,
-                       BLOCK_TOP_LEFT_X_START_VALUES,
-                       BLOCK_TOP_LEFT_Y_START_VALUE_3 + 3);
-  if (!value)
-    return;
-  lv_obj_add_style(value, &ui->font.small_24, 0);
-  ui->sensor.feels_like_label = value;
-
-  // иконка точки росы (правая колонка строки 2)
-  icon =
-      create_icon(ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-                  BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-                  BLOCK_TOP_LEFT_X_START_SYMBOLS_2_RIGHT,
-                  BLOCK_TOP_LEFT_Y_START_SYMBOLS_3, MY_SNOWFLAKE_SYMBOL, ui);
-  if (!icon)
-    return;
-  ui->sensor.icon_dew_point = icon;
-
-  // значение точки росы
-  value = create_label(ui->sensor.screen, "0°C", BLOCK_TOP_LEFT_ALIGN_VALUES,
-                       BLOCK_TOP_LEFT_X_START_VALUES_R,
-                       BLOCK_TOP_LEFT_Y_START_VALUE_3 + 3);
-  if (!value)
-    return;
-  lv_obj_add_style(value, &ui->font.small_24, 0);
-  ui->sensor.dew_point_label = value;
-
-  // ═══════════════════════════════════════════
-  // СТРОКА 3 — TVOC + кружки качества воздуха
-  // ═══════════════════════════════════════════
-
-  // иконка TVOC
-  icon =
-      create_icon(ui->sensor.screen, BLOCK_TOP_LEFT_WIDTH_SYMBOLS,
-                  BLOCK_TOP_LEFT_HEIGHT_SYMBOLS, BLOCK_TOP_LEFT_ALIGN_SYMBOLS,
-                  BLOCK_TOP_LEFT_X_START_SYMBOLS,
-                  BLOCK_TOP_LEFT_Y_START_SYMBOLS_4, MY_TVOC_SYMBOL, ui);
-  if (!icon)
-    return;
-  ui->sensor.icon_tvoc = icon;
-
-  // значение TVOC
-  value = create_label(ui->sensor.screen, "0", BLOCK_TOP_LEFT_ALIGN_VALUES,
-                       BLOCK_TOP_LEFT_X_START_VALUES + 15,
-                       BLOCK_TOP_LEFT_Y_START_VALUE_4 + 3);
-  if (!value)
-    return;
-  lv_obj_add_style(value, &ui->font.small_24, 0);
-  ui->sensor.tvoc_label = value;
-
-  // кружки качества воздуха ●●●○○
-  for (int i = 0; i < 5; i++) {
-    lv_obj_t *dot = lv_obj_create(ui->sensor.screen);
-    lv_obj_set_size(dot, 12, 12);
-    lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_border_width(dot, 0, 0);
-    lv_obj_set_style_bg_color(dot, lv_palette_main(LV_PALETTE_GREEN), 0);
-    lv_obj_align(dot, LV_ALIGN_TOP_LEFT,
-                 BLOCK_TOP_LEFT_X_START_INDICATOR_R + i * 16,
-                 BLOCK_TOP_LEFT_Y_START_VALUE_4 + 11);
-    ui->sensor.tvoc_dots[i] = dot;
-  }
+value = create_label(ui->sensor.screen, "", BLOCK_TOP_LEFT_ALIGN_VALUES,
+                     BLOCK_TOP_LEFT_X_START_SYMBOLS+30,
+                     BLOCK_TOP_LEFT_Y_START_VALUE_3 + 3);
+if (!value) return;
+lv_obj_add_style(value, &ui->font.very_small_20, 0);
+lv_obj_set_width(value, BLOCK_TOP_LEFT_WIDTH - 20);
+lv_label_set_long_mode(value, LV_LABEL_LONG_WRAP);
+lv_obj_add_flag(value, LV_OBJ_FLAG_HIDDEN); // скрыт по умолчанию
+ui->sensor.ventilation_label = value; // переиспользуем поле
 }
 
 void update_block_top_left(ui_main_menu_t *ui) {
@@ -275,80 +207,32 @@ void update_block_top_left(ui_main_menu_t *ui) {
     lv_label_set_text(ui->sensor.humidity_label, "K.S");
   }
 
-  // ── feels like + точка росы ───────────────────────────
-  if (sht41_ok) {
-    float temp = get_temperature_sht41();
-    float hum = get_humidity_sht41();
+const char *advice = NULL;
 
-    if (temp > -40.0f && temp < 85.0f && hum >= 1.0f && hum <= 100.0f) {
-
-      // feels like
-      float feels = calc_heat_index(temp, hum);
-      print_value("~%.1f°C", feels, ui->sensor.feels_like_label);
-
-      // точка росы
-      float dp = calc_dew_point(temp, hum);
-      print_value("%.1f°C", dp, ui->sensor.dew_point_label);
-
-      // цвет точки росы — единственное исключение, несёт смысловую нагрузку
-      bool outdoor_valid = wifi_ok;
-      float outdoor_temp = 0.0f;
-      if (outdoor_valid) {
-        outdoor_temp = get_weather_temperature();
-        if (outdoor_temp < -60.0f || outdoor_temp > 60.0f)
-          outdoor_valid = false;
-      }
-      if (outdoor_valid) {
-        float margin = outdoor_temp - dp;
-        if (margin <= 0.0f)
-          lv_obj_set_style_text_color(ui->sensor.dew_point_label,
-                                      lv_palette_main(LV_PALETTE_RED), 0);
-        else if (margin < 1.0f)
-          lv_obj_set_style_text_color(ui->sensor.dew_point_label,
-                                      lv_palette_main(LV_PALETTE_ORANGE), 0);
-        else if (margin < 3.0f)
-          lv_obj_set_style_text_color(ui->sensor.dew_point_label,
-                                      lv_palette_main(LV_PALETTE_LIME), 0);
-        else
-          lv_obj_remove_local_style_prop(ui->sensor.dew_point_label,
-                                         LV_STYLE_TEXT_COLOR, 0);
-      } else {
-        lv_obj_remove_local_style_prop(ui->sensor.dew_point_label,
-                                       LV_STYLE_TEXT_COLOR, 0);
-      }
-
-    } else {
-      lv_label_set_text(ui->sensor.feels_like_label, "Err");
-      lv_label_set_text(ui->sensor.dew_point_label, "Err");
-    }
-  } else {
-    lv_label_set_text(ui->sensor.feels_like_label, "K.S");
-    lv_label_set_text(ui->sensor.dew_point_label, "K.S");
-  }
-
-  // ── TVOC + кружки ─────────────────────────────────────
-  if (sgp30_ok) {
+if (sgp30_ok) {
     uint16_t tvoc = (uint16_t)get_tvoc_sgp30();
-    if (tvoc == 0) {
-      lv_label_set_text(ui->sensor.tvoc_label, "...");
-      for (int i = 0; i < 5; i++) {
-        lv_obj_set_style_bg_color(ui->sensor.tvoc_dots[i],
-                                  lv_color_hex(0x555555), 0);
-        lv_obj_set_style_bg_opa(ui->sensor.tvoc_dots[i], LV_OPA_50, 0);
-      }
-    } else {
-      print_value("%.0f", (float)tvoc, ui->sensor.tvoc_label);
-      update_tvoc_dots(ui->sensor.tvoc_dots, tvoc,
-                       ui->settings.switch_.theme_mode);
+    if (tvoc > 350) {
+        advice = "Lueften empfohlen";
     }
-  } else {
-    lv_label_set_text(ui->sensor.tvoc_label, "K.S");
-    for (int i = 0; i < 5; i++) {
-      lv_obj_set_style_bg_color(ui->sensor.tvoc_dots[i], lv_color_hex(0x555555),
-                                0);
-      lv_obj_set_style_bg_opa(ui->sensor.tvoc_dots[i], LV_OPA_50, 0);
+}
+
+if (advice == NULL && sht41_ok) {
+    float hum_indoor = get_humidity_sht41();
+    if (hum_indoor > 65.0f) {
+        if (wifi_ok && (float)get_weather_humidity() > hum_indoor) {
+            advice = "Heizen empfohlen";
+        } else {
+            advice = "Lueften empfohlen";
+        }
     }
-  }
+}
+
+if (advice != NULL) {
+    lv_label_set_text(ui->sensor.ventilation_label, advice);
+    set_visible(ui->sensor.ventilation_label, true);
+} else {
+    set_visible(ui->sensor.ventilation_label, false);
+}
 
   // ── запись истории ────────────────────────────────────
   if (sht41_ok) {
@@ -503,50 +387,6 @@ void btn_sensor_close_history_popup_event_handler(lv_event_t *e) {
   show_all_blocks(ui);
 }
 
-void update_tvoc_dots(lv_obj_t *dots[5], uint16_t tvoc, uint8_t theme_mode) {
-  uint8_t filled;
-  bool dark_theme;
-  if (theme_mode == 2) {
-    dark_theme = true;
-  } else if (theme_mode == 1) {
-    dark_theme = false;
-  } else {
-    dark_theme = !get_is_day();
-  }
-  lv_color_t color;
-
-  if (tvoc <= 150) {
-    filled = 1;
-    color = lv_color_hex(0x00E676);
-  } else if (tvoc <= 300) {
-    filled = 2;
-    color = lv_color_hex(0xC6FF00);
-  } else if (tvoc <= 500) {
-    filled = 3;
-    color = lv_color_hex(0xFFD600);
-  } else if (tvoc <= 750) {
-    filled = 4;
-    color = lv_color_hex(0xFF6D00);
-  } else {
-    filled = 5;
-    color = lv_color_hex(0xFF1744);
-  }
-
-  lv_color_t empty_color =
-      dark_theme ? lv_color_hex(0x555555) : lv_color_hex(0xCCCCCC);
-  lv_opa_t empty_opa = LV_OPA_COVER;
-
-  for (int i = 0; i < 5; i++) {
-    if (i < filled) {
-      lv_obj_set_style_bg_color(dots[i], color, 0);
-      lv_obj_set_style_bg_opa(dots[i], LV_OPA_COVER, 0);
-    } else {
-      lv_obj_set_style_bg_color(dots[i], empty_color, 0);
-      lv_obj_set_style_bg_opa(dots[i], empty_opa, 0);
-    }
-  }
-}
-
 void sensor_temperature_history_push(sensor_history_t *h) {
   float t = get_temperature_sht41();
   h->temperature[h->head] =
@@ -601,9 +441,9 @@ void create_block_top_middle(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->co2.co2_label, &ui->font.medium_32, 0);
   lv_obj_set_style_text_align(ui->co2.co2_label, LV_TEXT_ALIGN_CENTER, 0);
 
-  // --- "ppm" под значением ---
+  // --- "ppb" под значением ---
   ui->co2.co2_unit_label =
-      create_label(ui->screen, "ppm", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      create_label(ui->screen, "ppb", BLOCK_TOP_MID_ALIGN_CO2_CHART,
                    BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 23);
   lv_obj_add_style(ui->co2.co2_unit_label, &ui->font.very_small_20, 0);
   lv_obj_set_style_text_align(ui->co2.co2_unit_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -633,7 +473,7 @@ void create_block_top_middle(ui_main_menu_t *ui) {
 
   // --- футер "CO₂ | Air Quality" ---
   ui->co2.co2_footer_label = create_label(
-      ui->screen, "eCO2 | Air Quality", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      ui->screen, "TVOC | Luftqualitaet", BLOCK_TOP_MID_ALIGN_CO2_CHART,
       BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE - 60);
   lv_obj_set_style_text_font(ui->co2.co2_footer_label, &lv_font_montserrat_12,
                              0);
@@ -672,10 +512,10 @@ void create_block_top_middle(ui_main_menu_t *ui) {
 
 void update_block_top_middle(ui_main_menu_t *ui) {
   if (sgp30_data.state == SGP30_STATE_OK) {
-    uint16_t raw = get_co2_sgp30();
-    ui->co2.co2_target = co2_scale(raw, ui->settings.switch_.co2_mode);
-    print_value("%.f", (float)raw, ui->co2.co2_label);
-    update_co2_status_label(ui, raw);
+    uint16_t raw = get_tvoc_sgp30();
+ui->co2.co2_target = (int32_t)constrain(raw, MIN_VALUE_CO2, MAX_VALUE_CO2);
+print_value("%.f", (float)raw, ui->co2.co2_label);
+update_co2_status_label(ui, raw);
   } else {
     lv_label_set_text(ui->co2.co2_label, "K.S");
     lv_label_set_text(ui->co2.co2_status_label, "---");
@@ -699,13 +539,13 @@ void co2_meter_click_event_cb(lv_event_t *e) {
       uint32_t h = remaining_sec / 3600;
       uint32_t m = (remaining_sec % 3600) / 60;
       lv_label_set_text_fmt(ui->co2.calib_popup_text,
-                            "Der eCO2-Sensor befindet sich in der Lernphase.\n"
+                            "Der TVOC-Sensor befindet sich in der Lernphase.\n"
                             "Die Werte sind noch ungenau.\n\n"
                             "Verbleibende Zeit: %02u:%02u Std.",
                             (unsigned int)h, (unsigned int)m);
     } else {
       lv_label_set_text(ui->co2.calib_popup_text,
-                        "Der eCO2-Sensor ist kalibriert.\n"
+                        "Der TVOC-Sensor ist kalibriert.\n"
                         "Die angezeigten Werte sind zuverlaessig.");
     }
 
@@ -722,7 +562,7 @@ void ui_create_sgp30_calib_popup(ui_main_menu_t *ui) {
 
   ui->co2.calib_popup_text =
       create_label(ui->co2.calib_popup,
-                   "Der eCO2-Sensor befindet sich in der Lernphase.\n"
+                   "Der TVOC-Sensor befindet sich in der Lernphase.\n"
                    "Die Werte sind noch ungenau.\n"
                    "Die Genauigkeit verbessert sich nach ~12 Stunden.",
                    LV_ALIGN_TOP_MID, 0, 30);
@@ -752,13 +592,13 @@ int16_t co2_scale(int16_t real_ppm, uint8_t mode) {
 }
 
 lv_color_t calc_co2_color(uint16_t co2) {
-  if (co2 < 800)
+  if (co2 < 150)
     return lv_palette_main(LV_PALETTE_GREEN);
-  if (co2 < 1000)
+  if (co2 < 350)
     return lv_color_hex(0xC6FF00);
-  if (co2 < 1200)
+  if (co2 < 600)
     return lv_palette_main(LV_PALETTE_YELLOW);
-  if (co2 < 1600)
+  if (co2 < 800)
     return lv_palette_main(LV_PALETTE_ORANGE);
   return lv_palette_main(LV_PALETTE_RED);
 }
@@ -770,17 +610,14 @@ void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm) {
   const char *text;
   lv_color_t color;
 
-  if (co2_ppm < 800) {
+  if (co2_ppm < 150) {
     text = "GUT";
     color = lv_palette_main(LV_PALETTE_GREEN);
-  } else if (co2_ppm < 1200) {
+  } else if (co2_ppm < 350) {
     text = "MITTEL";
     color = lv_palette_main(LV_PALETTE_YELLOW);
-  } else if (co2_ppm < 1600) {
-    text = "HOCH";
-    color = lv_palette_main(LV_PALETTE_ORANGE);
   } else {
-    text = "GEFAHR";
+    text = "HOCH";
     color = lv_palette_main(LV_PALETTE_RED);
   }
 
@@ -1263,9 +1100,9 @@ void update_block_bot_middle(ui_main_menu_t *ui) {
   static uint16_t cnt_chart_co2 = 0;
   cnt_chart_co2++;
   if (cnt_chart_co2 > 3600) {
-    int16_t raw_chart = (int16_t)get_co2_sgp30();
-    int16_t scaled = co2_scale(raw_chart, ui->settings.switch_.co2_mode);
-    lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, scaled);
+    int16_t raw_chart = (int16_t)get_tvoc_sgp30();
+int16_t clamped = (int16_t)constrain(raw_chart, MIN_VALUE_CO2, MAX_VALUE_CO2);
+lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, clamped);
     cnt_chart_co2 = 0;
   }
   update_symbol_wifi(ui);
@@ -1321,20 +1158,20 @@ void ui_create_co2_chart_bot_mid(ui_main_menu_t *ui) {
 }
 
 void update_co2_chart_labels(ui_main_menu_t *ui) {
-  static const int16_t mode_max[] = {2400, 4000, 6000};
+  static const int16_t mode_max[] = {500, 750, 1000};
 
   int16_t val_max = mode_max[ui->settings.switch_.co2_mode];
   int16_t val_mid = (MIN_VALUE_CO2 + val_max) / 2;
 
   char buf[12];
 
-  snprintf(buf, sizeof(buf), "%d ppm", val_max);
+  snprintf(buf, sizeof(buf), "%d ppb", val_max);
   lv_label_set_text(ui->co2.chart_lbl_max, buf);
 
-  snprintf(buf, sizeof(buf), "%d ppm", val_mid);
+  snprintf(buf, sizeof(buf), "%d ppb", val_mid);
   lv_label_set_text(ui->co2.chart_lbl_mid, buf);
 
-  lv_label_set_text(ui->co2.chart_lbl_min, "400 ppm");
+  lv_label_set_text(ui->co2.chart_lbl_min, "0 ppb");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
