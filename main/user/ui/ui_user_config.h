@@ -29,6 +29,14 @@
   #define AQ_THRESH_GUT      1000
   #define AQ_THRESH_MITTEL   2000
   #define AQ_GET_VALUE()     get_co2_scd41()
+  #define AQ_SENSOR_OK()   (scd41_data.life == SCD41_STATE_OK)
+   // Farbzonen Meter: gruen 400..1000, rot 2000..2400
+     #define MIN_VALUE_CO2    400
+  #define MAX_VALUE_CO2    2400
+  #define BLOCK_TOP_MID_START_CO2_LEFT_PART   MIN_VALUE_CO2
+  #define BLOCK_TOP_MID_END_CO2_LEFT_PART     AQ_THRESH_GUT
+  #define BLOCK_TOP_MID_START_CO2_RIGHT_PART  AQ_THRESH_MITTEL
+  #define BLOCK_TOP_MID_END_CO2_RIGHT_PART    MAX_VALUE_CO2
 #else
   #define AQ_UNIT_STR        "ppb"
   #define AQ_FOOTER_STR      "TVOC | Luftqualitaet"
@@ -39,7 +47,16 @@
   #define AQ_THRESH_GUT      150
   #define AQ_THRESH_MITTEL   350
   #define AQ_GET_VALUE()     get_tvoc_sgp30()
+  #define AQ_SENSOR_OK()   (sgp30_data.state == SGP30_STATE_OK)
+   // Farbzonen Meter: gruen 0..150, rot 850..1000  (wie bisher)
+   #define MIN_VALUE_CO2    0
+  #define MAX_VALUE_CO2    1000
+  #define BLOCK_TOP_MID_START_CO2_LEFT_PART   MIN_VALUE_CO2
+  #define BLOCK_TOP_MID_END_CO2_LEFT_PART     150
+  #define BLOCK_TOP_MID_START_CO2_RIGHT_PART  850
+  #define BLOCK_TOP_MID_END_CO2_RIGHT_PART    MAX_VALUE_CO2
 #endif
+
 
 #define CURRENT_SOFT_VERSION "18.05.26"
 
@@ -64,6 +81,7 @@
 
 #define SIMULATE_SHT31_VALUES 0
 #define SIMULATE_SGP30_VALUES 0
+#define SIMULATE_SCD41_VALUES 1
 #define SIMULATE_INET_VALUES 0
 #define SIMULATE_TIME_VALUES 0
 

@@ -278,7 +278,12 @@ typedef struct {
   
   lv_obj_t *icon_temperature;
   lv_obj_t *icon_humidity;
-  lv_obj_t *ventilation_label;
+    lv_obj_t *ventilation_label;
+#if CONFIG_HAS_SCD41
+ lv_obj_t *icon_tvoc;
+  lv_obj_t *tvoc_label;
+  lv_obj_t *tvoc_calib_icon;
+#endif
 
   lv_obj_t *icon_wind;
   lv_obj_t *temperature_label;

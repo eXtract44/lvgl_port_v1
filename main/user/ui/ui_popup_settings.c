@@ -764,23 +764,41 @@ void set_current_city_weather_event_handler(lv_event_t *e) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ui_create_settigs_sensors(ui_main_menu_t *ui) {
-  const lv_coord_t W = LVGL_PORT_H_RES - 60;
   const lv_coord_t X = 20;
-
   lv_obj_t *p = ui->settings.page_content;
-
-  create_text("TVOC Luftqualitaetssensor:", ui->settings.page_content,
-              STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, X, 60, ui);
 
   create_text("Sensoren", p, STYLE_TEXT_SMALL, LV_ALIGN_TOP_MID, 0, 10, ui);
 
+#if CONFIG_HAS_SCD41
+  // ── SCD41 + SGP30 Variante ──────────────────────────────────────────────
+  lv_obj_t *info = create_label(p,
+      "CO2-Sensor: SCD41 (Echtzeit-Messung)\n"
+      "GUT:    < 1000 ppm\n"
+      "MITTEL: 1000 - 2000 ppm\n"
+      "HOCH:   > 2000 ppm\n"
+      "(Quelle: Umweltbundesamt)\n\n"
+      "TVOC-Sensor: SGP30\n"
+      "GUT:      0 - 150 ppb\n"
+      "MITTEL:   151 - 350 ppb\n"
+      "SCHLECHT: > 350 ppb",
+      LV_ALIGN_TOP_LEFT, X, 60);
+  lv_obj_set_style_text_font(info, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_color(info, lv_color_hex(0x888888), 0);
+  lv_label_set_long_mode(info, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(info, LVGL_PORT_H_RES - 40);
+
+#else
+  // ── SGP30-only Variante ─────────────────────────────────────────────────
+  create_text("TVOC Luftqualitaetssensor:", p,
+              STYLE_TEXT_SMALL, LV_ALIGN_TOP_LEFT, X, 60, ui);
+
   static const char *co2_map[] = {"Sensitiv", "Normal", "Robust", ""};
   ui->settings.co2_btnmatrix = lv_btnmatrix_create(p);
-  lv_obj_set_size(ui->settings.co2_btnmatrix, W, 90);
+  lv_obj_set_size(ui->settings.co2_btnmatrix, LVGL_PORT_H_RES - 60, 90);
   lv_obj_align(ui->settings.co2_btnmatrix, LV_ALIGN_TOP_LEFT, X, 100);
   lv_btnmatrix_set_map(ui->settings.co2_btnmatrix, co2_map);
-  lv_obj_set_style_text_font(ui->settings.co2_btnmatrix, &lv_font_montserrat_20,
-                             LV_PART_ITEMS);
+  lv_obj_set_style_text_font(ui->settings.co2_btnmatrix,
+                             &lv_font_montserrat_20, LV_PART_ITEMS);
   lv_btnmatrix_set_btn_ctrl_all(ui->settings.co2_btnmatrix,
                                 LV_BTNMATRIX_CTRL_CHECKABLE);
   lv_btnmatrix_set_one_checked(ui->settings.co2_btnmatrix, true);
@@ -795,23 +813,22 @@ void ui_create_settigs_sensors(ui_main_menu_t *ui) {
                             LV_BTNMATRIX_CTRL_CHECKED);
 
   static const char *co2_descs[] = {
-       "0-500 ppb: Sensitiv, fuer Schlafraeume und Bueros.",
-    "0-750 ppb: Normal, fuer Wohnraeume.",
-    "0-1000 ppb: Robust, fuer Industrie und Lager."};
+      "0-500 ppb: Sensitiv, fuer Schlafraeume und Bueros.",
+      "0-750 ppb: Normal, fuer Wohnraeume.",
+      "0-1000 ppb: Robust, fuer Industrie und Lager."};
   lv_label_set_text(ui->settings.co2_desc_label,
                     co2_descs[ui->settings.switch_.co2_mode]);
 
-  lv_obj_t *info_label = create_label(
-      p,
-
+  lv_obj_t *info_label = create_label(p,
       "Der Sensor misst fluechtige organische Verbindungen (TVOC) in ppb.\n"
-"GUT: 0-150 ppb  MITTEL: 151-350 ppb  SCHLECHT: >350 ppb.\n",
+      "GUT: 0-150 ppb  MITTEL: 151-350 ppb  SCHLECHT: >350 ppb.",
       LV_ALIGN_BOTTOM_MID, 0, -10);
   lv_obj_set_style_text_font(info_label, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_color(info_label, lv_color_hex(0x888888), 0);
   lv_obj_set_style_text_align(info_label, LV_TEXT_ALIGN_CENTER, 0);
   lv_label_set_long_mode(info_label, LV_LABEL_LONG_WRAP);
   lv_obj_set_width(info_label, LVGL_PORT_H_RES - 40);
+#endif
 }
 
 void co2_btnmatrix_event_cb(lv_event_t *e) {

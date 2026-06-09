@@ -22,12 +22,15 @@ void create_timers() {
 
 void timer_60000(lv_timer_t *t) {
   ui_main_menu_t *ui = t->user_data;
-  if(sgp30_data.init_ok == 0){
-		  set_visible(ui->co2.calib_popup,false);
-	  }
+  if (sgp30_data.init_ok == 0) {
+    set_visible(ui->co2.calib_popup, false);
+  }
   if ((xTaskGetTickCount() - ui->co2.calib_start_tick) >= CO2_CALIB_TIME) {
-	  
+#if CONFIG_HAS_SCD41
+    lv_obj_add_flag(ui->sensor.tvoc_calib_icon, LV_OBJ_FLAG_HIDDEN);
+#else
     lv_obj_add_flag(ui->co2.calib_icon_label, LV_OBJ_FLAG_HIDDEN);
+#endif
     lv_timer_del(t);
   }
 }
