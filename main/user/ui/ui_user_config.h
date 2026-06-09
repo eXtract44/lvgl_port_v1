@@ -15,6 +15,32 @@
 #ifndef MAIN_LVGL_USER_CONFIG_H_
 #define MAIN_LVGL_USER_CONFIG_H_
 
+
+// ==== Luftqualitaet-Variante ====
+#define CONFIG_HAS_SCD41 0   // 1 = SCD41+SGP30, 0 = nur SGP30
+
+#if CONFIG_HAS_SCD41
+  #define AQ_UNIT_STR        "ppm"
+  #define AQ_FOOTER_STR      "CO2 | Luftqualitaet"
+  #define AQ_SCALE_MIN       400
+  #define AQ_SCALE_MAX       2400
+  #define AQ_ZONE_GREEN_END  1000   // зелёная дуга: MIN..1000  (GUT)
+  #define AQ_ZONE_RED_START  2000   // красная дуга: 2000..MAX  (HOCH)
+  #define AQ_THRESH_GUT      1000
+  #define AQ_THRESH_MITTEL   2000
+  #define AQ_GET_VALUE()     get_co2_scd41()
+#else
+  #define AQ_UNIT_STR        "ppb"
+  #define AQ_FOOTER_STR      "TVOC | Luftqualitaet"
+  #define AQ_SCALE_MIN       0
+  #define AQ_SCALE_MAX       1000
+  #define AQ_ZONE_GREEN_END  150
+  #define AQ_ZONE_RED_START  850
+  #define AQ_THRESH_GUT      150
+  #define AQ_THRESH_MITTEL   350
+  #define AQ_GET_VALUE()     get_tvoc_sgp30()
+#endif
+
 #define CURRENT_SOFT_VERSION "18.05.26"
 
 #define ACTIVATE_BLOCK_TOP_LEFT 1  

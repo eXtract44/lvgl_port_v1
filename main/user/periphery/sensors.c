@@ -342,11 +342,11 @@ int sgp30_read(void) {
 }
 
 uint16_t sgp30_smooth_co2(uint16_t raw) {
-    static const uint8_t  WINDOW_SIZE = 20;
+    static const uint8_t  WINDOW_SIZE = 30;
     static const uint16_t CLAMP_MIN   = 400;
     static const uint16_t CLAMP_MAX   = 9999;
 
-    static uint16_t buf[20];
+    static uint16_t buf[30];
     static uint8_t  head  = 0;
     static uint32_t sum   = 0;
     static uint8_t  count = 0;
@@ -362,11 +362,11 @@ uint16_t sgp30_smooth_co2(uint16_t raw) {
 }
 
 uint16_t sgp30_smooth_tvoc(uint16_t raw) {
-    static const uint8_t  WINDOW_SIZE = 20;
+    static const uint8_t  WINDOW_SIZE = 30;
     static const uint16_t CLAMP_MIN   = 0;
     static const uint16_t CLAMP_MAX   = 9999;
 
-    static uint16_t buf[20];
+    static uint16_t buf[30];
     static uint8_t  head  = 0;
     static uint32_t sum   = 0;
     static uint8_t  count = 0;
@@ -384,10 +384,101 @@ uint16_t sgp30_smooth_tvoc(uint16_t raw) {
 uint16_t get_co2_sgp30(void)  { return sgp30_smooth_co2(sgp30_data.co2);   }
 uint16_t get_tvoc_sgp30(void) { return sgp30_smooth_tvoc(sgp30_data.tvoc); }
 
+// ---------------------------------------------------------------------------
+// SCD41  (Periodic Mode, ~5 s / Messung)
+// ---------------------------------------------------------------------------
+#if CONFIG_HAS_SCD41
+scd41_data_t scd41_data = {0};
+
+static esp_err_t scd41_send_cmd(uint16_t cmd) {
+    uint8_t buf[2] = { (uint8_t)(cmd >> 8), (uint8_t)cmd };
+    return i2c_master_write_to_device(I2C_MASTER_NUM, SCD41_ADDRESS, buf, 2,
+                                      pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
+}
+
+void scd41_init(void) {
+    // Warm-Reset-Schutz: nach ESP-Reset ohne Power-Cycle kann der Sensor
+    // noch im Periodic Mode sein -> START wuerde NACK geben.
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    scd41_send_cmd(SCD41_CMD_STOP_PERIODIC);
+    xSemaphoreGive(i2c_bus_mutex);
+    vTaskDelay(pdMS_TO_TICKS(500)); // stop dauert bis 500 ms
+
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    esp_err_t ret = scd41_send_cmd(SCD41_CMD_START_PERIODIC);
+    xSemaphoreGive(i2c_bus_mutex);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE("SCD41", "Init Fail: %s", esp_err_to_name(ret));
+        scd41_data.init_ok = 0;
+        scd41_data.life    = SCD41_STATE_FAIL;
+        return;
+    }
+    scd41_data.init_ok = 1;
+    scd41_data.life    = SCD41_STATE_OK;
+    ESP_LOGI("SCD41", "Init OK (periodic, erste Messung ~5 s)");
+}
+
+void scd41_read(void) {
+#if SIMULATE_SCD41_VALUES
+    static uint16_t sim = 450;
+    sim += 25;
+    if (sim > 2400) sim = 450;
+    scd41_data.co2  = sim;
+    scd41_data.life = SCD41_STATE_OK;
+#else
+    if (!scd41_data.init_ok) return;
+
+    uint8_t rx[9] = {0};
+
+    // 1) Data ready?
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    esp_err_t ret = scd41_send_cmd(SCD41_CMD_GET_DATA_READY);
+    if (ret == ESP_OK) {
+        ret = i2c_master_read_from_device(I2C_MASTER_NUM, SCD41_ADDRESS, rx, 3,
+                                          pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
+    }
+    xSemaphoreGive(i2c_bus_mutex);
+    if (ret != ESP_OK) { scd41_data.life = SCD41_STATE_FAIL; return; }
+
+    if (CheckCrc8(&rx[0], 0xFF) != rx[2]) return;
+    uint16_t status = ((uint16_t)rx[0] << 8) | rx[1];
+    if ((status & 0x07FF) == 0) return; // noch nicht bereit -> warten
+
+    // 2) Messwert lesen (CO2 = erstes Wort, T/RH ignorieren)
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    ret = scd41_send_cmd(SCD41_CMD_READ_MEAS);
+    if (ret == ESP_OK) {
+        vTaskDelay(pdMS_TO_TICKS(1)); // Kommando braucht ~1 ms
+        ret = i2c_master_read_from_device(I2C_MASTER_NUM, SCD41_ADDRESS, rx, 9,
+                                          pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
+    }
+    xSemaphoreGive(i2c_bus_mutex);
+    if (ret != ESP_OK) { scd41_data.life = SCD41_STATE_FAIL; return; }
+
+    if (CheckCrc8(&rx[0], 0xFF) != rx[2]) return;
+
+    scd41_data.co2  = ((uint16_t)rx[0] << 8) | rx[1];
+    scd41_data.life = SCD41_STATE_OK;
+#endif
+}
+
+uint16_t get_co2_scd41(void) {
+    uint16_t v = scd41_data.co2;
+    if (v < 400)  v = 400;    // physikalisches Minimum der Atmosphaere
+    if (v > 9999) v = 9999;
+    return v;
+}
+#endif // CONFIG_HAS_SCD41
+
+
 void read_sensors(void) {
     sht41_read();
     sgp30_set_humidity_compensation(sht41_data.temperature, (float)sht41_data.humidity);
     sgp30_read();
+    #if CONFIG_HAS_SCD41
+    scd41_read();
+#endif
 }
 
 

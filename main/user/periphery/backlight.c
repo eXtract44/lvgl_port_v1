@@ -8,7 +8,7 @@
 
 
 #define BACKLIGHT_GPIO      GPIO_NUM_6
-#define BACKLIGHT_FREQ_HZ   60000
+#define BACKLIGHT_FREQ_HZ   1000
 #define BACKLIGHT_RESOLUTION LEDC_TIMER_10_BIT   // 1024 шага
 #define BACKLIGHT_TIMER     LEDC_TIMER_0
 #define BACKLIGHT_CHANNEL   LEDC_CHANNEL_0
@@ -43,8 +43,8 @@ void backlight_deinit(void) {
 
 void backlight_set(uint8_t percent) {
        if (percent > 100) percent = 100;
-    // маппинг 1–100% → 20–100%
-    uint8_t mapped = 20 + (percent * 80) / 100;
+    // маппинг 1–100% → 30–100%
+    uint8_t mapped = 30 + (percent * 70) / 100;
 
     float normalized = mapped / 100.0f;
     float corrected  = powf(normalized, 2.2f);

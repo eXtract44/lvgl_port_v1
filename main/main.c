@@ -10,7 +10,6 @@
 #include "user/ui/ui_core.h"
 #include "user/ui/ui_user_config.h"
 #include "user/periphery/i2c_bus.h"
-//#include "nvs_flash.h"
 
 
 #include "user/periphery/open_meteo.h"
@@ -52,6 +51,9 @@ static void sensors_task(void *arg) {
         sht41_init();
         sgp30_init();
         lvgl_port_unlock();
+        #if CONFIG_HAS_SCD41
+    scd41_init();   // I2C-only, LVGL-Lock nicht noetig
+#endif
     }
     
     while (1) {

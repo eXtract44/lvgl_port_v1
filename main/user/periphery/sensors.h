@@ -11,6 +11,35 @@
 #define MAIN_PERIPHERY_H_
 
 #include <stdint.h>
+#include "../ui/ui_user_config.h"
+
+// ---------------------------------------------------------------------------
+// SCD41  (echtes CO2, nur wenn aktiviert)
+// ---------------------------------------------------------------------------
+#if CONFIG_HAS_SCD41
+#define SCD41_ADDRESS            0x62
+
+// 16-bit Kommandos (MSB zuerst)
+#define SCD41_CMD_START_PERIODIC 0x21B1
+#define SCD41_CMD_READ_MEAS      0xEC05
+#define SCD41_CMD_GET_DATA_READY 0xE4B8
+#define SCD41_CMD_STOP_PERIODIC  0x3F86
+
+typedef enum {
+    SCD41_STATE_FAIL,
+    SCD41_STATE_OK,
+} scd41_life_t;
+
+typedef struct {
+    uint16_t     co2;     // ppm
+    scd41_life_t life;
+    uint8_t      init_ok;
+} scd41_data_t;
+
+void     scd41_init(void);
+void     scd41_read(void);
+uint16_t get_co2_scd41(void);
+#endif // CONFIG_HAS_SCD41
 
 // ---------------------------------------------------------------------------
 // SHT41

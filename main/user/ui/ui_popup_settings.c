@@ -25,8 +25,7 @@ void ui_create_settings_popup(ui_main_menu_t *ui) {
   ui->settings.popup = create_background(
       ui->screen, LVGL_PORT_H_RES, LVGL_PORT_V_RES, LV_ALIGN_TOP_LEFT, 0, 0);
   lv_obj_add_style(ui->settings.popup, &ui->style.popup, 0);
-  lv_obj_set_scrollbar_mode(ui->settings.popup, LV_SCROLLBAR_MODE_OFF);
-  lv_obj_clear_flag(ui->settings.popup, LV_OBJ_FLAG_SCROLLABLE);
+ lv_obj_clear_flag(ui->settings.popup, LV_OBJ_FLAG_SCROLLABLE);
 
   // --- кнопка Close (всегда видна) ---
   ui->settings.btn_close =
@@ -53,6 +52,11 @@ void ui_create_settings_popup(ui_main_menu_t *ui) {
   lv_obj_align(ui->settings.page_home, LV_ALIGN_BOTTOM_MID, 0, 30);
   lv_obj_set_scroll_dir(ui->settings.page_home, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(ui->settings.page_home, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_style_bg_color(ui->settings.page_home, lv_color_hex(0x888888), LV_PART_SCROLLBAR);
+  lv_obj_set_style_bg_opa(ui->settings.page_home, LV_OPA_70, LV_PART_SCROLLBAR);
+  lv_obj_set_style_width(ui->settings.page_home, 6, LV_PART_SCROLLBAR);
+  lv_obj_set_style_radius(ui->settings.page_home, 3, LV_PART_SCROLLBAR);
+  lv_obj_set_style_pad_right(ui->settings.page_home, 3, LV_PART_SCROLLBAR);
   lv_obj_set_flex_flow(ui->settings.page_home, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_row(ui->settings.page_home, 10, 0);
   lv_obj_set_style_pad_all(ui->settings.page_home, 15, 0);
@@ -65,6 +69,11 @@ void ui_create_settings_popup(ui_main_menu_t *ui) {
   lv_obj_align(ui->settings.page_content, LV_ALIGN_BOTTOM_MID, 0, 30);
   lv_obj_set_scroll_dir(ui->settings.page_content, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(ui->settings.page_content, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_style_bg_color(ui->settings.page_content, lv_color_hex(0x888888), LV_PART_SCROLLBAR);
+  lv_obj_set_style_bg_opa(ui->settings.page_content, LV_OPA_70, LV_PART_SCROLLBAR);
+  lv_obj_set_style_width(ui->settings.page_content, 6, LV_PART_SCROLLBAR);
+  lv_obj_set_style_radius(ui->settings.page_content, 3, LV_PART_SCROLLBAR);
+  lv_obj_set_style_pad_right(ui->settings.page_content, 3, LV_PART_SCROLLBAR);
   lv_obj_set_style_pad_all(ui->settings.page_content, 15, 0);
   lv_obj_add_flag(ui->settings.page_content, LV_OBJ_FLAG_HIDDEN);
 
