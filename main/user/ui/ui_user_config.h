@@ -90,7 +90,7 @@
 #define DAY_START_HOUR 7
 #define DAY_END_HOUR 20
 
-#define MAX_STANDBY_TIME 180 // sec
+#define MAX_STANDBY_TIME 180*5 // 180 sec
 #define FEELS_LIKE_MIN_DIFF 1.5f
 #define CO2_CALIB_TIME (12UL * 3600UL * configTICK_RATE_HZ)
 

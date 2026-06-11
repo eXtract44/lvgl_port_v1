@@ -5,8 +5,8 @@
 #include "ui_core.h"
 #include "ui_theme.h"
 #include "ui_time.h"
-#include "ui_weather_anim.h"
 #include "ui_user_config.h"
+#include "ui_weather_anim.h"
 #include "wifi_user.h"
 
 extern sgp30_data_t sgp30_data;
@@ -67,18 +67,6 @@ void timer_10000(lv_timer_t *timer) {
 
 void timer_1000(lv_timer_t *timer) {
   LV_UNUSED(timer);
-  if (!ui.settings.switch_.standby_screen_off) {
-    switch (ui.settings.switch_.backlight_mode) {
-    case 1:
-      backlight_set(backlight_get_auto_pct());
-      break;
-    case 2:
-      backlight_set(backlight_get_zeitplan_pct());
-      break;
-    default:
-      break;
-    }
-  }
 #if ACTIVATE_BLOCK_TOP_LEFT
   update_block_top_left(&ui);
 #endif
@@ -98,7 +86,36 @@ void timer_1000(lv_timer_t *timer) {
 
 void timer_200(lv_timer_t *timer) {
   LV_UNUSED(timer);
-  display_standby_handle(&ui);
+  static uint32_t standby_200mS_cnt = 0;
+  static int16_t  last_pct = -1;
+
+  bool    is_day  = get_is_day();
+  bool    pressed = is_screen_pressed();
+  uint8_t mode    = ui.settings.switch_.display_mode;
+
+  bool standby_enabled =
+      (mode == DISPLAY_MODE_STANDBY_180S) ||
+      (mode == DISPLAY_MODE_NIGHT_STANDBY_180S && !is_day);
+
+  // экран должен быть активен: standby выключен ИЛИ касание
+  if (!standby_enabled || pressed) {
+    standby_200mS_cnt = 0;
+    set_visible(ui.standby.background, false);
+    uint8_t pct = backlight_get_current_pct(&ui);
+    if ((int16_t)pct != last_pct) { backlight_set(pct); last_pct = pct; }
+    return;
+  }
+
+  // standby активен, касания нет
+  if (standby_200mS_cnt <= MAX_STANDBY_TIME) {
+    standby_200mS_cnt++;                                  // фаза отсчёта — экран ещё жив
+    uint8_t pct = backlight_get_current_pct(&ui);
+    if ((int16_t)pct != last_pct) { backlight_set(pct); last_pct = pct; }
+  } else {                                          // сон
+    if (last_pct != 0) { backlight_set(0); last_pct = 0; }
+    lv_obj_move_foreground(ui.standby.background);
+    set_visible(ui.standby.background, true);
+  }
 }
 
 void timer_33(lv_timer_t *timer) {
@@ -136,55 +153,16 @@ void timer_33(lv_timer_t *timer) {
   lv_obj_invalidate(ui->co2.meter);
 }
 
-void display_standby_handle(ui_main_menu_t *ui) {
-  static uint32_t timer_standby_sec = 0;
-
-  uint8_t mode = ui->settings.switch_.standby_mode;
-
-  bool standby_active = false;
-  if (mode == 1) {
-    standby_active = true;
-  } else if (mode == 2) {
-    standby_active = !get_is_day();
-  }
-
-  if (!standby_active) {
-    timer_standby_sec = 0;
-    ui->settings.switch_.standby_screen_off = false;
-    set_visible(ui->standby.background, false);
-    return;
-  }
-
-  if (is_screen_pressed()) {
-    timer_standby_sec = 0;
-    ui->settings.switch_.standby_screen_off = false;
-    set_visible(ui->standby.background, false);
-    backlight_set(backlight_get_current_pct(ui)); // восстанавливаем яркость
-  } else {
-    timer_standby_sec++;
-    if (timer_standby_sec > MAX_STANDBY_TIME * 5) {
-      ui->settings.switch_.standby_screen_off = true;
-      backlight_set(0); // гасим подсветку
-      lv_obj_move_foreground(ui->standby.background);
-      set_visible(ui->standby.background, true);
-      timer_standby_sec = MAX_STANDBY_TIME * 5;
-    }
-  }
-}
-
 uint8_t backlight_get_current_pct(ui_main_menu_t *ui) {
-  switch (ui->settings.switch_.backlight_mode) {
-  case 1:
-    return backlight_get_auto_pct();
-  case 2:
-    return backlight_get_zeitplan_pct();
-  default:
-    return ui->settings.switch_.backlight_pct;
-  }
+	if(ui->settings.switch_.backlight_mode == BACKLIGHT_MODE_MANUELL){
+		return ui->settings.switch_.backlight_manual_pct;
+	}else if(ui->settings.switch_.backlight_mode == BACKLIGHT_MODE_AUTO){
+		return backlight_get_auto_pct();
+	}else if(ui->settings.switch_.backlight_mode == BACKLIGHT_MODE_ZEITPLAN){
+		return backlight_get_zeitplan_pct(); 
+	}else{
+		return ui->settings.switch_.backlight_manual_pct;
+	}
 }
 
 bool is_screen_pressed(void) { return standby_touched; }
-
-
-
-

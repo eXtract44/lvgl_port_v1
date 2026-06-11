@@ -148,14 +148,25 @@ typedef struct {
   lv_obj_t *pressure_label;
 } ui_weather_t;
 
+enum backligth_mode{
+	BACKLIGHT_MODE_MANUELL=0,
+	BACKLIGHT_MODE_AUTO,
+	BACKLIGHT_MODE_ZEITPLAN,
+};
+
+enum display_mode{
+	DISPLAY_MODE_ON=0,
+	DISPLAY_MODE_STANDBY_180S,
+	DISPLAY_MODE_NIGHT_STANDBY_180S,
+};
+
 typedef struct {
-  uint8_t standby_mode;
+  uint8_t display_mode;//0 "Immer eingeschaltet.", 1 "Aus nach 180 Sek.", 2 "Aus Nachts nach 180 Sek."
   uint8_t theme_mode; // 0=Auto 1=Hell 2=Dunkel
   bool theme_last_is_day; // кэш — последнее состояние get_is_day()
   uint8_t co2_mode;       // 0=Sensitiv 1=Normal 2=Robust
-  uint8_t backlight_pct;  // ← новое
-  uint8_t backlight_mode; // ← добавить: 0=Manuell 1=Auto 2=Zeitplan
-  bool standby_screen_off;
+  uint8_t backlight_manual_pct;  // 
+  uint8_t backlight_mode; //  0=Manuell 1=Auto 2=Zeitplan
 } ui_switchs_t;
 
 #define WIFI_SCAN_MAX_AP 15

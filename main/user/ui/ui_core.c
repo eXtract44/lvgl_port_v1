@@ -79,10 +79,10 @@ void init_lv_objects() {
   ui.weather.settings_popup.city_count = CITY_COUNT;
 
   main_settings_load(
-      &ui.settings.switch_.standby_mode, &ui.settings.switch_.backlight_pct,
+      &ui.settings.switch_.display_mode, &ui.settings.switch_.backlight_manual_pct,
       &ui.settings.switch_.backlight_mode, &ui.settings.switch_.theme_mode,
       &ui.settings.switch_.co2_mode);
-  backlight_set(ui.settings.switch_.backlight_pct);
+  backlight_set(ui.settings.switch_.backlight_manual_pct);
   ui.settings.switch_.theme_last_is_day = get_is_day(); // ← инициализируем кэш
   weather_settings_load(&ui.weather.settings_popup.saved_city);
   build_weather_url(ui.weather.settings_popup.saved_city);

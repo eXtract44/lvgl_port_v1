@@ -387,7 +387,7 @@ void ui_create_settigs_display(ui_main_menu_t *ui) {
   lv_obj_align(ui->settings.backlight_slider, LV_ALIGN_TOP_LEFT, 40, 240);
   lv_slider_set_range(ui->settings.backlight_slider, 5, 100);
   lv_slider_set_value(ui->settings.backlight_slider,
-                      ui->settings.switch_.backlight_pct, LV_ANIM_OFF);
+                      ui->settings.switch_.backlight_manual_pct, LV_ANIM_OFF);
   lv_obj_add_event_cb(ui->settings.backlight_slider, backlight_slider_event_cb,
                       LV_EVENT_VALUE_CHANGED, ui);
 
@@ -447,7 +447,7 @@ void ui_create_settigs_display(ui_main_menu_t *ui) {
 
   // --- применяем сохранённые значения ---
   main_settings_load(
-      &ui->settings.switch_.standby_mode, &ui->settings.switch_.backlight_pct,
+      &ui->settings.switch_.display_mode, &ui->settings.switch_.backlight_manual_pct,
       &ui->settings.switch_.backlight_mode, &ui->settings.switch_.theme_mode,
       &ui->settings.switch_.co2_mode);
 
@@ -464,17 +464,17 @@ void ui_create_settigs_display(ui_main_menu_t *ui) {
                     bl_descs[ui->settings.switch_.backlight_mode]);
 
   char bl_buf[8];
-  snprintf(bl_buf, sizeof(bl_buf), "%d%%", ui->settings.switch_.backlight_pct);
+  snprintf(bl_buf, sizeof(bl_buf), "%d%%", ui->settings.switch_.backlight_manual_pct);
   lv_label_set_text(ui->settings.backlight_pct_label, bl_buf);
 
   lv_btnmatrix_set_btn_ctrl(ui->settings.standby_btnmatrix,
-                            ui->settings.switch_.standby_mode,
+                            ui->settings.switch_.display_mode,
                             LV_BTNMATRIX_CTRL_CHECKED);
 
   static const char *standby_descs[] = {
       "Immer eingeschaltet.", "Aus nach 180 Sek.", "Aus Nachts nach 180 Sek."};
   lv_label_set_text(ui->settings.standby_desc_label,
-                    standby_descs[ui->settings.switch_.standby_mode]);
+                    standby_descs[ui->settings.switch_.display_mode]);
 
   lv_btnmatrix_set_btn_ctrl(ui->settings.theme_btnmatrix,
                             ui->settings.switch_.theme_mode,
@@ -496,8 +496,8 @@ void backlight_btnmatrix_event_cb(lv_event_t *e) {
 
   if (btn_id == 0) {
     lv_obj_clear_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
-    backlight_set(ui->settings.switch_.backlight_pct);
-    snprintf(buf, sizeof(buf), "%d%%", ui->settings.switch_.backlight_pct);
+    backlight_set(ui->settings.switch_.backlight_manual_pct);
+    snprintf(buf, sizeof(buf), "%d%%", ui->settings.switch_.backlight_manual_pct);
     lv_label_set_text(ui->settings.backlight_pct_label, buf);
   } else {
     lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
@@ -513,7 +513,7 @@ void backlight_btnmatrix_event_cb(lv_event_t *e) {
   lv_label_set_text(ui->settings.backlight_desc_label, bl_descs[btn_id]);
 
   main_settings_save(
-      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
       ui->settings.switch_.co2_mode);
 }
@@ -522,7 +522,7 @@ void backlight_slider_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   lv_obj_t *slider = lv_event_get_target(e);
   uint8_t pct = (uint8_t)lv_slider_get_value(slider);
-  ui->settings.switch_.backlight_pct = pct;
+  ui->settings.switch_.backlight_manual_pct = pct;
 
   char buf[16];
   snprintf(buf, sizeof(buf), "%d%%", pct);
@@ -530,7 +530,7 @@ void backlight_slider_event_cb(lv_event_t *e) {
 
   backlight_set(pct);
   main_settings_save(
-      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
       ui->settings.switch_.co2_mode);
 }
@@ -539,14 +539,14 @@ void standby_btnmatrix_event_cb(lv_event_t *e) {
   ui_main_menu_t *ui = (ui_main_menu_t *)lv_event_get_user_data(e);
   lv_obj_t *obj = lv_event_get_target(e);
   uint16_t btn_id = lv_btnmatrix_get_selected_btn(obj);
-  ui->settings.switch_.standby_mode = (uint8_t)btn_id;
+  ui->settings.switch_.display_mode = (uint8_t)btn_id;
 
   static const char *descs[] = {"Immer eingeschaltet.", "Aus nach 180 Sek.",
                                 "Aus Nachts nach 180 Sek."};
   lv_label_set_text(ui->settings.standby_desc_label, descs[btn_id]);
 
   main_settings_save(
-      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
       ui->settings.switch_.co2_mode);
 }
@@ -590,7 +590,7 @@ void theme_btnmatrix_event_cb(lv_event_t *e) {
   lv_obj_report_style_change(&ui->font.icon);
 
   main_settings_save(
-      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
       ui->settings.switch_.co2_mode);
 }
@@ -843,7 +843,7 @@ void co2_btnmatrix_event_cb(lv_event_t *e) {
   lv_label_set_text(ui->settings.co2_desc_label, descs[btn_id]);
 
   main_settings_save(
-      ui->settings.switch_.standby_mode, ui->settings.switch_.backlight_pct,
+      ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
       ui->settings.switch_.co2_mode);
   update_co2_chart_labels(ui);
