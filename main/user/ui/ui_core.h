@@ -209,6 +209,10 @@ typedef struct {
   lv_obj_t *backlight_desc_label;
   lv_obj_t *backlight_slider;
   lv_obj_t *backlight_pct_label;
+  lv_obj_t *backlight_min_slider;
+  lv_obj_t *backlight_max_slider;
+  lv_obj_t *backlight_min_label;
+  lv_obj_t *backlight_max_label;
 
   lv_obj_t *ota_btn;
   lv_obj_t *ota_status_label;

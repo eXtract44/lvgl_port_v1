@@ -5,5 +5,5 @@
 cmake_minimum_required(VERSION 3.5)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 add_compile_options("-Wno-attributes")
-set(PROJECT_VER "1.0.7")
+set(PROJECT_VER "1.0.8")
 project(lvgl_porting)

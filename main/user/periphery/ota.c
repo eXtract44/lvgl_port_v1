@@ -25,76 +25,86 @@ typedef struct {
 
 // ---------------------------------------------------------------------------
 
+#define OTA_MAX_RETRY   5
+#define OTA_RETRY_DELAY 3000   // ms
+
+static esp_err_t ota_attempt(ota_task_args_t *args)
+{
+    esp_http_client_config_t http_cfg = {
+        .url               = args->url,
+        .timeout_ms        = 20000,
+        .keep_alive_enable = true,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        // skip_cert_common_name_check убран — проверка CN нужна
+    };
+
+    esp_https_ota_config_t ota_cfg = {
+        .http_config            = &http_cfg,
+        .partial_http_download  = true,
+        .max_http_request_size  = 64 * 1024,   // чанк Range-запроса
+    };
+
+    esp_https_ota_handle_t h = NULL;
+    esp_err_t err = esp_https_ota_begin(&ota_cfg, &h);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "ota_begin: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    if (args->cb) args->cb(OTA_STATE_DOWNLOADING, 0);
+    int image_size = esp_https_ota_get_image_size(h);
+    int last_pct = -1;
+
+    while (1) {
+        err = esp_https_ota_perform(h);
+        if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS) break;
+        if (args->cb && image_size > 0) {
+            int pct = (esp_https_ota_get_image_len_read(h) * 100) / image_size;
+            if (pct != last_pct) {            // не дёргать UI на каждой итерации
+                last_pct = pct;
+                args->cb(OTA_STATE_DOWNLOADING, pct);
+            }
+        }
+    }
+
+    if (err != ESP_OK) {                       // обрыв посреди загрузки
+        ESP_LOGE(TAG, "ota_perform: %s", esp_err_to_name(err));
+        esp_https_ota_abort(h);
+        return err;
+    }
+    if (!esp_https_ota_is_complete_data_received(h)) {
+        ESP_LOGE(TAG, "Unvollstaendige Daten");
+        esp_https_ota_abort(h);
+        return ESP_FAIL;
+    }
+    return esp_https_ota_finish(h);            // ESP_OK при успехе
+}
+
 static void ota_task(void *pvParameters)
 {
     ota_task_args_t *args = (ota_task_args_t *)pvParameters;
     if (args->cb) args->cb(OTA_STATE_CHECKING, 0);
     ESP_LOGI(TAG, "Starte OTA von: %s", args->url);
 
-esp_http_client_config_t http_cfg = {
-    .url                        = args->url,
-    .timeout_ms                 = 15000,
-    .keep_alive_enable          = true,
-    .crt_bundle_attach          = esp_crt_bundle_attach,
-    .skip_cert_common_name_check = true,
-};
-
-    esp_https_ota_config_t ota_cfg = {
-        .http_config            = &http_cfg,
-        .http_client_init_cb    = NULL,
-        .bulk_flash_erase       = false,
-        .partial_http_download  = false,
-    };
-
-    esp_https_ota_handle_t ota_handle = NULL;
-    esp_err_t err = esp_https_ota_begin(&ota_cfg, &ota_handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_https_ota_begin fehlgeschlagen: %s", esp_err_to_name(err));
-        if (args->cb) args->cb(OTA_STATE_FAILED, 0);
-        goto cleanup;
+    esp_err_t err = ESP_FAIL;
+    for (int i = 1; i <= OTA_MAX_RETRY; i++) {
+        ESP_LOGI(TAG, "OTA Versuch %d/%d", i, OTA_MAX_RETRY);
+        err = ota_attempt(args);
+        if (err == ESP_OK) break;
+        ESP_LOGW(TAG, "Versuch %d fehlgeschlagen: %s", i, esp_err_to_name(err));
+        if (i < OTA_MAX_RETRY) vTaskDelay(pdMS_TO_TICKS(OTA_RETRY_DELAY));
     }
-
-    if (args->cb) args->cb(OTA_STATE_DOWNLOADING, 0);
-
-    // Получаем размер для расчёта прогресса
-    int image_size = esp_https_ota_get_image_size(ota_handle);
-
-    while (1) {
-        err = esp_https_ota_perform(ota_handle);
-        if (err == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
-            if (args->cb && image_size > 0) {
-                int written = esp_https_ota_get_image_len_read(ota_handle);
-                int pct = (written * 100) / image_size;
-                args->cb(OTA_STATE_DOWNLOADING, pct);
-            }
-            continue;
-        }
-        break;
-    }
-
-    if (!esp_https_ota_is_complete_data_received(ota_handle)) {
-        ESP_LOGE(TAG, "Unvollständige Daten empfangen");
-        if (args->cb) args->cb(OTA_STATE_FAILED, 0);
-        goto cleanup;
-    }
-
-    err = esp_https_ota_finish(ota_handle);
-    ota_handle = NULL;
 
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "OTA erfolgreich — starte neu...");
+        ESP_LOGI(TAG, "OTA erfolgreich — Neustart...");
         if (args->cb) args->cb(OTA_STATE_SUCCESS, 100);
-        vTaskDelay(pdMS_TO_TICKS(2000)); // дать UI обновиться
+        vTaskDelay(pdMS_TO_TICKS(2000));
         esp_restart();
     } else {
-        ESP_LOGE(TAG, "esp_https_ota_finish fehlgeschlagen: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "OTA nach %d Versuchen fehlgeschlagen", OTA_MAX_RETRY);
         if (args->cb) args->cb(OTA_STATE_FAILED, 0);
     }
 
-cleanup:
-    if (ota_handle) {
-        esp_https_ota_abort(ota_handle);
-    }
     free(args);
     vTaskDelete(NULL);
 }
@@ -154,17 +164,20 @@ static void ota_check_version_task(void *pvParameters)
 
     esp_http_client_fetch_headers(client);
     //
-    int status_code = esp_http_client_get_status_code(client);
-int content_len = esp_http_client_get_content_length(client);
-ESP_LOGI(TAG, "HTTP status: %d, content-length: %d", status_code, content_len);
-//
-    buf_len = esp_http_client_read(client, buf, sizeof(buf) - 1);
-    if (buf_len <= 0) {
-        ESP_LOGE(TAG, "http read failed");
-        if (args->cb) args->cb(OTA_VERSION_CHECK_FAILED, NULL);
-        goto cleanup_client;
-    }
-    buf[buf_len] = '\0';
+	int status_code = esp_http_client_get_status_code(client);
+	if (status_code != 200) {
+	    ESP_LOGE(TAG, "version.json HTTP %d", status_code);
+	    if (args->cb) args->cb(OTA_VERSION_CHECK_FAILED, NULL);
+	    goto cleanup_client;
+	}
+
+	int r;
+	while (buf_len < (int)sizeof(buf) - 1 &&
+	       (r = esp_http_client_read(client, buf + buf_len, sizeof(buf) - 1 - buf_len)) > 0) {
+	    buf_len += r;
+	}
+	if (buf_len <= 0) { /* как было */ }
+	buf[buf_len] = '\0';
     ESP_LOGI(TAG, "version.json: %s", buf);
 
     cJSON *json = cJSON_Parse(buf);

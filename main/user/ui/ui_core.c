@@ -31,7 +31,6 @@
 extern const city_t cities_de[];
 extern wifi_ap_record_t ap_info;
 
-
 ui_main_menu_t ui = {0};
 
 void set_visible(lv_obj_t *parent, bool visible) {
@@ -78,12 +77,7 @@ void init_lv_objects() {
   ui.weather.settings_popup.cities_de = cities_de;
   ui.weather.settings_popup.city_count = CITY_COUNT;
 
-main_settings_load(
-      &ui.settings.switch_.display_mode, &ui.settings.switch_.backlight_manual_pct,
-      &ui.settings.switch_.backlight_mode, &ui.settings.switch_.theme_mode,
-      &ui.settings.switch_.co2_mode,
-      &ui.settings.switch_.backlight_auto_min_pct,
-      &ui.settings.switch_.backlight_auto_max_pct);
+main_settings_load(&ui);
   backlight_set(ui.settings.switch_.backlight_manual_pct);
   ui.settings.switch_.theme_last_is_day = get_is_day(); // ← инициализируем кэш
   weather_settings_load(&ui.weather.settings_popup.saved_city);

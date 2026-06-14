@@ -23,6 +23,8 @@ void btn_settings_category_event_handler(lv_event_t *e);
 void ui_create_settigs_display(ui_main_menu_t *ui);
 void backlight_btnmatrix_event_cb(lv_event_t *e);
 void backlight_slider_event_cb(lv_event_t *e);
+void backlight_min_slider_event_cb(lv_event_t *e);
+void backlight_max_slider_event_cb(lv_event_t *e);
 void standby_btnmatrix_event_cb(lv_event_t *e);
 void theme_btnmatrix_event_cb(lv_event_t *e);
 
