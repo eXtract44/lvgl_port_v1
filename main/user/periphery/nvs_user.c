@@ -48,7 +48,8 @@ void weather_settings_save(uint16_t city) {
 }
 
 void main_settings_save(uint8_t standby_mode, uint8_t backlight_pct,
-                        uint8_t backlight_mode, uint8_t theme_mode, uint8_t co2_mode) {
+                        uint8_t backlight_mode, uint8_t theme_mode, uint8_t co2_mode,
+                        uint8_t bl_auto_min, uint8_t bl_auto_max) {
     nvs_handle_t handle;
     if (nvs_open("main_settings", NVS_READWRITE, &handle) != ESP_OK) return;
     nvs_set_u8(handle, "standby",    standby_mode);
@@ -56,28 +57,38 @@ void main_settings_save(uint8_t standby_mode, uint8_t backlight_pct,
     nvs_set_u8(handle, "bl_mode",    backlight_mode);
     nvs_set_u8(handle, "theme_mode", theme_mode);
     nvs_set_u8(handle, "co2_mode",   co2_mode);
+    nvs_set_u8(handle, "bl_amin",    bl_auto_min);
+    nvs_set_u8(handle, "bl_amax",    bl_auto_max);
     nvs_commit(handle);
     nvs_close(handle);
 }
 
 void main_settings_load(uint8_t *standby_mode, uint8_t *backlight_pct,
-                        uint8_t *backlight_mode, uint8_t *theme_mode, uint8_t *co2_mode) {
+                        uint8_t *backlight_mode, uint8_t *theme_mode, uint8_t *co2_mode,
+                        uint8_t *bl_auto_min, uint8_t *bl_auto_max) {
     nvs_handle_t handle;
     if (nvs_open("main_settings", NVS_READONLY, &handle) != ESP_OK) {
-        *standby_mode  = 0;
-        *backlight_pct = 80;
+        *standby_mode   = 0;
+        *backlight_pct  = 80;
         *backlight_mode = 0;
-        *theme_mode    = 0;
-        *co2_mode      = 0;
+        *theme_mode     = 0;
+        *co2_mode       = 0;
+        *bl_auto_min    = 5;
+        *bl_auto_max    = 100;
         return;
     }
     uint8_t val;
-    val = 0;  nvs_get_u8(handle, "standby",    &val); *standby_mode   = val;
-    val = 80; nvs_get_u8(handle, "bl_pct",     &val); *backlight_pct  = val;
-    val = 0;  nvs_get_u8(handle, "bl_mode",    &val); *backlight_mode = val;
-    val = 0;  nvs_get_u8(handle, "theme_mode", &val); *theme_mode     = val;
-    val = 0;  nvs_get_u8(handle, "co2_mode",   &val); *co2_mode       = val;
+    val = 0;   nvs_get_u8(handle, "standby",    &val); *standby_mode   = val;
+    val = 80;  nvs_get_u8(handle, "bl_pct",     &val); *backlight_pct  = val;
+    val = 0;   nvs_get_u8(handle, "bl_mode",    &val); *backlight_mode = val;
+    val = 0;   nvs_get_u8(handle, "theme_mode", &val); *theme_mode     = val;
+    val = 0;   nvs_get_u8(handle, "co2_mode",   &val); *co2_mode       = val;
+    val = 5;   nvs_get_u8(handle, "bl_amin",    &val); *bl_auto_min    = val;
+    val = 100; nvs_get_u8(handle, "bl_amax",    &val); *bl_auto_max    = val;
     nvs_close(handle);
+
+    // защита от битой пары в NVS
+    if (*bl_auto_min > *bl_auto_max) *bl_auto_min = *bl_auto_max;
 }
 
 void weather_settings_load(uint16_t *city) {

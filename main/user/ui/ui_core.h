@@ -166,6 +166,8 @@ typedef struct {
   bool theme_last_is_day; // кэш — последнее состояние get_is_day()
   uint8_t co2_mode;       // 0=Sensitiv 1=Normal 2=Robust
   uint8_t backlight_manual_pct;  // 
+  uint8_t backlight_auto_min_pct;
+uint8_t backlight_auto_max_pct;
   uint8_t backlight_mode; //  0=Manuell 1=Auto 2=Zeitplan
 } ui_switchs_t;
 

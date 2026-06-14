@@ -12,9 +12,11 @@
 #include "time.h"
 
 void main_settings_save(uint8_t standby_mode, uint8_t backlight_pct,
-                        uint8_t backlight_mode, uint8_t theme_mode, uint8_t co2_mode);
+                        uint8_t backlight_mode, uint8_t theme_mode, uint8_t co2_mode,
+                        uint8_t bl_auto_min, uint8_t bl_auto_max);
 void main_settings_load(uint8_t *standby_mode, uint8_t *backlight_pct,
-                        uint8_t *backlight_mode, uint8_t *theme_mode, uint8_t *co2_mode);                    
+                        uint8_t *backlight_mode, uint8_t *theme_mode, uint8_t *co2_mode,
+                        uint8_t *bl_auto_min, uint8_t *bl_auto_max);                 
 void weather_settings_save(uint16_t city);
 void weather_settings_load(uint16_t *city) ;
 

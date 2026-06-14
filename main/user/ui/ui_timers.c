@@ -120,6 +120,7 @@ void timer_200(lv_timer_t *timer) {
 
 void timer_33(lv_timer_t *timer) {
   ui_main_menu_t *ui = timer->user_data;
+  backlight_tick();
 
   if (ui->co2.co2_target < 0)
     return;
@@ -151,13 +152,15 @@ void timer_33(lv_timer_t *timer) {
   lv_meter_indicator_t *arc = ui->co2.needle_arc;
   arc->type_data.arc.color = calc_co2_color(val);
   lv_obj_invalidate(ui->co2.meter);
+  
 }
 
 uint8_t backlight_get_current_pct(ui_main_menu_t *ui) {
 	if(ui->settings.switch_.backlight_mode == BACKLIGHT_MODE_MANUELL){
 		return ui->settings.switch_.backlight_manual_pct;
 	}else if(ui->settings.switch_.backlight_mode == BACKLIGHT_MODE_AUTO){
-		return backlight_get_auto_pct();
+		return backlight_get_auto_pct(ui->settings.switch_.backlight_auto_min_pct,
+                                  ui->settings.switch_.backlight_auto_max_pct);
 	}else if(ui->settings.switch_.backlight_mode == BACKLIGHT_MODE_ZEITPLAN){
 		return backlight_get_zeitplan_pct(); 
 	}else{

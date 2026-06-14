@@ -13,6 +13,16 @@
 #define BACKLIGHT_TIMER     LEDC_TIMER_0
 #define BACKLIGHT_CHANNEL   LEDC_CHANNEL_0
 
+
+#define BL_DUTY_FORBID_LO   510   // ~35% от 1023
+#define BL_DUTY_FORBID_HI   560   // ~55% от 1023
+
+
+static volatile uint8_t bl_cur = 99;
+static volatile uint8_t bl_tgt = 100;
+
+
+
 void backlight_init(void) {
     ledc_timer_config_t timer = {
         .speed_mode       = LEDC_LOW_SPEED_MODE,
@@ -41,7 +51,19 @@ void backlight_deinit(void) {
     ledc_stop(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL, 0);
 }
 
-void backlight_set(uint8_t percent) {
+
+void backlight_set(uint8_t pct) {
+    if (pct > 100) pct = 100;
+    bl_tgt = pct;
+}
+
+void backlight_tick(void) {     // вызывать из таймера 33 мс
+    if (bl_cur == bl_tgt) return;
+    bl_cur += (bl_cur < bl_tgt) ? 1 : -1;
+    backlight_apply(bl_cur);
+}
+
+void backlight_apply(uint8_t percent) {
 	if (percent == 0) {                 // полное выключение
         ledc_set_duty(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL, 0);
         ledc_update_duty(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL);
@@ -54,13 +76,20 @@ void backlight_set(uint8_t percent) {
     float normalized = mapped / 100.0f;
     float corrected  = powf(normalized, 2.2f);
     uint32_t duty    = (uint32_t)(corrected * 1023.0f);
+    
+      // снап мимо опасной полосы скважности
+    if (duty > BL_DUTY_FORBID_LO && duty < BL_DUTY_FORBID_HI) {
+        duty = (duty < (BL_DUTY_FORBID_LO + BL_DUTY_FORBID_HI) / 2)
+                   ? BL_DUTY_FORBID_LO
+                   : BL_DUTY_FORBID_HI;
+    }
 
     ledc_set_duty(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL, duty);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, BACKLIGHT_CHANNEL);
 }
 
-uint8_t backlight_get_auto_pct(void) {
-    return get_is_day() ? 100 : 5;
+uint8_t backlight_get_auto_pct(uint8_t min_pct, uint8_t max_pct) {
+    return get_is_day() ? max_pct : min_pct;
 }
 
 // ──────────────────────────────────────────────

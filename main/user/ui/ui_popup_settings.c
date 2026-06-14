@@ -446,10 +446,12 @@ void ui_create_settigs_display(ui_main_menu_t *ui) {
   lv_obj_add_style(ui->settings.theme_desc_label, &ui->font.very_small_20, 0);
 
   // --- применяем сохранённые значения ---
-  main_settings_load(
+ main_settings_load(
       &ui->settings.switch_.display_mode, &ui->settings.switch_.backlight_manual_pct,
       &ui->settings.switch_.backlight_mode, &ui->settings.switch_.theme_mode,
-      &ui->settings.switch_.co2_mode);
+      &ui->settings.switch_.co2_mode,
+      &ui->settings.switch_.backlight_auto_min_pct,
+      &ui->settings.switch_.backlight_auto_max_pct);
 
   lv_btnmatrix_set_btn_ctrl(ui->settings.backlight_btnmatrix,
                             ui->settings.switch_.backlight_mode,
@@ -502,7 +504,7 @@ void backlight_btnmatrix_event_cb(lv_event_t *e) {
   } else {
     lv_obj_add_state(ui->settings.backlight_slider, LV_STATE_DISABLED);
     uint8_t pct =
-        (btn_id == 1) ? backlight_get_auto_pct() : backlight_get_zeitplan_pct();
+        (btn_id == 1) ? backlight_get_auto_pct(ui->settings.switch_.backlight_auto_min_pct, ui->settings.switch_.backlight_auto_max_pct) : backlight_get_zeitplan_pct();
     backlight_set(pct);
     snprintf(buf, sizeof(buf), "%d%%", pct);
     lv_label_set_text(ui->settings.backlight_pct_label, buf);
@@ -515,7 +517,9 @@ void backlight_btnmatrix_event_cb(lv_event_t *e) {
   main_settings_save(
       ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
-      ui->settings.switch_.co2_mode);
+      ui->settings.switch_.co2_mode,
+      ui->settings.switch_.backlight_auto_min_pct,
+      ui->settings.switch_.backlight_auto_max_pct);
 }
 
 void backlight_slider_event_cb(lv_event_t *e) {
@@ -529,10 +533,12 @@ void backlight_slider_event_cb(lv_event_t *e) {
   lv_label_set_text(ui->settings.backlight_pct_label, buf);
 
   backlight_set(pct);
-  main_settings_save(
+main_settings_save(
       ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
-      ui->settings.switch_.co2_mode);
+      ui->settings.switch_.co2_mode,
+      ui->settings.switch_.backlight_auto_min_pct,
+      ui->settings.switch_.backlight_auto_max_pct);
 }
 
 void standby_btnmatrix_event_cb(lv_event_t *e) {
@@ -548,7 +554,9 @@ void standby_btnmatrix_event_cb(lv_event_t *e) {
   main_settings_save(
       ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
-      ui->settings.switch_.co2_mode);
+      ui->settings.switch_.co2_mode,
+      ui->settings.switch_.backlight_auto_min_pct,
+      ui->settings.switch_.backlight_auto_max_pct);
 }
 
 void theme_btnmatrix_event_cb(lv_event_t *e) {
@@ -592,7 +600,9 @@ void theme_btnmatrix_event_cb(lv_event_t *e) {
   main_settings_save(
       ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
-      ui->settings.switch_.co2_mode);
+      ui->settings.switch_.co2_mode,
+      ui->settings.switch_.backlight_auto_min_pct,
+      ui->settings.switch_.backlight_auto_max_pct);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -842,10 +852,12 @@ void co2_btnmatrix_event_cb(lv_event_t *e) {
     "0-1000 ppb: Robust, fuer Industrie und Lager."};
   lv_label_set_text(ui->settings.co2_desc_label, descs[btn_id]);
 
-  main_settings_save(
+main_settings_save(
       ui->settings.switch_.display_mode, ui->settings.switch_.backlight_manual_pct,
       ui->settings.switch_.backlight_mode, ui->settings.switch_.theme_mode,
-      ui->settings.switch_.co2_mode);
+      ui->settings.switch_.co2_mode,
+      ui->settings.switch_.backlight_auto_min_pct,
+      ui->settings.switch_.backlight_auto_max_pct);
   update_co2_chart_labels(ui);
 }
 
