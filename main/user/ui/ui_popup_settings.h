@@ -39,7 +39,6 @@ void set_current_city_weather_event_handler(lv_event_t *e);
 
 //Sensors Settings
 void ui_create_settigs_sensors(ui_main_menu_t *ui);
-void co2_btnmatrix_event_cb(lv_event_t *e);
 
 //OTA Settings
 void ota_progress_cb(ota_state_t state, int progress_pct);

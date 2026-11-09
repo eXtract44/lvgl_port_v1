@@ -164,7 +164,6 @@ typedef struct {
   uint8_t display_mode;//0 "Immer eingeschaltet.", 1 "Aus nach 180 Sek.", 2 "Aus Nachts nach 180 Sek."
   uint8_t theme_mode; // 0=Auto 1=Hell 2=Dunkel
   bool theme_last_is_day; // кэш — последнее состояние get_is_day()
-  uint8_t co2_mode;       // 0=Sensitiv 1=Normal 2=Robust
   uint8_t backlight_manual_pct;  // 
   uint8_t backlight_auto_min_pct;
 uint8_t backlight_auto_max_pct;
@@ -203,8 +202,7 @@ typedef struct {
   lv_obj_t *standby_desc_label;
   lv_obj_t *theme_btnmatrix; // Auto / Hell / Dunkel
   lv_obj_t *theme_desc_label;
-  lv_obj_t *co2_btnmatrix;
-  lv_obj_t *co2_desc_label;
+  lv_obj_t *sensor_status_label;
   lv_obj_t *backlight_btnmatrix;
   lv_obj_t *backlight_desc_label;
   lv_obj_t *backlight_slider;
@@ -250,7 +248,6 @@ typedef struct {
   lv_obj_t *calib_icon_label;
   lv_obj_t *calib_popup;
   lv_obj_t *calib_popup_text;
-  TickType_t calib_start_tick;
 
 } ui_co2_t;
 

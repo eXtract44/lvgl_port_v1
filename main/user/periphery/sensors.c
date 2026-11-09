@@ -22,6 +22,9 @@
 #include "waveshare_rgb_lcd_port.h"
 #include <math.h>
 #include <stdint.h>
+#include <string.h>
+#include <time.h>
+#include "nvs.h"
 #include "../ui/ui_user_config.h"
 
 sgp30_data_t sgp30_data = {0};
@@ -205,7 +208,7 @@ uint8_t get_humidity_sht41(void) {
 // ---------------------------------------------------------------------------
 // SGP30  (unchanged from SHT31 version)
 // ---------------------------------------------------------------------------
-static uint8_t sgp30_send_cmd(sgp30_cmd_t cmd) {
+static esp_err_t sgp30_send_cmd(uint16_t cmd) {
     uint8_t cmd_buffer[2];
     cmd_buffer[0] = cmd >> 8;
     cmd_buffer[1] = (uint8_t)cmd;
@@ -214,23 +217,77 @@ static uint8_t sgp30_send_cmd(sgp30_cmd_t cmd) {
         I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
-static int sgp30_soft_reset(void) {
-    uint8_t cmd = 0x06;
-    return i2c_master_write_to_device(
-        I2C_MASTER_NUM, SGP30_ADDR_WRITE, &cmd, 1,
-        I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+static uint8_t CheckCrc8(uint8_t *message, uint8_t initial_value);
+static void sgp30_baseline_tick(void);
+static void sgp30_try_restore_baseline(void);
+typedef struct {
+    uint16_t values[30];
+    uint32_t sum;
+    uint8_t head;
+    uint8_t count;
+} sgp30_filter_t;
+static sgp30_filter_t sgp30_co2_filter;
+static sgp30_filter_t sgp30_tvoc_filter;
+static uint16_t sgp30_filter(sgp30_filter_t *filter, uint16_t raw);
+
+#define SGP30_WARMUP_SEC 15U
+#define SGP30_LEARNING_SEC (12U * 3600U)
+#define SGP30_BASELINE_MAX_AGE_SEC (7U * 24U * 3600U)
+#define SGP30_TIME_VALID_MIN 1704067200LL // 2024-01-01, before SNTP time is unknown
+
+typedef struct {
+    uint64_t serial;
+    uint64_t timestamp;
+    uint16_t eco2;
+    uint16_t tvoc;
+    uint32_t version;
+} sgp30_baseline_record_t;
+
+static uint64_t sgp30_serial;
+static uint32_t sgp30_learning_samples;
+static int64_t sgp30_baseline_next_save_us;
+
+// Release the shared bus while SGP30 converts, so GT911 can still be read.
+static esp_err_t sgp30_read_words(uint16_t cmd, uint8_t *rx, size_t len) {
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    esp_err_t err = sgp30_send_cmd(cmd);
+    xSemaphoreGive(i2c_bus_mutex);
+    if (err != ESP_OK) return err;
+    vTaskDelay(pdMS_TO_TICKS(20));
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    err = i2c_master_read_from_device(I2C_MASTER_NUM, SGP30_ADDR, rx, len,
+                                    pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
+    xSemaphoreGive(i2c_bus_mutex);
+    if (err != ESP_OK) return err;
+    for (size_t i = 0; i < len; i += 3) {
+        if (CheckCrc8(&rx[i], 0xFF) != rx[i + 2]) return ESP_ERR_INVALID_CRC;
+    }
+    return ESP_OK;
 }
 
 int sgp30_init(void) {
+    memset(&sgp30_data, 0, sizeof(sgp30_data));
+    memset(&sgp30_co2_filter, 0, sizeof(sgp30_co2_filter));
+    memset(&sgp30_tvoc_filter, 0, sizeof(sgp30_tvoc_filter));
+    sgp30_learning_samples = 0;
+    sgp30_serial = 0;
     xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
-    int status = -1;
-    status = sgp30_soft_reset(); 
-    vTaskDelay(pdMS_TO_TICKS(100));
-    status = sgp30_send_cmd(INIT_AIR_QUALITY);//0 ok -1 fail
-    vTaskDelay(pdMS_TO_TICKS(100));
-    xSemaphoreGive(i2c_bus_mutex);       
+    // IAQ_INIT is the addressed SGP30 initialization command, not a bus reset.
+    esp_err_t status = sgp30_send_cmd(INIT_AIR_QUALITY);
+    xSemaphoreGive(i2c_bus_mutex);
+    vTaskDelay(pdMS_TO_TICKS(20));
     if(status == 0){
 		sgp30_data.init_ok = 1;
+		sgp30_data.started_us = esp_timer_get_time();
+        sgp30_baseline_next_save_us = sgp30_data.started_us + 3600LL * 1000000;
+        uint8_t serial_rx[9];
+        if (sgp30_read_words(0x3682, serial_rx, sizeof(serial_rx)) == ESP_OK) {
+            for (int i = 0; i < 9; i += 3) {
+                sgp30_serial = (sgp30_serial << 16) |
+                    ((uint16_t)serial_rx[i] << 8) | serial_rx[i + 1];
+            }
+        }
+        sgp30_try_restore_baseline();
 		ESP_LOGI("SGP30", "Init OK");
 	}
     else{
@@ -240,8 +297,6 @@ int sgp30_init(void) {
     
     return status == 0 ? 0 : -1;
 }
-
-static int sgp30_start(void) { return sgp30_send_cmd(MEASURE_AIR_QUALITY); }
 
 static uint8_t CheckCrc8(uint8_t *const message, uint8_t initial_value) {
     uint8_t remainder = initial_value;
@@ -253,6 +308,97 @@ static uint8_t CheckCrc8(uint8_t *const message, uint8_t initial_value) {
         }
     }
     return remainder;
+}
+
+static void sgp30_try_restore_baseline(void) {
+#if !SIMULATE_SGP30_VALUES
+    if (!sgp30_serial || sgp30_data.baseline_ready) return;
+    time_t now = time(NULL);
+    if (now < SGP30_TIME_VALID_MIN) return; // Retry after SNTP, without blocking measurements.
+
+    nvs_handle_t nvs;
+    if (nvs_open("sgp30", NVS_READONLY, &nvs) != ESP_OK) return;
+    sgp30_baseline_record_t record = {0};
+    size_t len = sizeof(record);
+    esp_err_t err = nvs_get_blob(nvs, "baseline", &record, &len);
+    nvs_close(nvs);
+    if (err != ESP_OK || len != sizeof(record) || record.version != 1 ||
+        record.serial != sgp30_serial || !(record.eco2 | record.tvoc) ||
+        record.timestamp < SGP30_TIME_VALID_MIN || record.timestamp > (uint64_t)now ||
+        (uint64_t)now - record.timestamp >= SGP30_BASELINE_MAX_AGE_SEC) return;
+
+    // GET returns eCO2, TVOC; SET requires the opposite word order.
+    uint8_t tx[8] = {0x20, 0x1E, record.tvoc >> 8, record.tvoc, 0,
+                    record.eco2 >> 8, record.eco2, 0};
+    tx[4] = CheckCrc8(&tx[2], 0xFF);
+    tx[7] = CheckCrc8(&tx[5], 0xFF);
+    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
+    err = i2c_master_write_to_device(I2C_MASTER_NUM, SGP30_ADDR, tx, sizeof(tx),
+                                   pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
+    xSemaphoreGive(i2c_bus_mutex);
+    vTaskDelay(pdMS_TO_TICKS(20));
+    if (err == ESP_OK) {
+        sgp30_data.baseline_restored = true;
+        sgp30_data.baseline_ready = true;
+        sgp30_data.baseline_saved = true;
+        ESP_LOGI("SGP30", "Baseline restored for this sensor");
+    }
+#endif
+}
+
+static void sgp30_baseline_tick(void) {
+#if !SIMULATE_SGP30_VALUES
+    if (!sgp30_data.baseline_ready) {
+        if (++sgp30_learning_samples >= SGP30_LEARNING_SEC)
+            sgp30_data.baseline_ready = true;
+    }
+    int64_t now_us = esp_timer_get_time();
+    if (!sgp30_data.baseline_ready || !sgp30_serial ||
+        now_us < sgp30_baseline_next_save_us) return;
+    sgp30_baseline_next_save_us = now_us + 60LL * 1000000; // Retry failures once per minute.
+    time_t now = time(NULL);
+    if (now < SGP30_TIME_VALID_MIN) return; // No trustworthy age without a clock.
+
+    uint8_t rx[6];
+    if (sgp30_read_words(0x2015, rx, sizeof(rx)) != ESP_OK) return;
+    sgp30_baseline_record_t record = {
+        .serial = sgp30_serial, .timestamp = (uint64_t)now, .version = 1,
+        .eco2 = ((uint16_t)rx[0] << 8) | rx[1],
+        .tvoc = ((uint16_t)rx[3] << 8) | rx[4],
+    };
+    if (!(record.eco2 | record.tvoc)) return;
+    nvs_handle_t nvs;
+    if (nvs_open("sgp30", NVS_READWRITE, &nvs) != ESP_OK) return;
+    esp_err_t err = nvs_set_blob(nvs, "baseline", &record, sizeof(record));
+    if (err == ESP_OK) err = nvs_commit(nvs);
+    nvs_close(nvs);
+    if (err == ESP_OK) {
+        sgp30_data.baseline_saved = true;
+        sgp30_baseline_next_save_us = now_us + 3600LL * 1000000;
+        ESP_LOGI("SGP30", "Baseline saved");
+    }
+#endif
+}
+
+uint32_t sgp30_warmup_remaining_sec(void) {
+    if (!sgp30_data.init_ok) return SGP30_WARMUP_SEC;
+    int64_t elapsed = (esp_timer_get_time() - sgp30_data.started_us) / 1000000;
+    return elapsed >= SGP30_WARMUP_SEC ? 0 : SGP30_WARMUP_SEC - (uint32_t)elapsed;
+}
+
+bool sgp30_values_ready(void) {
+    return sgp30_data.init_ok && sgp30_data.state == SGP30_STATE_OK &&
+           sgp30_co2_filter.count > 0 &&
+           sgp30_warmup_remaining_sec() == 0 &&
+           esp_timer_get_time() - sgp30_data.last_sample_us < 3000000;
+}
+
+bool sgp30_is_learning(void) {
+    return sgp30_data.init_ok && !sgp30_data.baseline_ready;
+}
+
+uint32_t sgp30_learning_remaining_sec(void) {
+    return sgp30_data.baseline_ready ? 0 : SGP30_LEARNING_SEC - sgp30_learning_samples;
 }
 
 /**
@@ -283,106 +429,52 @@ void sgp30_set_humidity_compensation(float temperature_c, float relative_humidit
     i2c_master_write_to_device(I2C_MASTER_NUM, SGP30_ADDR_WRITE, buf, 5,
                                pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
     xSemaphoreGive(i2c_bus_mutex);
+    vTaskDelay(pdMS_TO_TICKS(20)); // SET_HUMIDITY must finish before MEASURE_IAQ.
 }
 
 int sgp30_read(void) {
+    if (!sgp30_data.init_ok) return -1;
+    sgp30_try_restore_baseline();
 #if SIMULATE_SGP30_VALUES
     static uint16_t temp = 400;
     temp += 10;
     if (temp > 9999) temp = 400;
     sgp30_data.co2  = temp;
     sgp30_data.tvoc = temp - 111;
+    sgp30_data.baseline_ready = true;
 #else
-    static uint16_t try_to_read_cnt = 0;
-    const  uint16_t number_of_try   = 20;
-
     uint8_t recv_buffer[6] = {0};
-
-    xSemaphoreTake(i2c_bus_mutex, portMAX_DELAY);
-
-    int status = sgp30_start();
-    if (status != 0) {
-        //ESP_LOGE("SGP30", "Start failed");
-        try_to_read_cnt++;
-        //sgp30_data.state = SGP30_STATE_FAIL;
-        xSemaphoreGive(i2c_bus_mutex);
+    if (sgp30_read_words(MEASURE_AIR_QUALITY, recv_buffer, sizeof(recv_buffer)) != ESP_OK) {
+        sgp30_data.state = SGP30_STATE_FAIL;
         return -1;
     }
-
-    vTaskDelay(pdMS_TO_TICKS(100));
-
-    status = i2c_master_read_from_device(
-        I2C_MASTER_NUM, SGP30_ADDR_READ, recv_buffer, 6,
-        pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS));
-
-    xSemaphoreGive(i2c_bus_mutex);
-
-    if (status != 0) {
-        //ESP_LOGE("SGP30", "Read failed");
-        try_to_read_cnt++;
-        return -1;
-    }
-
-    if (CheckCrc8(&recv_buffer[0], 0xFF) != recv_buffer[2]) return -1;
-    if (CheckCrc8(&recv_buffer[3], 0xFF) != recv_buffer[5]) return -1;
 
     sgp30_data.co2  = (uint16_t)(recv_buffer[0] << 8) | recv_buffer[1];
     sgp30_data.tvoc = (uint16_t)(recv_buffer[3] << 8) | recv_buffer[4];
 
-    if (try_to_read_cnt > number_of_try) {
-        try_to_read_cnt  = number_of_try + 1;
-        sgp30_data.state = SGP30_STATE_FAIL;
-        ESP_LOGE("SGP30", "Read failed");
-    } else {
-        try_to_read_cnt  = 0;
-        sgp30_data.state = SGP30_STATE_OK;
-    }
 #endif
+    sgp30_data.state = SGP30_STATE_OK;
+    sgp30_data.last_sample_us = esp_timer_get_time();
+    if (sgp30_warmup_remaining_sec() == 0) {
+        // Filter once per new sample. Getters must not change the averaging window.
+        sgp30_data.co2_filtered = sgp30_filter(&sgp30_co2_filter, sgp30_data.co2);
+        sgp30_data.tvoc_filtered = sgp30_filter(&sgp30_tvoc_filter, sgp30_data.tvoc);
+    }
+    if (sgp30_warmup_remaining_sec() == 0) sgp30_baseline_tick();
     return 0;
 }
 
-uint16_t sgp30_smooth_co2(uint16_t raw) {
-    static const uint8_t  WINDOW_SIZE = 30;
-    static const uint16_t CLAMP_MIN   = 400;
-    static const uint16_t CLAMP_MAX   = 9999;
-
-    static uint16_t buf[30];
-    static uint8_t  head  = 0;
-    static uint32_t sum   = 0;
-    static uint8_t  count = 0;
-
-    if (raw < CLAMP_MIN) raw = CLAMP_MIN;
-    if (raw > CLAMP_MAX) raw = CLAMP_MAX;
-
-    if (count == WINDOW_SIZE) { sum -= buf[head]; } else { count++; }
-    buf[head] = raw;
-    sum      += raw;
-    head      = (head + 1) % WINDOW_SIZE;
-    return (uint16_t)(sum / count);
+static uint16_t sgp30_filter(sgp30_filter_t *filter, uint16_t raw) {
+    if (filter->count == 30) filter->sum -= filter->values[filter->head];
+    else filter->count++;
+    filter->values[filter->head] = raw;
+    filter->sum += raw;
+    filter->head = (filter->head + 1) % 30;
+    return (uint16_t)(filter->sum / filter->count);
 }
 
-uint16_t sgp30_smooth_tvoc(uint16_t raw) {
-    static const uint8_t  WINDOW_SIZE = 30;
-    static const uint16_t CLAMP_MIN   = 0;
-    static const uint16_t CLAMP_MAX   = 9999;
-
-    static uint16_t buf[30];
-    static uint8_t  head  = 0;
-    static uint32_t sum   = 0;
-    static uint8_t  count = 0;
-
-    if (raw < CLAMP_MIN) raw = CLAMP_MIN;
-    if (raw > CLAMP_MAX) raw = CLAMP_MAX;
-
-    if (count == WINDOW_SIZE) { sum -= buf[head]; } else { count++; }
-    buf[head] = raw;
-    sum      += raw;
-    head      = (head + 1) % WINDOW_SIZE;
-    return (uint16_t)(sum / count);
-}
-
-uint16_t get_co2_sgp30(void)  { return sgp30_smooth_co2(sgp30_data.co2);   }
-uint16_t get_tvoc_sgp30(void) { return sgp30_smooth_tvoc(sgp30_data.tvoc); }
+uint16_t get_co2_sgp30(void)  { return sgp30_data.co2_filtered; }
+uint16_t get_tvoc_sgp30(void) { return sgp30_data.tvoc_filtered; }
 
 // ---------------------------------------------------------------------------
 // SCD41  (Periodic Mode, ~5 s / Messung)
@@ -474,7 +566,8 @@ uint16_t get_co2_scd41(void) {
 
 void read_sensors(void) {
     sht41_read();
-    sgp30_set_humidity_compensation(sht41_data.temperature, (float)sht41_data.humidity);
+    if (sht41_data.life == SHT41_STATE_OK && sgp30_data.init_ok)
+        sgp30_set_humidity_compensation(sht41_data.temperature, (float)sht41_data.humidity);
     sgp30_read();
     #if CONFIG_HAS_SCD41
     scd41_read();

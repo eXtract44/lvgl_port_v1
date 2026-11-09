@@ -11,7 +11,6 @@
 #include "ui_core.h"
 
 void create_timers();
-void timer_60000(lv_timer_t *timer);
 void timer_10000(lv_timer_t *timer);
 void timer_1000(lv_timer_t *timer);
 void timer_200(lv_timer_t *timer);

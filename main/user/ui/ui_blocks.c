@@ -208,7 +208,7 @@ ui->sensor.ventilation_label = value;
 
 void update_block_top_left(ui_main_menu_t *ui) {
     bool sht41_ok = (sht41_data.life == SHT41_STATE_OK);
-    bool sgp30_ok = (sgp30_data.state == SGP30_STATE_OK);
+    bool sgp30_ok = sgp30_values_ready();
     bool wifi_ok  = (get_wifi_status() == WIFI_CONNECTED);
 #if CONFIG_HAS_SCD41
     bool scd41_ok = (scd41_data.life == SCD41_STATE_OK);
@@ -252,11 +252,11 @@ void update_block_top_left(ui_main_menu_t *ui) {
     // ── Lueftungsempfehlung ────────────────────────────────
     const char *advice = NULL;
 
-    // TVOC-Pruefung (beide Varianten)
+    // TVOC remains useful as a separate indicator, including in the eCO2 variant.
     if (sgp30_ok) {
         uint16_t tvoc = get_tvoc_sgp30();
         if (tvoc > 350) {
-            advice = "Lueften empfohlen";
+            advice = "TVOC erhoeht: lueften";
         }
     }
 
@@ -269,6 +269,14 @@ void update_block_top_left(ui_main_menu_t *ui) {
         } else if (co2 >= 1000) {
             advice = "Lueften empfohlen";   // MITTEL
         }
+    }
+#endif
+
+#if !CONFIG_HAS_SCD41
+    if (advice == NULL && sgp30_ok && !sgp30_is_learning()) {
+        uint16_t eco2 = get_co2_sgp30();
+        if (eco2 > AQ_THRESH_MITTEL) advice = "eCO2 hoch: lueften";
+        else if (eco2 >= AQ_THRESH_GUT) advice = "eCO2 erhoeht: lueften";
     }
 #endif
 
@@ -295,8 +303,21 @@ void update_block_top_left(ui_main_menu_t *ui) {
 #else
         bool sensor_ready = sgp30_ok;
 #endif
+#if !CONFIG_HAS_SCD41
+        if (sgp30_ok && sgp30_is_learning()) {
+            lv_label_set_text(ui->sensor.ventilation_label, "SGP30 lernt noch");
+            lv_obj_set_style_text_color(ui->sensor.ventilation_label,
+                                        lv_color_hex(0x888888), 0);
+        } else
+#endif
         if (sensor_ready) {
-            lv_label_set_text(ui->sensor.ventilation_label, "Luftqualitaet: GUT");
+            lv_label_set_text(ui->sensor.ventilation_label,
+#if CONFIG_HAS_SCD41
+                              "CO2 unauffaellig"
+#else
+                              "eCO2 unauffaellig"
+#endif
+            );
             lv_obj_set_style_text_color(ui->sensor.ventilation_label,
                                         lv_palette_main(LV_PALETTE_GREEN), 0);
         } else {
@@ -502,11 +523,11 @@ void create_block_top_middle(ui_main_menu_t *ui) {
   if (!ui->co2.meter)
     return;
   lv_obj_add_style(ui->co2.meter, &ui->style.meter_co2, 0);
-  lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, 0);
+  lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, MIN_VALUE_CO2);
 
   // --- значение CO₂ ---
   lv_obj_t *value =
-      create_label(ui->screen, "0", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      create_label(ui->screen, "---", BLOCK_TOP_MID_ALIGN_CO2_CHART,
                    BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE);
   if (!value)
     return;
@@ -524,7 +545,7 @@ void create_block_top_middle(ui_main_menu_t *ui) {
 
   // --- статус бейдж "GUT" ---
   ui->co2.co2_status_label =
-      create_label(ui->screen, "GUT", BLOCK_TOP_MID_ALIGN_CO2_CHART,
+      create_label(ui->screen, "START", BLOCK_TOP_MID_ALIGN_CO2_CHART,
                    BLOCK_TOP_MID_X_START, BLOCK_TOP_MID_Y_START_CO2_VALUE + 37);
   if (!ui->co2.co2_status_label)
     return;
@@ -532,16 +553,16 @@ void create_block_top_middle(ui_main_menu_t *ui) {
   lv_obj_set_style_text_align(ui->co2.co2_status_label, LV_TEXT_ALIGN_CENTER,
                               0);
   lv_obj_set_style_text_color(ui->co2.co2_status_label,
-                              lv_palette_main(LV_PALETTE_GREEN), 0);
+                              lv_color_hex(0x888888), 0);
   lv_obj_set_style_bg_opa(ui->co2.co2_status_label, LV_OPA_20, 0);
   lv_obj_set_style_bg_color(ui->co2.co2_status_label,
-                            lv_palette_main(LV_PALETTE_GREEN), 0);
+                            lv_color_hex(0x888888), 0);
   lv_obj_set_style_radius(ui->co2.co2_status_label, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_pad_hor(ui->co2.co2_status_label, 10, 0);
   lv_obj_set_style_pad_ver(ui->co2.co2_status_label, 3, 0);
   lv_obj_set_style_border_width(ui->co2.co2_status_label, 1, 0);
   lv_obj_set_style_border_color(ui->co2.co2_status_label,
-                                lv_palette_main(LV_PALETTE_GREEN), 0);
+                                lv_color_hex(0x888888), 0);
   lv_obj_set_style_border_opa(ui->co2.co2_status_label, LV_OPA_50, 0);
 
   // --- футер "CO₂ | Air Quality" ---
@@ -586,100 +607,133 @@ void create_block_top_middle(ui_main_menu_t *ui) {
   /*BLOCK TOP MID*/
 }
 
+static void set_aq_status(ui_main_menu_t *ui, const char *text, lv_color_t color) {
+    lv_label_set_text(ui->co2.co2_status_label, text);
+    lv_obj_set_style_text_color(ui->co2.co2_status_label, color, 0);
+    lv_obj_set_style_bg_color(ui->co2.co2_status_label, color, 0);
+    lv_obj_set_style_border_color(ui->co2.co2_status_label, color, 0);
+}
+
 void update_block_top_middle(ui_main_menu_t *ui) {
     if (AQ_SENSOR_OK()) {
         uint16_t raw = AQ_GET_VALUE();
         ui->co2.co2_target = (int32_t)constrain(raw, MIN_VALUE_CO2, MAX_VALUE_CO2);
         print_value("%.f", (float)raw, ui->co2.co2_label);
-        update_co2_status_label(ui, raw);
+        ui->co2.needle_arc->type_data.arc.color = calc_co2_color(raw);
+#if !CONFIG_HAS_SCD41
+        if (sgp30_is_learning()) {
+            ui->co2.needle_arc->type_data.arc.color = lv_color_hex(0x888888);
+            set_aq_status(ui, "LERNT", lv_color_hex(0x888888));
+        } else
+#endif
+            update_co2_status_label(ui, raw);
+        lv_obj_invalidate(ui->co2.meter);
     } else {
-        lv_label_set_text(ui->co2.co2_label, "K.S");
-        lv_label_set_text(ui->co2.co2_status_label, "---");
+        ui->co2.co2_target = -1;
+        lv_label_set_text(ui->co2.co2_label, "---");
+#if !CONFIG_HAS_SCD41
+        const char *status = !sgp30_data.init_ok ? "FEHLER" :
+            (sgp30_warmup_remaining_sec() ? "START" : "FEHLER");
+#else
+        const char *status = "FEHLER";
+#endif
+        set_aq_status(ui, status, lv_color_hex(0x888888));
+        lv_meter_set_indicator_value(ui->co2.meter, ui->co2.indicator, MIN_VALUE_CO2);
+        lv_meter_set_indicator_end_value(ui->co2.meter, ui->co2.needle_arc, MIN_VALUE_CO2);
+        ui->co2.co2_display = -1;
     }
 }
 
 void co2_calib_popup_close_cb(lv_event_t *e) {
-  ui_main_menu_t *ui = lv_event_get_user_data(e);
-  lv_obj_add_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+    ui_main_menu_t *ui = lv_event_get_user_data(e);
+    lv_obj_add_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+}
+
+void ui_update_sensor_details(ui_main_menu_t *ui) {
+    char status[200];
+    uint32_t warmup = sgp30_warmup_remaining_sec();
+    if (!sgp30_data.init_ok) {
+        snprintf(status, sizeof(status), "SGP30: Sensor nicht erreichbar");
+    } else if (warmup) {
+        snprintf(status, sizeof(status), "SGP30 startet: noch %u s", (unsigned)warmup);
+    } else if (!sgp30_values_ready()) {
+        snprintf(status, sizeof(status), "SGP30: keine aktuellen Messwerte");
+    } else if (sgp30_is_learning()) {
+        uint32_t left = sgp30_learning_remaining_sec();
+        snprintf(status, sizeof(status), "Lernphase: noch ca. %u h %02u min\nWerte vorlaeufig. Geraet eingeschaltet lassen.",
+                 (unsigned)(left / 3600), (unsigned)((left % 3600) / 60));
+    } else {
+        snprintf(status, sizeof(status), "%s\n%s",
+                 sgp30_data.baseline_restored ? "Gespeicherte Basis geladen" : "Lernphase abgeschlossen",
+                 sgp30_data.baseline_saved ? "Basis wird stuendlich gespeichert" :
+                     "Basis noch nicht gespeichert (Zeit/Verbindung pruefen)");
+    }
+
+    char values[80];
+    if (sgp30_values_ready())
+        snprintf(values, sizeof(values), "eCO2: %u ppm | TVOC: %u ppb",
+                 get_co2_sgp30(), get_tvoc_sgp30());
+    else
+        snprintf(values, sizeof(values), "eCO2: --- ppm | TVOC: --- ppb");
+
+    char text[900];
+    snprintf(text, sizeof(text),
+#if CONFIG_HAS_SCD41
+             "SCD41: CO2 direkt gemessen\n"
+             "CO2: <1000 GUT | 1000-2000 MITTEL\n"
+             ">2000 ppm HOCH (UBA)\n\n"
+#else
+             "SGP30: eCO2 ist ein geschaetzter Wert.\n"
+             "eCO2: <1000 NIEDRIG\n"
+             "1000-2000 ERHOEHT | >2000 ppm HOCH\n"
+             "Orientierung, keine CO2-Messung nach UBA.\n\n"
+#endif
+             "%s\n%s\n\n"
+             "Lueften empfohlen bei erhoehten Werten.\n"
+             "Sprays, Reiniger und Alkohol beeinflussen SGP30.", values, status);
+    if (ui->co2.calib_popup && !lv_obj_has_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN))
+        lv_label_set_text(ui->co2.calib_popup_text, text);
+    if (ui->settings.sensor_status_label)
+        lv_label_set_text(ui->settings.sensor_status_label, text);
+
+#if CONFIG_HAS_SCD41
+    if (ui->sensor.tvoc_calib_icon)
+        set_visible(ui->sensor.tvoc_calib_icon, !sgp30_values_ready() || sgp30_is_learning());
+#else
+    if (ui->co2.calib_icon_label)
+        set_visible(ui->co2.calib_icon_label, !sgp30_values_ready() || sgp30_is_learning());
+#endif
 }
 
 void co2_meter_click_event_cb(lv_event_t *e) {
-  #if CONFIG_HAS_SCD41
-  ui_main_menu_t *ui = lv_event_get_user_data(e);
-  lv_label_set_text(ui->co2.calib_popup_text,
-                    "Echtzeit-CO2-Messung per SCD41.\n\n"
-                    "Gut: < 1000 / Mittel: 1000-2000 / Hoch: > 2000 ppm\n");
-  lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
-#else
-  if (sgp30_data.init_ok) {
     ui_main_menu_t *ui = lv_event_get_user_data(e);
-
-    TickType_t elapsed = xTaskGetTickCount() - ui->co2.calib_start_tick;
-    TickType_t total = CO2_CALIB_TIME;
-
-    if (elapsed < total) {
-      uint32_t remaining_sec = (total - elapsed) / configTICK_RATE_HZ;
-      uint32_t h = remaining_sec / 3600;
-      uint32_t m = (remaining_sec % 3600) / 60;
-      lv_label_set_text_fmt(ui->co2.calib_popup_text,
-                            "Der TVOC-Sensor befindet sich in der Lernphase.\n"
-                            "Die Werte sind noch ungenau.\n\n"
-                            "Verbleibende Zeit: %02u:%02u Std.",
-                            (unsigned int)h, (unsigned int)m);
-    } else {
-      lv_label_set_text(ui->co2.calib_popup_text,
-                        "Der TVOC-Sensor ist kalibriert.\n"
-                        "Die angezeigten Werte sind zuverlaessig.");
-    }
-
+    lv_obj_move_foreground(ui->co2.calib_popup);
     lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
-  } else
-    return;
-#endif
+    ui_update_sensor_details(ui);
 }
 
 void ui_create_sgp30_calib_popup(ui_main_menu_t *ui) {
-  ui->co2.calib_popup = create_background(ui->screen, POPUP_WINDOW_WIDTH, 220,
-                                          POPUP_WINDOW_ALIGN, 0, 0);
-  lv_obj_add_style(ui->co2.calib_popup, &ui->style.popup, 0);
-  lv_obj_add_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
-
-  ui->co2.calib_popup_text =
-      create_label(ui->co2.calib_popup,
-                   "Der TVOC-Sensor befindet sich in der Lernphase.\n"
-                   "Die Werte sind noch ungenau.\n"
-                   "Die Genauigkeit verbessert sich nach ~12 Stunden.",
-                   LV_ALIGN_TOP_MID, 0, 30);
-  lv_obj_set_style_text_align(ui->co2.calib_popup_text, LV_TEXT_ALIGN_CENTER,
-                              0);
-  lv_obj_add_style(ui->co2.calib_popup_text, &ui->font.very_small_20, 0);
-  lv_obj_set_width(ui->co2.calib_popup_text, POPUP_WINDOW_WIDTH - 40);
-
-  lv_obj_t *btn =
-      create_btn_cb(ui->co2.calib_popup, 120, 45, LV_ALIGN_BOTTOM_MID, 0, -15,
-                    co2_calib_popup_close_cb, ui);
-  lv_obj_t *lbl = lv_label_create(btn);
-  lv_label_set_text(lbl, "OK");
-  lv_obj_center(lbl);
+    ui->co2.calib_popup = create_background(ui->screen, POPUP_WINDOW_WIDTH, 400,
+                                           POPUP_WINDOW_ALIGN, 0, 0);
+    lv_obj_add_style(ui->co2.calib_popup, &ui->style.popup, 0);
+    lv_obj_add_flag(ui->co2.calib_popup, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui->co2.calib_popup, LV_OBJ_FLAG_SCROLLABLE);
+    ui->co2.calib_popup_text = create_label(ui->co2.calib_popup, "",
+                                           LV_ALIGN_TOP_LEFT, 5, 5);
+    lv_obj_add_style(ui->co2.calib_popup_text, &ui->font.very_small_20, 0);
+    lv_obj_set_width(ui->co2.calib_popup_text, POPUP_WINDOW_WIDTH - 50);
+    lv_label_set_long_mode(ui->co2.calib_popup_text, LV_LABEL_LONG_WRAP);
+    lv_obj_t *btn = create_btn_cb(ui->co2.calib_popup, 140, 45,
+                                  LV_ALIGN_BOTTOM_MID, 0, 0, co2_calib_popup_close_cb, ui);
+    lv_obj_t *lbl = lv_label_create(btn);
+    lv_label_set_text(lbl, "Schliessen");
+    lv_obj_center(lbl);
 }
 
-
 lv_color_t calc_co2_color(uint16_t val) {
-#if CONFIG_HAS_SCD41
-    // CO2: 400..2400 ppm  (UBA-Standard: GUT <1000, MITTEL 1000-2000, HOCH >2000)
-    if (val < 1000) return lv_palette_main(LV_PALETTE_GREEN);
-    if (val < 1300) return lv_color_hex(0xC6FF00);
-    if (val < 1600) return lv_palette_main(LV_PALETTE_YELLOW);
-    if (val < 2000) return lv_palette_main(LV_PALETTE_ORANGE);
+    if (val < AQ_THRESH_GUT) return lv_palette_main(LV_PALETTE_GREEN);
+    if (val <= AQ_THRESH_MITTEL) return lv_palette_main(LV_PALETTE_YELLOW);
     return lv_palette_main(LV_PALETTE_RED);
-#else
-    // TVOC: 0..1000 ppb (unveraendert)
-    if (val < 150) return lv_palette_main(LV_PALETTE_GREEN);
-    if (val < 350) return lv_color_hex(0xC6FF00);
-    if (val < 600) return lv_palette_main(LV_PALETTE_YELLOW);
-    if (val < 800) return lv_palette_main(LV_PALETTE_ORANGE);
-    return lv_palette_main(LV_PALETTE_RED);
-#endif
 }
 
 void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm) {
@@ -690,10 +744,18 @@ void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm) {
   lv_color_t color;
 
    if (co2_ppm < AQ_THRESH_GUT) {
+#if CONFIG_HAS_SCD41
     text = "GUT";
+#else
+    text = "NIEDRIG";
+#endif
     color = lv_palette_main(LV_PALETTE_GREEN);
-  } else if (co2_ppm < AQ_THRESH_MITTEL) {
+  } else if (co2_ppm <= AQ_THRESH_MITTEL) {
+#if CONFIG_HAS_SCD41
     text = "MITTEL";
+#else
+    text = "ERHOEHT";
+#endif
     color = lv_palette_main(LV_PALETTE_YELLOW);
   } else {
     text = "HOCH";
@@ -1178,10 +1240,13 @@ void create_block_bot_middle(ui_main_menu_t *ui) {
 void update_block_bot_middle(ui_main_menu_t *ui) {
   static uint16_t cnt_chart_co2 = 0;
   cnt_chart_co2++;
-  if (cnt_chart_co2 > 3600) {
-  int16_t raw_chart = (int16_t)AQ_GET_VALUE();
-int16_t clamped = (int16_t)constrain(raw_chart, MIN_VALUE_CO2, MAX_VALUE_CO2);
-lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, clamped);
+  if (cnt_chart_co2 >= 3600) {
+    int16_t point = LV_CHART_POINT_NONE;
+    if (AQ_SENSOR_OK()) {
+        uint16_t raw = AQ_GET_VALUE();
+        point = (int16_t)constrain(raw, MIN_VALUE_CO2, MAX_VALUE_CO2);
+    }
+    lv_chart_set_next_value(ui->co2.chart, ui->co2.series_co2, point);
     cnt_chart_co2 = 0;
   }
   update_symbol_wifi(ui);

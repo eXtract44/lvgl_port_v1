@@ -88,8 +88,6 @@ main_settings_load(&ui);
   lv_scr_load(ui.screen);
   create_timers();
   
-  // SGP30 калибровка
-   ui.co2.calib_start_tick = xTaskGetTickCount();
-   ui_create_sgp30_calib_popup(&ui); 	
-   set_visible(ui.co2.calib_popup,true);  	
+  // Details are available on tap; startup no longer blocks the dashboard.
+  ui_create_sgp30_calib_popup(&ui);
 }

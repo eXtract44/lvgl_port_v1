@@ -77,6 +77,11 @@ lv_obj_t *create_meter(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
   lv_meter_set_indicator_start_value(meter, ui->co2.indicator, start_value);
   lv_meter_set_indicator_end_value(meter, ui->co2.indicator, start_value_1);
 
+  lv_meter_indicator_t *middle_arc =
+      lv_meter_add_arc(meter, scale, 4, lv_palette_main(LV_PALETTE_YELLOW), 0);
+  lv_meter_set_indicator_start_value(meter, middle_arc, start_value_1);
+  lv_meter_set_indicator_end_value(meter, middle_arc, end_value);
+
   /*Make the tick lines blue at the start of the scale*/
   ui->co2.indicator =
       lv_meter_add_scale_lines(meter, scale, lv_palette_main(LV_PALETTE_GREEN),

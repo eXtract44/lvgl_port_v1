@@ -13,26 +13,10 @@ extern sgp30_data_t sgp30_data;
 volatile int standby_touched = 0; // callback for extern touch driver
 
 void create_timers() {
-  lv_timer_create(timer_60000, 60000, &ui); // проверка раз в минуту
   lv_timer_create(timer_10000, 10000, NULL);
   lv_timer_create(timer_1000, 1000, NULL);
   lv_timer_create(timer_200, 200, NULL);
   lv_timer_create(timer_33, 33, &ui);
-}
-
-void timer_60000(lv_timer_t *t) {
-  ui_main_menu_t *ui = t->user_data;
-  if (sgp30_data.init_ok == 0) {
-    set_visible(ui->co2.calib_popup, false);
-  }
-  if ((xTaskGetTickCount() - ui->co2.calib_start_tick) >= CO2_CALIB_TIME) {
-#if CONFIG_HAS_SCD41
-    lv_obj_add_flag(ui->sensor.tvoc_calib_icon, LV_OBJ_FLAG_HIDDEN);
-#else
-    lv_obj_add_flag(ui->co2.calib_icon_label, LV_OBJ_FLAG_HIDDEN);
-#endif
-    lv_timer_del(t);
-  }
 }
 
 void timer_10000(lv_timer_t *timer) {
@@ -67,6 +51,7 @@ void timer_10000(lv_timer_t *timer) {
 
 void timer_1000(lv_timer_t *timer) {
   LV_UNUSED(timer);
+  ui_update_sensor_details(&ui);
 #if ACTIVATE_BLOCK_TOP_LEFT
   update_block_top_left(&ui);
 #endif
@@ -151,6 +136,9 @@ void timer_33(lv_timer_t *timer) {
   // меняем цвет arc в зависимости от значения
   lv_meter_indicator_t *arc = ui->co2.needle_arc;
   arc->type_data.arc.color = calc_co2_color(val);
+#if !CONFIG_HAS_SCD41
+  if (sgp30_is_learning()) arc->type_data.arc.color = lv_color_hex(0x888888);
+#endif
   lv_obj_invalidate(ui->co2.meter);
   
 }

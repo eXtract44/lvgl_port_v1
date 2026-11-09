@@ -54,7 +54,6 @@ void main_settings_save(ui_main_menu_t *input) {
     nvs_set_u8(handle, "bl_pct",     input->settings.switch_.backlight_manual_pct);
     nvs_set_u8(handle, "bl_mode",    input->settings.switch_.backlight_mode);
     nvs_set_u8(handle, "theme_mode", input->settings.switch_.theme_mode);
-    nvs_set_u8(handle, "co2_mode",   input->settings.switch_.co2_mode);
     nvs_set_u8(handle, "bl_amin",    input->settings.switch_.backlight_auto_min_pct);
     nvs_set_u8(handle, "bl_amax",    input->settings.switch_.backlight_auto_max_pct);
     nvs_commit(handle);
@@ -69,7 +68,6 @@ void main_settings_load(ui_main_menu_t *output) {
         output->settings.switch_.backlight_manual_pct  = 80;
         output->settings.switch_.backlight_mode = 0;
         output->settings.switch_.theme_mode     = 0;
-        output->settings.switch_.co2_mode       = 0;
         output->settings.switch_.backlight_auto_min_pct    = 5;
         output->settings.switch_.backlight_auto_max_pct    = 100;
         return;
@@ -79,7 +77,6 @@ void main_settings_load(ui_main_menu_t *output) {
     val = 80;  nvs_get_u8(handle, "bl_pct",     &val); output->settings.switch_.backlight_manual_pct  = val;
     val = 0;   nvs_get_u8(handle, "bl_mode",    &val); output->settings.switch_.backlight_mode = val;
     val = 0;   nvs_get_u8(handle, "theme_mode", &val); output->settings.switch_.theme_mode     = val;
-    val = 0;   nvs_get_u8(handle, "co2_mode",   &val); output->settings.switch_.co2_mode       = val;
     val = 5;   nvs_get_u8(handle, "bl_amin",    &val); output->settings.switch_.backlight_auto_min_pct    = val;
     val = 100; nvs_get_u8(handle, "bl_amax",    &val); output->settings.switch_.backlight_auto_max_pct    = val;
     nvs_close(handle);

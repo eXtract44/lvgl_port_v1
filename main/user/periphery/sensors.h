@@ -11,6 +11,7 @@
 #define MAIN_PERIPHERY_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "../ui/ui_user_config.h"
 
 // ---------------------------------------------------------------------------
@@ -100,6 +101,13 @@ typedef struct sgp30_data_st {
     uint16_t      tvoc;
     sgp30_state_t state;
     uint8_t init_ok;
+    uint16_t co2_filtered;
+    uint16_t tvoc_filtered;
+    bool baseline_restored;
+    bool baseline_saved;
+    bool baseline_ready;
+    int64_t started_us;
+    int64_t last_sample_us;
 } sgp30_data_t;
 
 typedef enum sgp30_cmd_en {
@@ -111,6 +119,10 @@ int      sgp30_init(void);
 int      sgp30_read(void);
 uint16_t get_co2_sgp30(void);
 uint16_t get_tvoc_sgp30(void);
+bool sgp30_values_ready(void);
+bool sgp30_is_learning(void);
+uint32_t sgp30_warmup_remaining_sec(void);
+uint32_t sgp30_learning_remaining_sec(void);
 
 void sgp30_set_humidity_compensation(float temperature_c, float relative_humidity_pct);
 

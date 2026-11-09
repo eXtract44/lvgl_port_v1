@@ -36,6 +36,7 @@ void update_block_top_middle(ui_main_menu_t *ui);
 void co2_calib_popup_close_cb(lv_event_t *e);
 void co2_meter_click_event_cb(lv_event_t *e);
 void ui_create_sgp30_calib_popup(ui_main_menu_t *ui);
+void ui_update_sensor_details(ui_main_menu_t *ui);
 lv_color_t calc_co2_color(uint16_t co2);
 void update_co2_status_label(ui_main_menu_t *ui, uint16_t co2_ppm);
 

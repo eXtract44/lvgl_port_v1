@@ -47,7 +47,7 @@ static void version_check_test_cb(ota_version_status_t status, const char *remot
 static void sensors_task(void *arg) {
      vTaskDelay(pdMS_TO_TICKS(1000));
     
-    if (lvgl_port_lock(2000)) {  // берём мьютекс на время инита
+    if (lvgl_port_lock(-1)) {  // инициализация не должна пропускаться при занятом UI
         sht41_init();
         sgp30_init();
         lvgl_port_unlock();
@@ -56,12 +56,17 @@ static void sensors_task(void *arg) {
 #endif
     }
     
+    TickType_t last_wake = xTaskGetTickCount();
     while (1) {
         if (lvgl_port_lock(100)) {
             read_sensors();
             lvgl_port_unlock();
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // Keep the SGP30 IAQ algorithm at 1 Hz; conversion time is not added.
+        // After a long stall, resume normally instead of issuing a burst of catch-up reads.
+        if (xTaskGetTickCount() - last_wake > pdMS_TO_TICKS(1000))
+            last_wake = xTaskGetTickCount();
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(1000));
     }
 }
 

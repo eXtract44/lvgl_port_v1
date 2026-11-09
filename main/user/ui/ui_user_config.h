@@ -17,7 +17,9 @@
 
 
 // ==== Luftqualitaet-Variante ====
+#ifndef CONFIG_HAS_SCD41
 #define CONFIG_HAS_SCD41 0   // 1 = SCD41+SGP30, 0 = nur SGP30
+#endif
 
 #if CONFIG_HAS_SCD41
   #define AQ_UNIT_STR        "ppm"
@@ -38,22 +40,21 @@
   #define BLOCK_TOP_MID_START_CO2_RIGHT_PART  AQ_THRESH_MITTEL
   #define BLOCK_TOP_MID_END_CO2_RIGHT_PART    MAX_VALUE_CO2
 #else
-  #define AQ_UNIT_STR        "ppb"
-  #define AQ_FOOTER_STR      "TVOC | Luftqualitaet"
-  #define AQ_SCALE_MIN       0
-  #define AQ_SCALE_MAX       1000
-  #define AQ_ZONE_GREEN_END  150
-  #define AQ_ZONE_RED_START  850
-  #define AQ_THRESH_GUT      150
-  #define AQ_THRESH_MITTEL   350
-  #define AQ_GET_VALUE()     get_tvoc_sgp30()
-  #define AQ_SENSOR_OK()   (sgp30_data.state == SGP30_STATE_OK)
-   // Farbzonen Meter: gruen 0..150, rot 850..1000  (wie bisher)
-   #define MIN_VALUE_CO2    0
-  #define MAX_VALUE_CO2    1000
+  #define AQ_UNIT_STR        "ppm"
+  #define AQ_FOOTER_STR      "eCO2 | geschaetzt"
+  #define AQ_SCALE_MIN       400
+  #define AQ_SCALE_MAX       2400
+  #define AQ_ZONE_GREEN_END  1000
+  #define AQ_ZONE_RED_START  2000
+  #define AQ_THRESH_GUT      1000
+  #define AQ_THRESH_MITTEL   2000
+  #define AQ_GET_VALUE()     get_co2_sgp30()
+  #define AQ_SENSOR_OK()     sgp30_values_ready()
+  #define MIN_VALUE_CO2      400
+  #define MAX_VALUE_CO2      2400
   #define BLOCK_TOP_MID_START_CO2_LEFT_PART   MIN_VALUE_CO2
-  #define BLOCK_TOP_MID_END_CO2_LEFT_PART     150
-  #define BLOCK_TOP_MID_START_CO2_RIGHT_PART  850
+  #define BLOCK_TOP_MID_END_CO2_LEFT_PART     AQ_THRESH_GUT
+  #define BLOCK_TOP_MID_START_CO2_RIGHT_PART  AQ_THRESH_MITTEL
   #define BLOCK_TOP_MID_END_CO2_RIGHT_PART    MAX_VALUE_CO2
 #endif
 
@@ -92,7 +93,6 @@
 
 #define MAX_STANDBY_TIME 180*5 // 180 sec
 #define FEELS_LIKE_MIN_DIFF 1.5f
-#define CO2_CALIB_TIME (12UL * 3600UL * configTICK_RATE_HZ)
 
 #define SENSOR_HISTORY_POINTS 144 // 12 часов × 12 точек/час
 #define SENSOR_RECORD_INTERVAL 300 //300 тиков (секунд) между записями
